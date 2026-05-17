@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：6
+- 已完成：8
 - 进行中：0
-- 待执行：16
+- 待执行：14
 
 ## 进度详情
 
@@ -21,8 +21,8 @@
 | 4 | 本地存储层 — Dexie.js | ✅ 完成 | LocalAdapter (IndexedDB), storageAdapter 工厂, SyncAdapter 占位 |
 | 5 | Pinia 状态管理 | ✅ 完成 | dashboardStore, widgetStore, authStore |
 | 6 | TopBar 顶栏组件 | ✅ 完成 | 登录/编辑/退出按钮，集成到 App.vue |
-| 7 | DashboardGrid 网格布局 | ⏳ 待执行 | vue-grid-layout 集成 |
-| 8 | WidgetWrapper 和 WidgetRenderer | ⏳ 待执行 | 组件外壳和动态加载 |
+| 7 | DashboardGrid 网格布局 | ✅ 完成 | vue3-grid-layout-next 集成，响应式断点，拖拽/调整大小 |
+| 8 | WidgetWrapper 和 WidgetRenderer | ✅ 完成 | 组件外壳（编辑 UI）和动态加载渲染器 |
 | 9 | SearchWidget 搜索组件 | ⏳ 待执行 | 多引擎搜索 |
 | 10 | ClockWidget 时钟组件 | ⏳ 待执行 | 实时时钟 |
 | 11 | WeatherWidget 天气组件 | ⏳ 待执行 | OpenWeatherMap API |
@@ -58,16 +58,31 @@
 **Task 6 — TopBar 顶栏组件：**
 - `handleLogin` 函数中 TODO 待实现（弹出登录对话框），将在 Task 13 LoginDialog 中完成。
 
+**Task 7 — DashboardGrid 网格布局：**
+- 使用 `vue3-grid-layout-next` 包替代计划中的 `vue-grid-layout`，因为后者无 Vue 3 兼容版本。
+- 库要求添加 `xxs` 断点（`xxs: 0` 列数 2），计划中未定义但合理，已自动适配。
+- WidgetWrapper.vue 先创建为 stub，Task 8 已替换为完整实现。（已解决）
+
+**Task 8 — WidgetWrapper 和 WidgetRenderer：**
+- 内置组件文件（SearchWidget.vue、ClockWidget.vue、WeatherWidget.vue、BookmarkWidget.vue）尚不存在，使用 `defineAsyncComponent` 延迟加载，编译时不会报错，运行时需 Task 9-12 完成后才能正常渲染。
+
+## 已解决的遗留问题
+
+- ~~vue-grid-layout 在 Task 7 中需要确认具体使用哪个 Vue 3 兼容包~~ → 已确定使用 `vue3-grid-layout-next`
+- ~~WidgetWrapper.vue stub~~ → Task 8 已替换为完整实现
+
 ## 全局已知问题
 
 - `syncAdapter.ts` 当前为占位实现，Task 20 会替换
-- vue-grid-layout 在 Task 7 中需要确认具体使用哪个 Vue 3 兼容包
 - pnpm 全局安装路径需手动设置 PATH：`/Users/wymix/.hermes/node/bin`
 - shared 包构建需手动执行 `tsc --build`，未集成到 turbo dev 流程
 
 ## Git 提交记录
 
 ```
+e91696c feat(frontend): 实现 WidgetWrapper 和 WidgetRenderer 组件
+c9fe547 feat(frontend): 实现 DashboardGrid 网格布局系统
+48e0d53 docs: 更新进度至 Task 6
 1deb387 feat(frontend): 实现 TopBar 顶栏组件
 9802cf7 feat(frontend): 实现 Pinia 状态管理（dashboard, widget, auth）
 8c6c205 feat(frontend): 实现 LocalAdapter 本地存储层
