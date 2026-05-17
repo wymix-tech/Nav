@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import TopBar from './components/TopBar.vue'
+import DashboardGrid from './components/DashboardGrid.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -24,7 +25,7 @@ function toggleEdit() {
 }
 
 function handleLogin() {
-  // TODO: 弹出登录对话框
+  // Task 13 实现
 }
 </script>
 
@@ -33,7 +34,15 @@ function handleLogin() {
     <TopBar :editing="editing" @toggle-edit="toggleEdit" @login="handleLogin" />
     <main class="main">
       <p v-if="dashboardStore.loading">加载中...</p>
-      <p v-else>仪表盘已加载，共 {{ dashboardStore.dashboard?.widgets.length ?? 0 }} 个组件</p>
+      <DashboardGrid
+        v-else-if="dashboardStore.dashboard"
+        :widgets="dashboardStore.dashboard.widgets"
+        :editing="editing"
+        :editable="authStore.isAuthenticated"
+        @remove-widget="dashboardStore.removeWidget"
+        @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
+        @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
+      />
     </main>
   </div>
 </template>
