@@ -19,6 +19,20 @@
 | 2 | Shared 包 — 类型定义 | ✅ 完成 | Dashboard, WidgetManifest, StorageAdapter, Auth 类型 |
 | 3 | 前端包初始化 — Vue 3 + Vite | ✅ 完成 | Vite 配置, TypeScript, Pinia, 基础样式 |
 | 4 | 本地存储层 — Dexie.js | ✅ 完成 | LocalAdapter (IndexedDB), storageAdapter 工厂, SyncAdapter 占位 |
+
+### 已完成 Task 遗留问题
+
+**Task 2 — Shared 包：**
+- tsconfig 缺少 `composite: true`，导致前端通过 project reference 引用时报错 TS6306。已在 Task 3 中修复。
+- 修复后需要手动执行 `tsc --build` 构建 shared 包，前端才能正常引用。后续需考虑在 turbo 的 `dev` 任务中自动构建依赖。
+
+**Task 3 — 前端初始化：**
+- 无遗留问题。
+
+**Task 4 — 本地存储层：**
+- `syncAdapter.ts` 为占位实现（所有方法抛出异常），Task 20 会替换为完整的后端同步实现。
+- `storageAdapter.ts` 中的 `SyncAdapter` 动态导入依赖后端可用，当前后端未实现时会自动 fallback 到 `LocalAdapter`，逻辑正确。
+- pnpm 全局安装路径不在默认 PATH 中，需使用 `export PATH="/Users/wymix/.hermes/node/bin:$PATH"` 才能执行 pnpm 命令。
 | 5 | Pinia 状态管理 | ⏳ 待执行 | dashboardStore, widgetStore, authStore |
 | 6 | TopBar 顶栏组件 | ⏳ 待执行 | 登录/编辑按钮 |
 | 7 | DashboardGrid 网格布局 | ⏳ 待执行 | vue-grid-layout 集成 |
@@ -38,10 +52,12 @@
 | 21 | App.vue 整合所有组件 | ⏳ 待执行 | 整合完整功能 |
 | 22 | 端到端验证 | ⏳ 待执行 | 完整流程测试 |
 
-## 已知问题
+## 全局已知问题
 
 - `syncAdapter.ts` 当前为占位实现，Task 20 会替换
 - vue-grid-layout 在 Task 7 中需要确认具体使用哪个 Vue 3 兼容包
+- pnpm 全局安装路径需手动设置 PATH：`/Users/wymix/.hermes/node/bin`
+- shared 包构建需手动执行 `tsc --build`，未集成到 turbo dev 流程
 
 ## Git 提交记录
 
