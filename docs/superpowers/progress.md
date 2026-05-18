@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：11
+- 已完成：12
 - 进行中：0
-- 待执行：11
+- 待执行：10
 
 ## 进度详情
 
@@ -26,7 +26,7 @@
 | 9 | SearchWidget 搜索组件 | ✅ 完成 | 多引擎搜索（Google, Bing, Baidu, DuckDuckGo），引擎选择持久化 |
 | 10 | ClockWidget 时钟组件 | ✅ 完成 | 精简表盘风格，HH:MM + 秒，中文日期，tabular-nums |
 | 11 | WeatherWidget 天气组件 | ✅ 完成 | OpenWeatherMap API，城市/单位配置，中文天气描述 |
-| 12 | BookmarkWidget 书签组件 | ⏳ 待执行 | 分组书签 |
+| 12 | BookmarkWidget 书签组件 | ✅ 完成 | 分组书签，favicon 支持，编辑模式禁用链接 |
 | 13 | LoginDialog 登录弹窗 | ⏳ 待执行 | 密码登录 |
 | 14 | WidgetConfigForm 配置表单 | ⏳ 待执行 | JSON Schema 表单 |
 | 15 | WidgetLibrary + InstallWidgetDialog | ⏳ 待执行 | 组件库和安装弹窗 |
@@ -64,11 +64,13 @@
 - WidgetWrapper.vue 先创建为 stub，Task 8 已替换为完整实现。（已解决）
 
 **Task 8 — WidgetWrapper 和 WidgetRenderer：**
-- 内置组件文件（SearchWidget.vue、ClockWidget.vue、WeatherWidget.vue、BookmarkWidget.vue）尚不存在，使用 `defineAsyncComponent` 延迟加载，编译时不会报错，运行时需 Task 9-12 完成后才能正常渲染。
-- SearchWidget.vue 已在 Task 9 中创建，ClockWidget.vue 已在 Task 10 中创建，WeatherWidget.vue 已在 Task 11 中创建。（部分解决，剩余 Bookmark 待 Task 12）
+- ~~内置组件文件尚不存在~~ → 全部已创建：SearchWidget(Task 9)、ClockWidget(Task 10)、WeatherWidget(Task 11)、BookmarkWidget(Task 12)（已解决）
 
 **Task 9 — SearchWidget 搜索组件：**
 - 无遗留问题。支持 Google/Bing/Baidu/DuckDuckGo 四个引擎，编辑模式下禁用输入。
+
+**Task 12 — BookmarkWidget 书签组件：**
+- 无遗留问题。分组书签，favicon 支持，编辑模式禁用链接。
 
 ## 已解决的遗留问题
 
@@ -78,6 +80,7 @@
 - ~~C1: WidgetWrapper 未传递 manifest 给 WidgetRenderer~~ → 代码审查后修复，WidgetWrapper 从 widgetStore 获取 manifest
 - ~~C2: DashboardGrid 只更新 layouts.lg~~ → 代码审查后修复，支持当前断点检测，正确更新对应断点布局
 - ~~I7: 无后端模式下无法进入编辑模式~~ → 代码审查后修复，TopBar 在无后端时直接显示编辑按钮
+- ~~内置组件文件缺失~~ → Task 9-12 全部创建完成
 
 ## 代码审查
 
