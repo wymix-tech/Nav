@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：9
+- 已完成：10
 - 进行中：0
-- 待执行：13
+- 待执行：12
 
 ## 进度详情
 
@@ -24,7 +24,7 @@
 | 7 | DashboardGrid 网格布局 | ✅ 完成 | vue3-grid-layout-next 集成，响应式断点，拖拽/调整大小 |
 | 8 | WidgetWrapper 和 WidgetRenderer | ✅ 完成 | 组件外壳（编辑 UI）和动态加载渲染器 |
 | 9 | SearchWidget 搜索组件 | ✅ 完成 | 多引擎搜索（Google, Bing, Baidu, DuckDuckGo），引擎选择持久化 |
-| 10 | ClockWidget 时钟组件 | ⏳ 待执行 | 实时时钟 |
+| 10 | ClockWidget 时钟组件 | ✅ 完成 | 精简表盘风格，HH:MM + 秒，中文日期，tabular-nums |
 | 11 | WeatherWidget 天气组件 | ⏳ 待执行 | OpenWeatherMap API |
 | 12 | BookmarkWidget 书签组件 | ⏳ 待执行 | 分组书签 |
 | 13 | LoginDialog 登录弹窗 | ⏳ 待执行 | 密码登录 |
