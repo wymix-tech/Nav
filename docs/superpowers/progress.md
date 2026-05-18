@@ -90,14 +90,22 @@
 - C1: WidgetWrapper 未传递 manifest → 已修复
 - C2: DashboardGrid 只更新 layouts.lg → 已修复
 - I7: 无后端模式下无法编辑 → 已修复
-- 审查报告详见 git 提交 `aafe120`
+
+**审查 2（Task 10-12 完成后）** — 提前于计划节点执行，发现并修复了 5 个 Important 问题：
+- I2: WeatherWidget city 未 URL 编码 → 已修复
+- I3: WeatherWidget watch 范围过窄 → 已修复（监听 city/unit/apiKey）
+- I4: DashboardGrid detectBreakpoint 死代码 → 已移除
+- I5: BookmarkWidget 空状态判断不完整 → 已修复（覆盖空书签组）
+- I6: BookmarkWidget v-for key 不唯一 → 已修复（使用 index + 跳过空组）
+- 携带问题：I1 配置按钮（待 Task 14）、I3 fire-and-forget save（待后续处理）
 
 ### 审查计划
 
 | 节点 | 触发时机 | 审查级别 | 审查重点 |
 |------|---------|---------|---------|
-| ✅ 审查 1 | Task 9 完成后 | 中等审查 | 基础架构、组件接口、存储层（已完成） |
-| 审查 2 | Task 15 完成后 | 中等审查 | 前端 UI 全流程（登录→编辑→配置→安装组件） |
+| ✅ 审查 1 | Task 9 完成后 | 中等审查 | 基础架构、组件接口、存储层 |
+| ✅ 审查 2 | Task 12 完成后（提前） | 中等审查 | 内置组件质量、审查 1 修复验证 |
+| 审查 3 | Task 19 完成后 | 重点审查 | 后端代码安全性（认证、SQL、API），SyncAdapter 接入前最后检查点 |
 | 审查 3 | Task 19 完成后 | 重点审查 | 后端代码安全性（认证、SQL、API），SyncAdapter 接入前最后检查点 |
 | 审查 4 | Task 22 完成后 | 最终审查 | 合并前全面审查，端到端功能验证 |
 
