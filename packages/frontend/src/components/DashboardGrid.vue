@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout-next'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
@@ -16,13 +16,25 @@ const emit = defineEmits<{
   'update-config': [instanceId: string, config: Record<string, any>]
 }>()
 
-/**
- * 将 WidgetInstance 的 layouts 转换为 vue-grid-layout 所需格式
- */
+type Breakpoint = 'lg' | 'md' | 'sm' | 'xs'
+const currentBreakpoint = ref<Breakpoint>('lg')
+
+const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
+const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
+
+function detectBreakpoint(): Breakpoint {
+  const w = window.innerWidth
+  if (w >= breakpoints.lg) return 'lg'
+  if (w >= breakpoints.md) return 'md'
+  if (w >= breakpoints.sm) return 'sm'
+  return 'xs'
+}
+
 function toGridLayouts(widgets: WidgetInstance[]) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
   for (const w of widgets) {
-    for (const [bp, layout] of Object.entries(w.layouts)) {
+    for (const bp of ['lg', 'md', 'sm', 'xs'] as Breakpoint[]) {
+      const layout = w.layouts[bp] ?? w.layouts.lg
       result[bp].push({
         i: w.id,
         x: layout.x,
@@ -39,16 +51,28 @@ function toGridLayouts(widgets: WidgetInstance[]) {
 
 const layouts = computed(() => toGridLayouts(props.widgets))
 
-/**
- * 处理布局更新事件，将变化同步到 store
- */
+const layoutIndex = computed(() => {
+  const map = new Map<string, any>()
+  for (const item of layouts.value[currentBreakpoint.value] ?? []) {
+    map.set(item.i, item)
+  }
+  return map
+})
+
+function handleBreakpointChanged(bp: string) {
+  if (bp in breakpoints) {
+    currentBreakpoint.value = bp as Breakpoint
+  }
+}
+
 function handleLayoutUpdated(newLayout: any[]) {
+  const bp = currentBreakpoint.value
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
     emit('update-layout', item.i, {
       ...widget.layouts,
-      lg: { x: item.x, y: item.y, w: item.w, h: item.h },
+      [bp]: { x: item.x, y: item.y, w: item.w, h: item.h },
     })
   }
 }
@@ -57,24 +81,25 @@ function handleLayoutUpdated(newLayout: any[]) {
 <template>
   <div class="dashboard-grid">
     <GridLayout
-      :layout="layouts.lg"
-      :col-num="12"
+      :layout="layouts[currentBreakpoint]"
+      :col-num="cols[currentBreakpoint]"
       :row-height="80"
       :is-draggable="editing"
       :is-resizable="editing"
       :responsive="true"
-      :breakpoints="{ lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }"
-      :cols="{ lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }"
+      :breakpoints="breakpoints"
+      :cols="cols"
       @layout-updated="handleLayoutUpdated"
+      @breakpoint-changed="handleBreakpointChanged"
     >
       <GridItem
         v-for="widget in widgets"
         :key="widget.id"
         :i="widget.id"
-        :x="layouts.lg.find((l: any) => l.i === widget.id)?.x ?? 0"
-        :y="layouts.lg.find((l: any) => l.i === widget.id)?.y ?? 0"
-        :w="layouts.lg.find((l: any) => l.i === widget.id)?.w ?? 4"
-        :h="layouts.lg.find((l: any) => l.i === widget.id)?.h ?? 3"
+        :x="layoutIndex.get(widget.id)?.x ?? 0"
+        :y="layoutIndex.get(widget.id)?.y ?? 0"
+        :w="layoutIndex.get(widget.id)?.w ?? 4"
+        :h="layoutIndex.get(widget.id)?.h ?? 3"
         :min-w="2"
         :min-h="2"
       >

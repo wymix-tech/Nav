@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { WidgetInstance } from '@nav/shared'
+import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
 
-defineProps<{
+const props = defineProps<{
   widget: WidgetInstance
   editing: boolean
   editable: boolean
@@ -12,6 +14,15 @@ const emit = defineEmits<{
   remove: []
   'update-config': [config: Record<string, any>]
 }>()
+
+const widgetStore = useWidgetStore()
+
+const manifest = computed(() => {
+  if (props.widget.source === 'installed') {
+    return widgetStore.getWidget(props.widget.widgetId)?.manifest
+  }
+  return undefined
+})
 </script>
 
 <template>
@@ -23,6 +34,7 @@ const emit = defineEmits<{
     <div class="widget-content">
       <WidgetRenderer
         :widget="widget"
+        :manifest="manifest"
         :editing="editing"
         :editable="editable"
         @update:config="(cfg) => emit('update-config', cfg)"

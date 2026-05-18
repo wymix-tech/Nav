@@ -5,11 +5,13 @@ import DashboardGrid from './components/DashboardGrid.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
+import { isBackendAvailable } from './services/storageAdapter'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
 const authStore = useAuthStore()
 const editing = ref(false)
+const backendAvailable = ref(false)
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -18,27 +20,28 @@ onMounted(async () => {
   } catch {
     // 无后端，忽略
   }
+  backendAvailable.value = isBackendAvailable()
 })
 
-function toggleEdit() {
-  editing.value = !editing.value
-}
-
-function handleLogin() {
-  // Task 13 实现
-}
+function toggleEdit() { editing.value = !editing.value }
+function handleLogin() { /* Task 13 实现 */ }
 </script>
 
 <template>
   <div class="app">
-    <TopBar :editing="editing" @toggle-edit="toggleEdit" @login="handleLogin" />
+    <TopBar
+      :editing="editing"
+      :backend-available="backendAvailable"
+      @toggle-edit="toggleEdit"
+      @login="handleLogin"
+    />
     <main class="main">
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
         :widgets="dashboardStore.dashboard.widgets"
         :editing="editing"
-        :editable="authStore.isAuthenticated"
+        :editable="!backendAvailable || authStore.isAuthenticated"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
         @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"

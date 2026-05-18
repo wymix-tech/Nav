@@ -5,6 +5,7 @@ const auth = useAuthStore()
 
 defineProps<{
   editing: boolean
+  backendAvailable: boolean
 }>()
 
 const emit = defineEmits<{
@@ -24,6 +25,11 @@ const emit = defineEmits<{
           {{ editing ? '完成编辑' : '编辑' }}
         </button>
         <button @click="auth.logout()">退出登录</button>
+      </template>
+      <template v-else-if="!backendAvailable">
+        <button class="primary" @click="emit('toggle-edit')">
+          {{ editing ? '完成编辑' : '编辑' }}
+        </button>
       </template>
       <template v-else>
         <button class="primary" @click="emit('login')">登录</button>
