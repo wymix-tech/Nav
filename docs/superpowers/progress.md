@@ -75,6 +75,13 @@
 - ~~vue-grid-layout 在 Task 7 中需要确认具体使用哪个 Vue 3 兼容包~~ → 已确定使用 `vue3-grid-layout-next`
 - ~~WidgetWrapper.vue stub~~ → Task 8 已替换为完整实现
 - ~~SearchWidget.vue 尚不存在~~ → Task 9 已创建
+- ~~C1: WidgetWrapper 未传递 manifest 给 WidgetRenderer~~ → 代码审查后修复，WidgetWrapper 从 widgetStore 获取 manifest
+- ~~C2: DashboardGrid 只更新 layouts.lg~~ → 代码审查后修复，支持当前断点检测，正确更新对应断点布局
+- ~~I7: 无后端模式下无法进入编辑模式~~ → 代码审查后修复，TopBar 在无后端时直接显示编辑按钮
+
+## 代码审查
+
+Task 1-9 完成后进行了一次代码审查，发现并修复了 3 个关键问题。审查报告详见 git 提交 `aafe120`。
 
 ## 全局已知问题
 
