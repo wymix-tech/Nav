@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：8
+- 已完成：9
 - 进行中：0
-- 待执行：14
+- 待执行：13
 
 ## 进度详情
 
@@ -23,7 +23,7 @@
 | 6 | TopBar 顶栏组件 | ✅ 完成 | 登录/编辑/退出按钮，集成到 App.vue |
 | 7 | DashboardGrid 网格布局 | ✅ 完成 | vue3-grid-layout-next 集成，响应式断点，拖拽/调整大小 |
 | 8 | WidgetWrapper 和 WidgetRenderer | ✅ 完成 | 组件外壳（编辑 UI）和动态加载渲染器 |
-| 9 | SearchWidget 搜索组件 | ⏳ 待执行 | 多引擎搜索 |
+| 9 | SearchWidget 搜索组件 | ✅ 完成 | 多引擎搜索（Google, Bing, Baidu, DuckDuckGo），引擎选择持久化 |
 | 10 | ClockWidget 时钟组件 | ⏳ 待执行 | 实时时钟 |
 | 11 | WeatherWidget 天气组件 | ⏳ 待执行 | OpenWeatherMap API |
 | 12 | BookmarkWidget 书签组件 | ⏳ 待执行 | 分组书签 |
@@ -65,11 +65,16 @@
 
 **Task 8 — WidgetWrapper 和 WidgetRenderer：**
 - 内置组件文件（SearchWidget.vue、ClockWidget.vue、WeatherWidget.vue、BookmarkWidget.vue）尚不存在，使用 `defineAsyncComponent` 延迟加载，编译时不会报错，运行时需 Task 9-12 完成后才能正常渲染。
+- SearchWidget.vue 已在 Task 9 中创建。（部分解决，剩余 Clock/Weather/Bookmark 待 Task 10-12）
+
+**Task 9 — SearchWidget 搜索组件：**
+- 无遗留问题。支持 Google/Bing/Baidu/DuckDuckGo 四个引擎，编辑模式下禁用输入。
 
 ## 已解决的遗留问题
 
 - ~~vue-grid-layout 在 Task 7 中需要确认具体使用哪个 Vue 3 兼容包~~ → 已确定使用 `vue3-grid-layout-next`
 - ~~WidgetWrapper.vue stub~~ → Task 8 已替换为完整实现
+- ~~SearchWidget.vue 尚不存在~~ → Task 9 已创建
 
 ## 全局已知问题
 
@@ -80,6 +85,7 @@
 ## Git 提交记录
 
 ```
+7c930af feat(frontend): 实现 SearchWidget 搜索组件
 e91696c feat(frontend): 实现 WidgetWrapper 和 WidgetRenderer 组件
 c9fe547 feat(frontend): 实现 DashboardGrid 网格布局系统
 48e0d53 docs: 更新进度至 Task 6
