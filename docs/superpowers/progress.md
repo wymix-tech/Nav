@@ -2,14 +2,14 @@
 
 **计划文档：** `docs/superpowers/plans/2026-05-16-personal-nav-dashboard.md`
 **设计规格：** `docs/superpowers/specs/2026-05-16-personal-nav-dashboard-design.md`
-**最后更新：** 2026-05-16
+**最后更新：** 2026-05-18
 
 ## 总览
 
 - 总 Task 数：22
-- 已完成：10
+- 已完成：11
 - 进行中：0
-- 待执行：12
+- 待执行：11
 
 ## 进度详情
 
@@ -25,7 +25,7 @@
 | 8 | WidgetWrapper 和 WidgetRenderer | ✅ 完成 | 组件外壳（编辑 UI）和动态加载渲染器 |
 | 9 | SearchWidget 搜索组件 | ✅ 完成 | 多引擎搜索（Google, Bing, Baidu, DuckDuckGo），引擎选择持久化 |
 | 10 | ClockWidget 时钟组件 | ✅ 完成 | 精简表盘风格，HH:MM + 秒，中文日期，tabular-nums |
-| 11 | WeatherWidget 天气组件 | ⏳ 待执行 | OpenWeatherMap API |
+| 11 | WeatherWidget 天气组件 | ✅ 完成 | OpenWeatherMap API，城市/单位配置，中文天气描述 |
 | 12 | BookmarkWidget 书签组件 | ⏳ 待执行 | 分组书签 |
 | 13 | LoginDialog 登录弹窗 | ⏳ 待执行 | 密码登录 |
 | 14 | WidgetConfigForm 配置表单 | ⏳ 待执行 | JSON Schema 表单 |
@@ -65,7 +65,7 @@
 
 **Task 8 — WidgetWrapper 和 WidgetRenderer：**
 - 内置组件文件（SearchWidget.vue、ClockWidget.vue、WeatherWidget.vue、BookmarkWidget.vue）尚不存在，使用 `defineAsyncComponent` 延迟加载，编译时不会报错，运行时需 Task 9-12 完成后才能正常渲染。
-- SearchWidget.vue 已在 Task 9 中创建。（部分解决，剩余 Clock/Weather/Bookmark 待 Task 10-12）
+- SearchWidget.vue 已在 Task 9 中创建，ClockWidget.vue 已在 Task 10 中创建，WeatherWidget.vue 已在 Task 11 中创建。（部分解决，剩余 Bookmark 待 Task 12）
 
 **Task 9 — SearchWidget 搜索组件：**
 - 无遗留问题。支持 Google/Bing/Baidu/DuckDuckGo 四个引擎，编辑模式下禁用输入。
@@ -107,6 +107,8 @@
 ## Git 提交记录
 
 ```
+5219f78 feat(frontend): 实现 WeatherWidget 天气组件
+1bb7b95 feat(frontend): 实现 ClockWidget 时钟组件
 7c930af feat(frontend): 实现 SearchWidget 搜索组件
 e91696c feat(frontend): 实现 WidgetWrapper 和 WidgetRenderer 组件
 c9fe547 feat(frontend): 实现 DashboardGrid 网格布局系统
