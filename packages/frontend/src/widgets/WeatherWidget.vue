@@ -26,7 +26,7 @@ async function fetchWeather() {
   try {
     const unit = props.config.unit === 'fahrenheit' ? 'imperial' : 'metric'
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=${unit}&lang=zh_cn`
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=${unit}&lang=zh_cn`
     )
     if (!res.ok) throw new Error('请求失败')
     const data = await res.json()
@@ -44,7 +44,7 @@ async function fetchWeather() {
 }
 
 onMounted(fetchWeather)
-watch(() => props.config.city, fetchWeather)
+watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWeather)
 </script>
 
 <template>

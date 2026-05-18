@@ -23,6 +23,7 @@ interface BookmarkGroup {
 }
 
 const groups = computed<BookmarkGroup[]>(() => props.config.groups ?? [])
+const isEmpty = computed(() => groups.value.length === 0 || groups.value.every((g) => g.bookmarks.length === 0))
 
 function getFavicon(url: string): string {
   try {
@@ -36,11 +37,12 @@ function getFavicon(url: string): string {
 
 <template>
   <div class="bookmark-widget">
-    <div v-if="groups.length === 0" class="empty">
+    <div v-if="isEmpty" class="empty">
       <span v-if="editable && editing">点击配置添加书签</span>
       <span v-else>暂无书签</span>
     </div>
-    <div v-for="group in groups" :key="group.name" class="group">
+    <template v-for="(group, gi) in groups" :key="gi">
+    <div v-if="group.bookmarks.length > 0" class="group">
       <div class="group-name">{{ group.name }}</div>
       <div class="bookmarks">
         <a
@@ -61,6 +63,7 @@ function getFavicon(url: string): string {
         </a>
       </div>
     </div>
+    </template>
   </div>
 </template>
 

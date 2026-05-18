@@ -22,14 +22,6 @@ const currentBreakpoint = ref<Breakpoint>('lg')
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
 const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
 
-function detectBreakpoint(): Breakpoint {
-  const w = window.innerWidth
-  if (w >= breakpoints.lg) return 'lg'
-  if (w >= breakpoints.md) return 'md'
-  if (w >= breakpoints.sm) return 'sm'
-  return 'xs'
-}
-
 function toGridLayouts(widgets: WidgetInstance[]) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
   for (const w of widgets) {
