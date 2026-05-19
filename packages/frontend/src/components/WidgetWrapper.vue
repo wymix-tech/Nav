@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { WidgetInstance } from '@nav/shared'
 import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
+import WidgetConfigForm from './WidgetConfigForm.vue'
 
 const props = defineProps<{
   widget: WidgetInstance
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const widgetStore = useWidgetStore()
+const showConfig = ref(false)
 
 const manifest = computed(() => {
   if (props.widget.source === 'installed') {
@@ -23,12 +25,25 @@ const manifest = computed(() => {
   }
   return undefined
 })
+
+const widgetSchema = computed(() => {
+  return manifest.value?.schema ?? null
+})
+
+function handleConfigUpdate(config: Record<string, any>) {
+  emit('update-config', config)
+}
 </script>
 
 <template>
   <div class="widget-wrapper" :class="{ editing }">
     <div v-if="editing && editable" class="widget-toolbar">
-      <button class="toolbar-btn config-btn" title="配置">⚙</button>
+      <button
+        v-if="widgetSchema"
+        class="toolbar-btn config-btn"
+        title="配置"
+        @click="showConfig = true"
+      >⚙</button>
       <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
     </div>
     <div class="widget-content">
@@ -39,6 +54,22 @@ const manifest = computed(() => {
         :editable="editable"
         @update:config="(cfg) => emit('update-config', cfg)"
       />
+    </div>
+
+    <!-- 配置弹窗 -->
+    <div v-if="showConfig" class="config-overlay" @click.self="showConfig = false">
+      <div class="config-dialog">
+        <h3>组件配置</h3>
+        <WidgetConfigForm
+          v-if="widgetSchema"
+          :schema="widgetSchema"
+          :model-value="widget.config"
+          @update:model-value="handleConfigUpdate"
+        />
+        <div class="config-actions">
+          <button @click="showConfig = false">关闭</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -52,6 +83,7 @@ const manifest = computed(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .widget-wrapper.editing {
@@ -94,5 +126,48 @@ const manifest = computed(() => {
   flex: 1;
   overflow: auto;
   padding: 12px;
+}
+
+/* 配置弹窗 */
+.config-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--radius);
+}
+
+.config-dialog {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 90%;
+  max-width: 320px;
+  max-height: 80%;
+  overflow-y: auto;
+}
+
+.config-dialog h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.config-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.config-actions button {
+  padding: 6px 16px;
+  font-size: 13px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
 }
 </style>
