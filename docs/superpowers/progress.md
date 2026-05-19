@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：13
+- 已完成：14
 - 进行中：0
-- 待执行：9
+- 待执行：8
 
 ## 进度详情
 
@@ -28,7 +28,7 @@
 | 11 | WeatherWidget 天气组件 | ✅ 完成 | OpenWeatherMap API，城市/单位配置，中文天气描述 |
 | 12 | BookmarkWidget 书签组件 | ✅ 完成 | 分组书签，favicon 支持，编辑模式禁用链接 |
 | 13 | LoginDialog 登录弹窗 | ✅ 完成 | 密码输入、错误提示、遮罩关闭，集成到 App.vue |
-| 14 | WidgetConfigForm 配置表单 | ⏳ 待执行 | JSON Schema 表单 |
+| 14 | WidgetConfigForm 配置表单 | ✅ 完成 | JSON Schema 自动生成表单，配置按钮可用 |
 | 15 | WidgetLibrary + InstallWidgetDialog | ⏳ 待执行 | 组件库和安装弹窗 |
 | 16 | 后端初始化 — Hono + SQLite | ⏳ 待执行 | Hono 入口, SQLite 数据库 |
 | 17 | 数据库查询封装 | ⏳ 待执行 | queries.ts |
@@ -82,6 +82,7 @@
 - ~~I7: 无后端模式下无法进入编辑模式~~ → 代码审查后修复，TopBar 在无后端时直接显示编辑按钮
 - ~~内置组件文件缺失~~ → Task 9-12 全部创建完成
 - ~~Task 6 handleLogin TODO~~ → Task 13 LoginDialog 已实现
+- ~~I1: 配置按钮无点击事件~~ → Task 14 WidgetConfigForm 已连接配置按钮
 
 ## 代码审查
 
