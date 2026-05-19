@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：18
+- 已完成：19
 - 进行中：0
-- 待执行：4
+- 待执行：3
 
 ## 进度详情
 
@@ -33,7 +33,7 @@
 | 16 | 后端初始化 — Hono + SQLite | ✅ 完成 | Hono 入口, SQLite 数据库, 健康检查端点 |
 | 17 | 数据库查询封装 | ✅ 完成 | Dashboard/WidgetInstance/InstalledWidget CRUD 函数 |
 | 18 | 认证中间件 | ✅ 完成 | JWT 中间件、POST /api/auth/login、POST /api/auth/verify |
-| 19 | 仪表盘和组件 API 路由 | ⏳ 待执行 | CRUD 路由 |
+| 19 | 仪表盘和组件 API 路由 | ✅ 完成 | Dashboard/Widget/InstalledWidget CRUD，认证保护写操作 |
 | 20 | SyncAdapter 后端同步 | ⏳ 待执行 | 替换占位实现 |
 | 21 | App.vue 整合所有组件 | ⏳ 待执行 | 整合完整功能 |
 | 22 | 端到端验证 | ⏳ 待执行 | 完整流程测试 |
