@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
+import LoginDialog from './components/LoginDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -12,6 +13,7 @@ const widgetStore = useWidgetStore()
 const authStore = useAuthStore()
 const editing = ref(false)
 const backendAvailable = ref(false)
+const showLogin = ref(false)
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -24,7 +26,10 @@ onMounted(async () => {
 })
 
 function toggleEdit() { editing.value = !editing.value }
-function handleLogin() { /* Task 13 实现 */ }
+function handleLogin() { showLogin.value = true }
+function handleLoginSuccess() {
+  // 登录成功后可刷新数据
+}
 </script>
 
 <template>
@@ -47,6 +52,12 @@ function handleLogin() { /* Task 13 实现 */ }
         @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
       />
     </main>
+
+    <LoginDialog
+      v-if="showLogin"
+      @close="showLogin = false"
+      @success="handleLoginSuccess"
+    />
   </div>
 </template>
 
