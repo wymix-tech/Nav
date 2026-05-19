@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：14
+- 已完成：15
 - 进行中：0
-- 待执行：8
+- 待执行：7
 
 ## 进度详情
 
@@ -29,7 +29,7 @@
 | 12 | BookmarkWidget 书签组件 | ✅ 完成 | 分组书签，favicon 支持，编辑模式禁用链接 |
 | 13 | LoginDialog 登录弹窗 | ✅ 完成 | 密码输入、错误提示、遮罩关闭，集成到 App.vue |
 | 14 | WidgetConfigForm 配置表单 | ✅ 完成 | JSON Schema 自动生成表单，配置按钮可用 |
-| 15 | WidgetLibrary + InstallWidgetDialog | ⏳ 待执行 | 组件库和安装弹窗 |
+| 15 | WidgetLibrary + InstallWidgetDialog | ✅ 完成 | 侧边栏组件库、GitHub 仓库安装弹窗 |
 | 16 | 后端初始化 — Hono + SQLite | ⏳ 待执行 | Hono 入口, SQLite 数据库 |
 | 17 | 数据库查询封装 | ⏳ 待执行 | queries.ts |
 | 18 | 认证中间件 | ⏳ 待执行 | JWT 中间件, 登录 API |
