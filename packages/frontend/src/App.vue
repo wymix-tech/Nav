@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import LoginDialog from './components/LoginDialog.vue'
+import WidgetLibrary from './components/WidgetLibrary.vue'
+import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -14,6 +16,7 @@ const authStore = useAuthStore()
 const editing = ref(false)
 const backendAvailable = ref(false)
 const showLogin = ref(false)
+const showInstall = ref(false)
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -25,7 +28,9 @@ onMounted(async () => {
   backendAvailable.value = isBackendAvailable()
 })
 
-function toggleEdit() { editing.value = !editing.value }
+function toggleEdit() {
+  editing.value = !editing.value
+}
 function handleLogin() { showLogin.value = true }
 function handleLoginSuccess() {
   // 登录成功后可刷新数据
@@ -40,6 +45,7 @@ function handleLoginSuccess() {
       @toggle-edit="toggleEdit"
       @login="handleLogin"
     />
+
     <main class="main">
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
@@ -53,10 +59,19 @@ function handleLoginSuccess() {
       />
     </main>
 
+    <aside v-if="editing && (!backendAvailable || authStore.isAuthenticated)" class="sidebar">
+      <WidgetLibrary @show-install="showInstall = true" />
+    </aside>
+
     <LoginDialog
       v-if="showLogin"
       @close="showLogin = false"
       @success="handleLoginSuccess"
+    />
+
+    <InstallWidgetDialog
+      v-if="showInstall"
+      @close="showInstall = false"
     />
   </div>
 </template>
@@ -71,5 +86,17 @@ function handleLoginSuccess() {
 .main {
   flex: 1;
   padding: 24px;
+}
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 53px;
+  bottom: 0;
+  width: 280px;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  z-index: 50;
 }
 </style>
