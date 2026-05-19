@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：12
+- 已完成：13
 - 进行中：0
-- 待执行：10
+- 待执行：9
 
 ## 进度详情
 
@@ -27,7 +27,7 @@
 | 10 | ClockWidget 时钟组件 | ✅ 完成 | 精简表盘风格，HH:MM + 秒，中文日期，tabular-nums |
 | 11 | WeatherWidget 天气组件 | ✅ 完成 | OpenWeatherMap API，城市/单位配置，中文天气描述 |
 | 12 | BookmarkWidget 书签组件 | ✅ 完成 | 分组书签，favicon 支持，编辑模式禁用链接 |
-| 13 | LoginDialog 登录弹窗 | ⏳ 待执行 | 密码登录 |
+| 13 | LoginDialog 登录弹窗 | ✅ 完成 | 密码输入、错误提示、遮罩关闭，集成到 App.vue |
 | 14 | WidgetConfigForm 配置表单 | ⏳ 待执行 | JSON Schema 表单 |
 | 15 | WidgetLibrary + InstallWidgetDialog | ⏳ 待执行 | 组件库和安装弹窗 |
 | 16 | 后端初始化 — Hono + SQLite | ⏳ 待执行 | Hono 入口, SQLite 数据库 |
@@ -56,7 +56,7 @@
 - 无遗留问题。三个 Store 均使用 Composition API 风格，类型检查通过。
 
 **Task 6 — TopBar 顶栏组件：**
-- `handleLogin` 函数中 TODO 待实现（弹出登录对话框），将在 Task 13 LoginDialog 中完成。
+- ~~`handleLogin` 函数中 TODO 待实现~~ → Task 13 LoginDialog 已完成（已解决）
 
 **Task 7 — DashboardGrid 网格布局：**
 - 使用 `vue3-grid-layout-next` 包替代计划中的 `vue-grid-layout`，因为后者无 Vue 3 兼容版本。
@@ -81,6 +81,7 @@
 - ~~C2: DashboardGrid 只更新 layouts.lg~~ → 代码审查后修复，支持当前断点检测，正确更新对应断点布局
 - ~~I7: 无后端模式下无法进入编辑模式~~ → 代码审查后修复，TopBar 在无后端时直接显示编辑按钮
 - ~~内置组件文件缺失~~ → Task 9-12 全部创建完成
+- ~~Task 6 handleLogin TODO~~ → Task 13 LoginDialog 已实现
 
 ## 代码审查
 
