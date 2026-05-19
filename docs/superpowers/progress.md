@@ -2,14 +2,14 @@
 
 **计划文档：** `docs/superpowers/plans/2026-05-16-personal-nav-dashboard.md`
 **设计规格：** `docs/superpowers/specs/2026-05-16-personal-nav-dashboard-design.md`
-**最后更新：** 2026-05-18
+**最后更新：** 2026-05-19
 
 ## 总览
 
 - 总 Task 数：22
-- 已完成：15
+- 已完成：16
 - 进行中：0
-- 待执行：7
+- 待执行：6
 
 ## 进度详情
 
@@ -30,7 +30,7 @@
 | 13 | LoginDialog 登录弹窗 | ✅ 完成 | 密码输入、错误提示、遮罩关闭，集成到 App.vue |
 | 14 | WidgetConfigForm 配置表单 | ✅ 完成 | JSON Schema 自动生成表单，配置按钮可用 |
 | 15 | WidgetLibrary + InstallWidgetDialog | ✅ 完成 | 侧边栏组件库、GitHub 仓库安装弹窗 |
-| 16 | 后端初始化 — Hono + SQLite | ⏳ 待执行 | Hono 入口, SQLite 数据库 |
+| 16 | 后端初始化 — Hono + SQLite | ✅ 完成 | Hono 入口, SQLite 数据库, 健康检查端点 |
 | 17 | 数据库查询封装 | ⏳ 待执行 | queries.ts |
 | 18 | 认证中间件 | ⏳ 待执行 | JWT 中间件, 登录 API |
 | 19 | 仪表盘和组件 API 路由 | ⏳ 待执行 | CRUD 路由 |
@@ -71,6 +71,12 @@
 
 **Task 12 — BookmarkWidget 书签组件：**
 - 无遗留问题。分组书签，favicon 支持，编辑模式禁用链接。
+
+**Task 16 — 后端初始化：**
+- 无遗留问题。Hono 服务启动在 4000 端口，/api/health 返回 {"status":"ok"}。
+- SQLite 数据库自动建表（dashboards, widget_instances, installed_widgets, change_log）。
+- better-sqlite3 原生绑定需要 rebuild（通过 node-gyp），首次 pnpm install 后可能需要手动执行。
+- 已更新 .gitignore 排除 *.db、*.db-shm、*.db-wal 文件。
 
 ## 已解决的遗留问题
 
@@ -120,6 +126,13 @@
 ## Git 提交记录
 
 ```
+a4aeabd fix: 移除误提交的 SQLite WAL 文件，更新 .gitignore
+c0980d9 feat(server): 初始化 Hono + SQLite 后端服务
+2ff61f1 docs: 更新进度至 Task 15，前端 UI 全部完成
+9abeb9d feat(frontend): 实现 WidgetLibrary 和 InstallWidgetDialog
+5cbdf8e docs: 更新进度至 Task 14
+1ded7f4 feat(frontend): 实现 WidgetConfigForm 配置表单，配置按钮可用
+c9fd889 docs: 更新进度至 Task 13
 5219f78 feat(frontend): 实现 WeatherWidget 天气组件
 1bb7b95 feat(frontend): 实现 ClockWidget 时钟组件
 7c930af feat(frontend): 实现 SearchWidget 搜索组件
