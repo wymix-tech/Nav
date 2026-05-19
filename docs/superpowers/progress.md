@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：16
+- 已完成：17
 - 进行中：0
-- 待执行：6
+- 待执行：5
 
 ## 进度详情
 
@@ -31,7 +31,7 @@
 | 14 | WidgetConfigForm 配置表单 | ✅ 完成 | JSON Schema 自动生成表单，配置按钮可用 |
 | 15 | WidgetLibrary + InstallWidgetDialog | ✅ 完成 | 侧边栏组件库、GitHub 仓库安装弹窗 |
 | 16 | 后端初始化 — Hono + SQLite | ✅ 完成 | Hono 入口, SQLite 数据库, 健康检查端点 |
-| 17 | 数据库查询封装 | ⏳ 待执行 | queries.ts |
+| 17 | 数据库查询封装 | ✅ 完成 | Dashboard/WidgetInstance/InstalledWidget CRUD 函数 |
 | 18 | 认证中间件 | ⏳ 待执行 | JWT 中间件, 登录 API |
 | 19 | 仪表盘和组件 API 路由 | ⏳ 待执行 | CRUD 路由 |
 | 20 | SyncAdapter 后端同步 | ⏳ 待执行 | 替换占位实现 |
