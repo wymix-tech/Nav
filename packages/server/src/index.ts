@@ -11,7 +11,7 @@ import installedWidgetRoutes from './routes/installedWidgets.js'
 const app = new Hono()
 
 app.use('*', logger())
-app.use('*', cors())
+app.use('*', cors({ origin: process.env.NAV_CORS_ORIGIN ?? 'http://localhost:3000' }))
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }))
 app.route('/api/auth', authRoutes)

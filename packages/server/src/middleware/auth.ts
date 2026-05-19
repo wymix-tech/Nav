@@ -2,16 +2,20 @@ import type { Context, Next } from 'hono'
 import type { SignOptions } from 'jsonwebtoken'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.NAV_JWT_SECRET ?? 'nav-default-secret-change-me'
+const JWT_SECRET = process.env.NAV_JWT_SECRET
+if (!JWT_SECRET) {
+  throw new Error('NAV_JWT_SECRET environment variable is required')
+}
+const JWT_SECRET_VALUE: string = JWT_SECRET
 const JWT_EXPIRES_IN = (process.env.NAV_JWT_EXPIRES ?? '7d') as SignOptions['expiresIn']
 
 export function generateToken(): string {
-  return jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  return jwt.sign({ role: 'admin' }, JWT_SECRET_VALUE, { expiresIn: JWT_EXPIRES_IN })
 }
 
 export function verifyToken(token: string): boolean {
   try {
-    jwt.verify(token, JWT_SECRET)
+    jwt.verify(token, JWT_SECRET_VALUE)
     return true
   } catch {
     return false
