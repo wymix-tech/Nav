@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：19
+- 已完成：20
 - 进行中：0
-- 待执行：3
+- 待执行：2
 
 ## 进度详情
 
@@ -34,7 +34,7 @@
 | 17 | 数据库查询封装 | ✅ 完成 | Dashboard/WidgetInstance/InstalledWidget CRUD 函数 |
 | 18 | 认证中间件 | ✅ 完成 | JWT 中间件、POST /api/auth/login、POST /api/auth/verify |
 | 19 | 仪表盘和组件 API 路由 | ✅ 完成 | Dashboard/Widget/InstalledWidget CRUD，认证保护写操作 |
-| 20 | SyncAdapter 后端同步 | ⏳ 待执行 | 替换占位实现 |
+| 20 | SyncAdapter 后端同步 | ✅ 完成 | 完整 API 实现，自动认证头，401 自动登出 |
 | 21 | App.vue 整合所有组件 | ⏳ 待执行 | 整合完整功能 |
 | 22 | 端到端验证 | ⏳ 待执行 | 完整流程测试 |
 
@@ -48,7 +48,7 @@
 - 无遗留问题。
 
 **Task 4 — 本地存储层：**
-- `syncAdapter.ts` 为占位实现（所有方法抛出异常），Task 20 会替换为完整的后端同步实现。
+- ~~`syncAdapter.ts` 为占位实现~~ → Task 20 已替换为完整实现（已解决）
 - `storageAdapter.ts` 中的 `SyncAdapter` 动态导入依赖后端可用，当前后端未实现时会自动 fallback 到 `LocalAdapter`，逻辑正确。
 - pnpm 全局安装路径不在默认 PATH 中，需使用 `export PATH="/Users/wymix/.hermes/node/bin:$PATH"` 才能执行 pnpm 命令。
 
