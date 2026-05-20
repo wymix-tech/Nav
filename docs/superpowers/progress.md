@@ -110,7 +110,11 @@
 **审查 3（Task 19 完成后）** — 后端安全性审查，发现并修复了 2 个 Critical 问题：
 - C1: JWT Secret 硬编码默认值 → 已修复（服务端启动时强制要求 NAV_JWT_SECRET 环境变量）
 - C2: CORS 完全开放 → 已修复（限制为 NAV_CORS_ORIGIN 或 localhost:3000）
-- 待后续修复：I1 输入验证、I2 登录速率限制、I3 全局错误处理、I4 manifest 校验、I5 静默覆盖
+- I1 输入验证 → 已修复（所有路由添加类型检查和必填校验）
+- I2 登录速率限制 → 已修复（IP 级别 5 次/15 分钟限制）
+- I3 全局错误处理 → 已修复（app.onError 返回标准错误格式）
+- I4 manifest 校验 → 已修复（校验 name/version/entry 必填字段）
+- I5 静默覆盖 → 已修复（改为 ON CONFLICT DO UPDATE SET）
 
 ### 审查计划
 
