@@ -8,7 +8,7 @@ import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
-import { isBackendAvailable } from './services/storageAdapter'
+import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
@@ -32,8 +32,10 @@ function toggleEdit() {
   editing.value = !editing.value
 }
 function handleLogin() { showLogin.value = true }
-function handleLoginSuccess() {
-  // 登录成功后可刷新数据
+async function handleLoginSuccess() {
+  // 登录成功后重置 adapter 以切换到 SyncAdapter
+  resetAdapter()
+  await Promise.all([dashboardStore.load(), widgetStore.load()])
 }
 </script>
 
