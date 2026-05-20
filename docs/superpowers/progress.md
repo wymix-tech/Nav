@@ -7,9 +7,9 @@
 ## 总览
 
 - 总 Task 数：22
-- 已完成：20
+- 已完成：21
 - 进行中：0
-- 待执行：2
+- 待执行：1
 
 ## 进度详情
 
@@ -35,7 +35,7 @@
 | 18 | 认证中间件 | ✅ 完成 | JWT 中间件、POST /api/auth/login、POST /api/auth/verify |
 | 19 | 仪表盘和组件 API 路由 | ✅ 完成 | Dashboard/Widget/InstalledWidget CRUD，认证保护写操作 |
 | 20 | SyncAdapter 后端同步 | ✅ 完成 | 完整 API 实现，自动认证头，401 自动登出 |
-| 21 | App.vue 整合所有组件 | ⏳ 待执行 | 整合完整功能 |
+| 21 | App.vue 整合所有组件 | ✅ 完成 | 登录后 resetAdapter 切换到 SyncAdapter，重新加载数据 |
 | 22 | 端到端验证 | ⏳ 待执行 | 完整流程测试 |
 
 ## 已完成 Task 遗留问题
