@@ -18,7 +18,10 @@ dashboards.get('/', (c) => {
 
 dashboards.put('/:id', authMiddleware, async (c) => {
   const body = await c.req.json()
-  q.upsertDashboard({ id: c.req.param('id')!, name: body.name, columns: body.columns, rowHeight: body.rowHeight })
+  const name = typeof body.name === 'string' ? body.name : '我的导航'
+  const columns = typeof body.columns === 'number' ? body.columns : 12
+  const rowHeight = typeof body.rowHeight === 'number' ? body.rowHeight : 80
+  q.upsertDashboard({ id: c.req.param('id')!, name, columns, rowHeight })
   return c.json({ success: true })
 })
 

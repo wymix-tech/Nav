@@ -6,6 +6,12 @@ const widgets = new Hono()
 
 widgets.post('/:dashboardId/widgets', authMiddleware, async (c) => {
   const body = await c.req.json()
+  if (!body.widgetId || !body.source) {
+    return c.json({ error: { code: 'VALIDATION_ERROR', message: 'widgetId 和 source 为必填字段' } }, 400)
+  }
+  if (!['builtin', 'installed'].includes(body.source)) {
+    return c.json({ error: { code: 'VALIDATION_ERROR', message: 'source 必须为 builtin 或 installed' } }, 400)
+  }
   const id = `inst_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   q.insertWidgetInstance({
     id,

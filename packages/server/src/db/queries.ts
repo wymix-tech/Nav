@@ -55,8 +55,11 @@ export function getInstalledWidgets() {
 
 export function insertInstalledWidget(w: { widgetId: string; manifest: any }) {
   db.prepare(`
-    INSERT OR REPLACE INTO installed_widgets (widget_id, manifest, installed_at)
+    INSERT INTO installed_widgets (widget_id, manifest, installed_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(widget_id) DO UPDATE SET
+      manifest = excluded.manifest,
+      installed_at = CURRENT_TIMESTAMP
   `).run(w.widgetId, JSON.stringify(w.manifest))
 }
 

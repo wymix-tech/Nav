@@ -13,6 +13,12 @@ const app = new Hono()
 app.use('*', logger())
 app.use('*', cors({ origin: process.env.NAV_CORS_ORIGIN ?? 'http://localhost:3000' }))
 
+// 全局错误处理
+app.onError((err, c) => {
+  console.error('Unhandled error:', err)
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: '服务器内部错误' } }, 500)
+})
+
 app.get('/api/health', (c) => c.json({ status: 'ok' }))
 app.route('/api/auth', authRoutes)
 app.route('/api/dashboards', dashboardRoutes)
