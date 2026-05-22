@@ -76,6 +76,7 @@
 | BUG-001 | Important | 布局系统 | ✅ 已修复 |
 | BUG-002 | Minor | 布局系统 | ✅ 已修复 |
 | BUG-003 | Minor | 组件系统 | ✅ 已修复 |
+| BUG-004 | Critical | 布局系统 | 🆕 新建 |
 
 详见 `defects.md`
 

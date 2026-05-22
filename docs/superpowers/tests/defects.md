@@ -142,11 +142,47 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 
 ---
 
+## BUG-004：拖拽功能异常
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Critical |
+| **模块** | 布局系统 |
+| **状态** | 🆕 新建 |
+| **发现日期** | 2026-05-22 |
+
+**复现步骤：**
+1. 登录并进入编辑模式
+2. 添加组件到画布
+3. 尝试用鼠标拖拽组件到新位置
+
+**预期结果：** 组件跟随鼠标移动，松开后固定在新位置
+
+**实际结果：** 鼠标无法拖拽组件，组件位置不变
+
+**影响：** 用户无法自定义组件布局，核心功能不可用
+
+**分析：** vue3-grid-layout-next 的拖拽依赖鼠标事件（mousedown → mousemove → mouseup）。可能原因：
+1. 组件被 WidgetWrapper 的 div 层级阻断了事件冒泡
+2. vue3-grid-layout-next 版本与 Vue 3.5+ 不兼容
+3. CSS `overflow: hidden` 或 `pointer-events` 阻止了拖拽
+4. 编辑模式的 `is-draggable` 属性未正确传递
+
+**修复建议：**
+1. 检查 WidgetWrapper 的 CSS 是否有 `pointer-events: none` 或 `overflow: hidden`
+2. 检查 vue3-grid-layout-next 的 drag handle 配置
+3. 验证 `is-draggable` 属性是否正确绑定
+4. 考虑换用其他 Vue 3 拖拽库（如 vue-draggable-plus）
+
+**关联测试用例：** TC-LAYOUT-001, TC-LAYOUT-002
+
+---
+
 ## 缺陷统计
 
 | 严重程度 | 数量 |
 |---------|------|
-| Critical | 0 |
-| Important | 1 |
-| Minor | 2 |
-| **总计** | **3** |
+| Critical | 1 |
+| Important | 0 |
+| Minor | 0 |
+| **总计** | **1** |
