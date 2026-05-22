@@ -10,16 +10,35 @@ const emit = defineEmits<{
   'show-install': []
 }>()
 
-function createDefaultLayout(row: number): WidgetLayout {
-  return { x: 0, y: row, w: 4, h: 3 }
+function createDefaultLayout(x: number, y: number): WidgetLayout {
+  return { x, y, w: 4, h: 3 }
 }
 
 function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
   const existingWidgets = dashboardStore.dashboard?.widgets ?? []
-  const maxY = existingWidgets.reduce((max, w) => {
-    const lg = w.layouts.lg
-    return Math.max(max, lg.y + lg.h)
-  }, 0)
+
+  // 计算最佳放置位置：尝试并排排列
+  let bestX = 0
+  let bestY = 0
+  const widgetW = 4
+  const maxCols = 12
+
+  if (existingWidgets.length === 0) {
+    bestX = 0
+    bestY = 0
+  } else {
+    // 找到最后一个组件的位置
+    const lastWidget = existingWidgets[existingWidgets.length - 1]
+    const lastLg = lastWidget.layouts.lg
+    bestX = lastLg.x + lastLg.w
+    bestY = lastLg.y
+
+    // 如果超出列数，换行
+    if (bestX + widgetW > maxCols) {
+      bestX = 0
+      bestY = lastLg.y + lastLg.h
+    }
+  }
 
   const instance: WidgetInstance = {
     id: `inst_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -27,10 +46,10 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     source,
     config: {},
     layouts: {
-      lg: createDefaultLayout(maxY),
-      md: createDefaultLayout(maxY),
-      sm: createDefaultLayout(maxY),
-      xs: createDefaultLayout(maxY),
+      lg: createDefaultLayout(bestX, bestY),
+      md: createDefaultLayout(bestX, bestY),
+      sm: createDefaultLayout(0, bestY),
+      xs: createDefaultLayout(0, bestY),
     },
   }
   dashboardStore.addWidget(instance)

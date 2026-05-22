@@ -101,4 +101,19 @@ async function handleLoginSuccess() {
   overflow-y: auto;
   z-index: 50;
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    max-height: 50vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+  }
+}
 </style>
