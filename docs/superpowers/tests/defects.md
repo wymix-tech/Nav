@@ -148,8 +148,10 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 |------|------|
 | **严重程度** | Critical |
 | **模块** | 布局系统 |
-| **状态** | 🆕 新建 |
+| **状态** | ✅ 已修复并验证 |
 | **发现日期** | 2026-05-22 |
+| **修复日期** | 2026-05-22 |
+| **验证日期** | 2026-05-22 |
 
 **复现步骤：**
 1. 登录并进入编辑模式
@@ -175,6 +177,8 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 4. 考虑换用其他 Vue 3 拖拽库（如 vue-draggable-plus）
 
 **关联测试用例：** TC-LAYOUT-001, TC-LAYOUT-002
+
+**验证结果：** 切换到 vue-grid-layout-v3 库后，拖拽和调整大小功能正常工作。单组件时水平拖拽为预期行为（网格自动紧凑）。
 
 ---
 
