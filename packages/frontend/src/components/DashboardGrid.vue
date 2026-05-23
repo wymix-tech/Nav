@@ -71,6 +71,7 @@ function handleBreakpointChanged(bp: string) {
 
 // 当拖拽/调整大小完成时
 function handleLayoutUpdated(newLayout: any[]) {
+  console.log('[DashboardGrid] layout-updated:', newLayout)
   isDragging = true
   const bp = currentBreakpoint.value
 
@@ -81,6 +82,7 @@ function handleLayoutUpdated(newLayout: any[]) {
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
+    console.log('[DashboardGrid] emit update-layout:', item.i, bp, item)
     emit('update-layout', item.i, {
       ...widget.layouts,
       [bp]: { x: item.x, y: item.y, w: item.w, h: item.h },
