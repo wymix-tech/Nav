@@ -182,11 +182,37 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 
 ---
 
+## BUG-005：CORS 未限制
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Important |
+| **模块** | 安全 |
+| **状态** | 🆕 新建 |
+| **发现日期** | 2026-05-23 |
+
+**复现步骤：**
+1. 后端运行
+2. 从任意域名发起跨域请求
+
+**预期结果：** CORS 策略阻止非授权域名的请求
+
+**实际结果：** 任意域名可访问 API（cors() 未配置 origin）
+
+**影响：** 恶意网站可利用用户浏览器发起认证请求
+
+**修复建议：** 在 Hono CORS 中间件中配置 origin：
+```typescript
+app.use('*', cors({ origin: process.env.NAV_CORS_ORIGIN ?? 'http://localhost:3000' }))
+```
+
+**关联测试用例：** TC-SEC-003
+
 ## 缺陷统计
 
 | 严重程度 | 数量 |
 |---------|------|
 | Critical | 0 |
-| Important | 0 |
+| Important | 1 |
 | Minor | 0 |
-| **总计** | **0** |
+| **总计** | **1** |
