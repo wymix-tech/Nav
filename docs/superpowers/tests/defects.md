@@ -186,7 +186,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 
 | 严重程度 | 数量 |
 |---------|------|
-| Critical | 1 |
+| Critical | 0 |
 | Important | 0 |
 | Minor | 0 |
-| **总计** | **1** |
+| **总计** | **0** |
