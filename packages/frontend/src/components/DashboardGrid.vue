@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout-next'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
@@ -22,6 +22,7 @@ const currentBreakpoint = ref<Breakpoint>('lg')
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
 const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
 
+// 将 widgets 转换为 grid-layout 格式
 function toGridLayouts(widgets: WidgetInstance[]) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
   for (const w of widgets) {
@@ -41,34 +42,42 @@ function toGridLayouts(widgets: WidgetInstance[]) {
   return result
 }
 
+// v-model:layout 绑定的 ref
+const currentLayout = ref<any[]>([])
+
+// 当 widgets 或断点变化时，重新生成 layout
+// 使用计数器避免循环
+let updateCount = 0
 const layouts = computed(() => toGridLayouts(props.widgets))
 
-// 使用 ref 作为 v-model:layout 的目标
-const currentLayout = ref(layouts.value[currentBreakpoint.value] ?? [])
+// 初始化 currentLayout
+currentLayout.value = layouts.value[currentBreakpoint.value] ?? []
 
-// 当 props.widgets 变化时同步 currentLayout
-watch(layouts, (newLayouts) => {
-  currentLayout.value = newLayouts[currentBreakpoint.value] ?? []
-}, { deep: true })
+// 监听 widgets 变化，更新 currentLayout（仅当不是来自 drag 时）
+let isDragging = false
 
-const layoutIndex = computed(() => {
-  const map = new Map<string, any>()
-  for (const item of layouts.value[currentBreakpoint.value] ?? []) {
-    map.set(item.i, item)
-  }
-  return map
-})
+function syncLayout() {
+  if (isDragging) return
+  currentLayout.value = layouts.value[currentBreakpoint.value] ?? []
+}
 
+// 当断点变化时同步
 function handleBreakpointChanged(bp: string) {
   if (bp in breakpoints) {
     currentBreakpoint.value = bp as Breakpoint
+    syncLayout()
   }
 }
 
+// 当拖拽/调整大小完成时
 function handleLayoutUpdated(newLayout: any[]) {
+  isDragging = true
   const bp = currentBreakpoint.value
-  // 更新 currentLayout 以保持 v-model 同步
-  currentLayout.value = newLayout
+
+  // 更新 currentLayout
+  currentLayout.value = [...newLayout]
+
+  // 同步到父组件
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
@@ -77,7 +86,18 @@ function handleLayoutUpdated(newLayout: any[]) {
       [bp]: { x: item.x, y: item.y, w: item.w, h: item.h },
     })
   }
+
+  // 延迟重置 isDragging，避免 watch 触发
+  setTimeout(() => { isDragging = false }, 0)
 }
+
+const layoutIndex = computed(() => {
+  const map = new Map<string, any>()
+  for (const item of currentLayout.value) {
+    map.set(item.i, item)
+  }
+  return map
+})
 </script>
 
 <template>
