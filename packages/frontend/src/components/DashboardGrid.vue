@@ -42,60 +42,57 @@ function toGridLayouts(widgets: WidgetInstance[]) {
   return result
 }
 
-// v-model:layout 绑定的 ref
-const currentLayout = ref<any[]>([])
-
-// 当 widgets 或断点变化时，重新生成 layout
-// 使用计数器避免循环
-let updateCount = 0
 const layouts = computed(() => toGridLayouts(props.widgets))
 
-// 初始化 currentLayout
-currentLayout.value = layouts.value[currentBreakpoint.value] ?? []
+// 用于 v-model:layout 的 ref（避免循环引用）
+const layoutData = ref<any[]>([])
 
-// 监听 widgets 变化，更新 currentLayout（仅当不是来自 drag 时）
-let isDragging = false
+// 当 widgets 变化时，更新 layoutData
+// 使用标志位避免循环
+let updatingFromDrag = false
 
-function syncLayout() {
-  if (isDragging) return
-  currentLayout.value = layouts.value[currentBreakpoint.value] ?? []
+function updateLayoutData() {
+  if (updatingFromDrag) return
+  layoutData.value = layouts.value[currentBreakpoint.value] ?? []
 }
 
-// 当断点变化时同步
+// 初始化
+updateLayoutData()
+
+// 监听 widgets 变化
+// 注意：这里不使用 watch，而是在模板中直接使用 computed
+
 function handleBreakpointChanged(bp: string) {
   if (bp in breakpoints) {
     currentBreakpoint.value = bp as Breakpoint
-    syncLayout()
+    updateLayoutData()
   }
 }
 
-// 当拖拽/调整大小完成时
 function handleLayoutUpdated(newLayout: any[]) {
-  console.log('[DashboardGrid] layout-updated:', newLayout)
-  isDragging = true
+  updatingFromDrag = true
   const bp = currentBreakpoint.value
 
-  // 更新 currentLayout
-  currentLayout.value = [...newLayout]
+  // 直接更新 layoutData（Vue 会自动更新 v-model:layout）
+  layoutData.value = [...newLayout]
 
   // 同步到父组件
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
-    console.log('[DashboardGrid] emit update-layout:', item.i, bp, item)
     emit('update-layout', item.i, {
       ...widget.layouts,
       [bp]: { x: item.x, y: item.y, w: item.w, h: item.h },
     })
   }
 
-  // 延迟重置 isDragging，避免 watch 触发
-  setTimeout(() => { isDragging = false }, 0)
+  // 延迟重置标志
+  setTimeout(() => { updatingFromDrag = false }, 100)
 }
 
 const layoutIndex = computed(() => {
   const map = new Map<string, any>()
-  for (const item of currentLayout.value) {
+  for (const item of layoutData.value) {
     map.set(item.i, item)
   }
   return map
@@ -105,7 +102,7 @@ const layoutIndex = computed(() => {
 <template>
   <div class="dashboard-grid">
     <GridLayout
-      v-model:layout="currentLayout"
+      v-model:layout="layoutData"
       :col-num="cols[currentBreakpoint]"
       :row-height="80"
       :is-draggable="true"
