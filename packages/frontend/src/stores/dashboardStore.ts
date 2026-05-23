@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Dashboard, WidgetInstance } from '@nav/shared'
 import { getStorageAdapter } from '../services/storageAdapter'
+import { useAuthStore } from './authStore'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const dashboard = ref<Dashboard | null>(null)
@@ -19,11 +20,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     await adapter.saveDashboard(dashboard.value)
   }
 
+  function getAuthHeaders(): Record<string, string> {
+    try {
+      const authStore = useAuthStore()
+      return authStore.getAuthHeaders()
+    } catch {
+      return {}
+    }
+  }
+
   async function saveWidgetToBackend(instance: WidgetInstance) {
     try {
       const res = await fetch(`/api/dashboards/default/widgets`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           widgetId: instance.widgetId,
           source: instance.source,
@@ -53,7 +66,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
       (w) => w.id !== instanceId
     )
     save()
-    fetch(`/api/widgets/${instanceId}`, { method: 'DELETE' }).catch(() => {})
+    fetch(`/api/widgets/${instanceId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }).catch(() => {})
   }
 
   function updateWidgetConfig(instanceId: string, config: Record<string, any>) {
@@ -64,7 +80,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
       save()
       fetch(`/api/widgets/${instanceId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({ config }),
       }).catch(() => {})
     }
@@ -78,7 +97,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
       save()
       fetch(`/api/widgets/${instanceId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({ layouts }),
       }).catch(() => {})
     }
