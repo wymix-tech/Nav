@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GridLayout, GridItem } from 'vue3-grid-layout'
+import { GridLayout, GridItem } from 'vue-grid-layout-v3'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
 
