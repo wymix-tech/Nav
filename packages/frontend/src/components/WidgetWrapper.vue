@@ -80,7 +80,6 @@ function handleConfigUpdate(config: Record<string, any>) {
   background-color: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;

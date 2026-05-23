@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout-next'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
@@ -43,6 +43,14 @@ function toGridLayouts(widgets: WidgetInstance[]) {
 
 const layouts = computed(() => toGridLayouts(props.widgets))
 
+// 使用 ref 作为 v-model:layout 的目标
+const currentLayout = ref(layouts.value[currentBreakpoint.value] ?? [])
+
+// 当 props.widgets 变化时同步 currentLayout
+watch(layouts, (newLayouts) => {
+  currentLayout.value = newLayouts[currentBreakpoint.value] ?? []
+}, { deep: true })
+
 const layoutIndex = computed(() => {
   const map = new Map<string, any>()
   for (const item of layouts.value[currentBreakpoint.value] ?? []) {
@@ -59,6 +67,8 @@ function handleBreakpointChanged(bp: string) {
 
 function handleLayoutUpdated(newLayout: any[]) {
   const bp = currentBreakpoint.value
+  // 更新 currentLayout 以保持 v-model 同步
+  currentLayout.value = newLayout
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
@@ -73,7 +83,7 @@ function handleLayoutUpdated(newLayout: any[]) {
 <template>
   <div class="dashboard-grid">
     <GridLayout
-      :layout="layouts[currentBreakpoint]"
+      v-model:layout="currentLayout"
       :col-num="cols[currentBreakpoint]"
       :row-height="80"
       :is-draggable="editing"
