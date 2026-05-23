@@ -24,7 +24,7 @@ const needsConfig = computed(() => !props.config.apiKey)
 
 async function fetchWeather() {
   const key = props.config.apiKey
-  const c = props.config.city ?? 'Beijing'
+  const c = props.config.city ?? '北京'
   if (!key) {
     error.value = '请配置 API Key'
     return
