@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout-next'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
@@ -16,17 +16,14 @@ const emit = defineEmits<{
   'update-config': [instanceId: string, config: Record<string, any>]
 }>()
 
-type Breakpoint = 'lg' | 'md' | 'sm' | 'xs'
-const currentBreakpoint = ref<Breakpoint>('lg')
-
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
 const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
 
-// 将 widgets 转换为 grid-layout 格式
-function toGridLayouts(widgets: WidgetInstance[]) {
+// 直接从 props.widgets 计算 layout，不使用额外的 ref
+const layouts = computed(() => {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
-  for (const w of widgets) {
-    for (const bp of ['lg', 'md', 'sm', 'xs'] as Breakpoint[]) {
+  for (const w of props.widgets) {
+    for (const bp of ['lg', 'md', 'sm', 'xs'] as const) {
       const layout = w.layouts[bp] ?? w.layouts.lg
       result[bp].push({
         i: w.id,
@@ -40,70 +37,38 @@ function toGridLayouts(widgets: WidgetInstance[]) {
     }
   }
   return result
-}
+})
 
-const layouts = computed(() => toGridLayouts(props.widgets))
-
-// 用于 v-model:layout 的 ref（避免循环引用）
-const layoutData = ref<any[]>([])
-
-// 当 widgets 变化时，更新 layoutData
-// 使用标志位避免循环
-let updatingFromDrag = false
-
-function updateLayoutData() {
-  if (updatingFromDrag) return
-  layoutData.value = layouts.value[currentBreakpoint.value] ?? []
-}
-
-// 初始化
-updateLayoutData()
-
-// 监听 widgets 变化
-// 注意：这里不使用 watch，而是在模板中直接使用 computed
-
-function handleBreakpointChanged(bp: string) {
-  if (bp in breakpoints) {
-    currentBreakpoint.value = bp as Breakpoint
-    updateLayoutData()
+const layoutIndex = computed(() => {
+  const map = new Map<string, any>()
+  for (const item of layouts.value.lg) {
+    map.set(item.i, item)
   }
+  return map
+})
+
+function handleBreakpointChanged(_bp: string) {
+  // 断点变化时不需要特殊处理，layouts computed 会自动更新
 }
 
 function handleLayoutUpdated(newLayout: any[]) {
-  updatingFromDrag = true
-  const bp = currentBreakpoint.value
-
-  // 直接更新 layoutData（Vue 会自动更新 v-model:layout）
-  layoutData.value = [...newLayout]
-
-  // 同步到父组件
+  // 拖拽/调整大小完成后，同步到父组件
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
     emit('update-layout', item.i, {
       ...widget.layouts,
-      [bp]: { x: item.x, y: item.y, w: item.w, h: item.h },
+      lg: { x: item.x, y: item.y, w: item.w, h: item.h },
     })
   }
-
-  // 延迟重置标志
-  setTimeout(() => { updatingFromDrag = false }, 100)
 }
-
-const layoutIndex = computed(() => {
-  const map = new Map<string, any>()
-  for (const item of layoutData.value) {
-    map.set(item.i, item)
-  }
-  return map
-})
 </script>
 
 <template>
   <div class="dashboard-grid">
     <GridLayout
-      v-model:layout="layoutData"
-      :col-num="cols[currentBreakpoint]"
+      :layout="layouts.lg"
+      :col-num="12"
       :row-height="80"
       :is-draggable="true"
       :is-resizable="true"
