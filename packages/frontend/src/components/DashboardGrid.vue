@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GridLayout, GridItem } from 'vue3-grid-layout-next'
+import { GridLayout, GridItem } from 'vue3-grid-layout'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
 
@@ -19,10 +19,9 @@ const emit = defineEmits<{
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
 const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
 
-// 直接从 props.widgets 计算 layout，不使用额外的 ref
-const layouts = computed(() => {
+function toGridLayouts(widgets: WidgetInstance[]) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
-  for (const w of props.widgets) {
+  for (const w of widgets) {
     for (const bp of ['lg', 'md', 'sm', 'xs'] as const) {
       const layout = w.layouts[bp] ?? w.layouts.lg
       result[bp].push({
@@ -37,7 +36,9 @@ const layouts = computed(() => {
     }
   }
   return result
-})
+}
+
+const layouts = computed(() => toGridLayouts(props.widgets))
 
 const layoutIndex = computed(() => {
   const map = new Map<string, any>()
@@ -47,12 +48,9 @@ const layoutIndex = computed(() => {
   return map
 })
 
-function handleBreakpointChanged(_bp: string) {
-  // 断点变化时不需要特殊处理，layouts computed 会自动更新
-}
+function handleBreakpointChanged(_bp: string) {}
 
 function handleLayoutUpdated(newLayout: any[]) {
-  // 拖拽/调整大小完成后，同步到父组件
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
