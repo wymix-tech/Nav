@@ -77,7 +77,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
     if (widget) {
       widget.config = config
-      save()
       fetch(`/api/widgets/${instanceId}`, {
         method: 'PUT',
         headers: {
@@ -94,7 +93,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
     if (widget) {
       widget.layouts = layouts
-      save()
       fetch(`/api/widgets/${instanceId}`, {
         method: 'PUT',
         headers: {

@@ -4,7 +4,7 @@ import * as q from '../db/queries.js'
 
 const widgets = new Hono()
 
-widgets.post('/:dashboardId/widgets', authMiddleware, async (c) => {
+widgets.post('/dashboards/:dashboardId/widgets', authMiddleware, async (c) => {
   const body = await c.req.json()
   if (!body.widgetId || !body.source) {
     return c.json({ error: { code: 'VALIDATION_ERROR', message: 'widgetId 和 source 为必填字段' } }, 400)
@@ -24,13 +24,13 @@ widgets.post('/:dashboardId/widgets', authMiddleware, async (c) => {
   return c.json({ id, ...body })
 })
 
-widgets.put('/:instanceId', authMiddleware, async (c) => {
+widgets.put('/widgets/:instanceId', authMiddleware, async (c) => {
   const body = await c.req.json()
   q.updateWidgetInstance(c.req.param('instanceId')!, { config: body.config, layouts: body.layouts })
   return c.json({ success: true })
 })
 
-widgets.delete('/:instanceId', authMiddleware, (c) => {
+widgets.delete('/widgets/:instanceId', authMiddleware, (c) => {
   q.deleteWidgetInstance(c.req.param('instanceId')!)
   return c.json({ success: true })
 })

@@ -22,7 +22,7 @@ app.onError((err, c) => {
 app.get('/api/health', (c) => c.json({ status: 'ok' }))
 app.route('/api/auth', authRoutes)
 app.route('/api/dashboards', dashboardRoutes)
-app.route('/api/dashboards', widgetRoutes)
+app.route('/api', widgetRoutes)
 app.route('/api/installed-widgets', installedWidgetRoutes)
 
 const port = Number(process.env.PORT ?? 4000)

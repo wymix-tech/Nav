@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { GridLayout, GridItem } from 'vue-grid-layout-v3'
 import type { WidgetInstance } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
@@ -18,6 +18,30 @@ const emit = defineEmits<{
 
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
 const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
+const LIB_COLS = 12
+
+function detectBreakpoint(width: number): string {
+  const sorted = Object.entries(breakpoints).sort((a, b) => a[1] - b[1])
+  let result = sorted[0][0]
+  for (const [bp, min] of sorted) {
+    if (width > min) result = bp
+  }
+  return result
+}
+
+const currentBreakpoint = ref('lg')
+
+function updateBreakpoint() {
+  currentBreakpoint.value = detectBreakpoint(window.innerWidth)
+}
+
+onMounted(() => {
+  updateBreakpoint()
+  window.addEventListener('resize', updateBreakpoint)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateBreakpoint)
+})
 
 function toGridLayouts(widgets: WidgetInstance[]) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
@@ -35,28 +59,83 @@ function toGridLayouts(widgets: WidgetInstance[]) {
       })
     }
   }
+
+  // 修正重叠并缩放到 12 列
+  const colNums = { lg: 12, md: 8, sm: 6, xs: 4 }
+  for (const bp of ['md', 'sm', 'xs'] as const) {
+    const maxCols = colNums[bp]
+    const items = result[bp]
+    items.sort((a, b) => a.y - b.y || a.x - b.x)
+    let curY = 0
+    let curX = 0
+    for (const item of items) {
+      if (curX + item.w > maxCols) {
+        curX = 0
+        curY += item.h
+      }
+      let hasOverlap = true
+      while (hasOverlap) {
+        hasOverlap = false
+        for (const placed of items) {
+          if (placed === item) continue
+          if (placed.y >= curY + item.h || placed.y + placed.h <= curY) continue
+          if (placed.x >= curX + item.w || placed.x + placed.w <= curX) continue
+          hasOverlap = true
+          break
+        }
+        if (hasOverlap) {
+          curX += item.w
+          if (curX + item.w > maxCols) {
+            curX = 0
+            curY += item.h
+          }
+        }
+      }
+      item.x = curX
+      item.y = curY
+      curX += item.w
+    }
+    // 缩放到 12 列
+    const scale = LIB_COLS / maxCols
+    for (const item of items) {
+      item.x = Math.round(item.x * scale)
+      item.w = Math.round(item.w * scale)
+    }
+  }
+
   return result
 }
 
-const layouts = computed(() => toGridLayouts(props.widgets))
+const allLayouts = computed(() => toGridLayouts(props.widgets))
+
+// 当前断点的布局（缩放到 12 列）
+const currentLayoutScaled = computed(() => {
+  return allLayouts.value[currentBreakpoint.value] ?? allLayouts.value.lg
+})
 
 const layoutIndex = computed(() => {
   const map = new Map<string, any>()
-  for (const item of layouts.value.lg) {
+  for (const item of currentLayoutScaled.value) {
     map.set(item.i, item)
   }
   return map
 })
 
-function handleBreakpointChanged(_bp: string) {}
-
 function handleLayoutUpdated(newLayout: any[]) {
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
+    // 逆向缩放：12 列 → 实际断点列数
+    const bpCols = cols[currentBreakpoint.value] ?? 12
+    const scale = bpCols / LIB_COLS
     emit('update-layout', item.i, {
       ...widget.layouts,
-      lg: { x: item.x, y: item.y, w: item.w, h: item.h },
+      [currentBreakpoint.value]: {
+        x: Math.round(item.x * scale),
+        y: item.y,
+        w: Math.round(item.w * scale),
+        h: item.h,
+      },
     })
   }
 }
@@ -65,16 +144,13 @@ function handleLayoutUpdated(newLayout: any[]) {
 <template>
   <div class="dashboard-grid">
     <GridLayout
-      :layout="layouts.lg"
+      :layout="currentLayoutScaled"
       :col-num="12"
       :row-height="80"
       :is-draggable="editing"
       :is-resizable="editing"
-      :responsive="true"
-      :breakpoints="breakpoints"
-      :cols="cols"
+      :responsive="false"
       @layout-updated="handleLayoutUpdated"
-      @breakpoint-changed="handleBreakpointChanged"
     >
       <GridItem
         v-for="widget in widgets"

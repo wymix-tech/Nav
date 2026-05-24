@@ -188,7 +188,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
 |------|------|
 | **严重程度** | Important |
 | **模块** | 安全 |
-| **状态** | 🆕 新建 |
+| **状态** | ⏭️ 不修复 |
 | **发现日期** | 2026-05-23 |
 
 **复现步骤：**
@@ -208,11 +208,224 @@ app.use('*', cors({ origin: process.env.NAV_CORS_ORIGIN ?? 'http://localhost:300
 
 **关联测试用例：** TC-SEC-003
 
+---
+
+## BUG-006：布局变更始终写入 lg 断点
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Important |
+| **模块** | 布局系统 |
+| **状态** | ✅ 已修复并验证 |
+| **发现日期** | 2026-05-24 |
+| **修复日期** | 2026-05-24 |
+| **验证日期** | 2026-05-24 |
+
+**复现步骤：**
+1. 在桌面端（lg 断点）添加组件并拖拽到指定位置
+2. 缩小浏览器至手机宽度（xs 断点）
+3. 在 xs 断点拖拽组件到不同位置
+4. 恢复桌面宽度，检查组件位置
+
+**预期结果：** xs 断点的布局变更只影响 xs 布局，lg 布局保持不变
+
+**实际结果：** `handleLayoutUpdated` 始终将布局变更写入 `lg` 断点，手机端的拖拽操作会覆盖桌面端布局
+
+**影响：** 多端编辑隔离失效，用户在手机端的布局调整会破坏桌面端布局
+
+**分析：** `DashboardGrid.vue` 中 `handleLayoutUpdated` 函数硬编码写入 `lg`：
+```typescript
+// 修复前
+emit('update-layout', item.i, {
+  ...widget.layouts,
+  lg: { x: item.x, y: item.y, w: item.w, h: item.h }, // 始终写入 lg
+})
+```
+vue-grid-layout-v3 的 `@breakpoint-changed` 事件暴露当前断点名称，但未被使用。
+
+**修复方案：** 添加 `currentBreakpoint` ref 跟踪当前断点，通过 `@breakpoint-changed` 更新，写入时使用动态键名：
+```typescript
+const currentBreakpoint = ref('lg')
+
+function handleBreakpointChanged(bp: string) {
+  currentBreakpoint.value = bp
+}
+
+function handleLayoutUpdated(newLayout: any[]) {
+  for (const item of newLayout) {
+    const widget = props.widgets.find((w) => w.id === item.i)
+    if (!widget) continue
+    emit('update-layout', item.i, {
+      ...widget.layouts,
+      [currentBreakpoint.value]: { x: item.x, y: item.y, w: item.w, h: item.h },
+    })
+  }
+}
+```
+
+**关联测试用例：** TC-LAYOUT-005
+
+**验证结果：** 在 xs 断点拖拽组件后，lg 布局数据未被修改，布局按断点独立存储。
+
+---
+
+## BUG-007：组件 CRUD API 路由 404
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Critical |
+| **模块** | 后端 API |
+| **状态** | ✅ 已修复并验证 |
+| **发现日期** | 2026-05-24 |
+| **修复日期** | 2026-05-24 |
+| **验证日期** | 2026-05-24 |
+
+**复现步骤：**
+1. 登录后修改组件配置（如书签分组）
+2. 刷新页面
+
+**预期结果：** 配置数据从后端加载，刷新后保持
+
+**实际结果：** 所有 `PUT /api/widgets/:id` 和 `DELETE /api/widgets/:id` 请求返回 404，配置数据丢失
+
+**影响：** 组件配置和布局变更无法持久化到后端
+
+**分析：** 后端路由挂载错误。`widgets.ts` 路由定义了 `PUT /:instanceId`，但挂载在 `/api/dashboards` 下，导致路径变为 `/api/dashboards/:instanceId`，而前端调用的是 `/api/widgets/:instanceId`。
+
+**修复方案：** 修改 `widgets.ts` 路由路径为完整路径，挂载在 `/api` 下：
+```typescript
+// 修复前
+widgets.put('/:instanceId', ...)
+app.route('/api/dashboards', widgetRoutes) // 路径变为 /api/dashboards/:instanceId
+
+// 修复后
+widgets.put('/widgets/:instanceId', ...)
+app.route('/api', widgetRoutes) // 路径变为 /api/widgets/:instanceId
+```
+
+**关联测试用例：** TC-WIDGET-006, TC-DATA-002
+
+**验证结果：** PUT/DELETE 请求返回 200，配置数据正确保存和加载。
+
+---
+
+## BUG-008：组件配置更新后被旧数据覆盖
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Important |
+| **模块** | 前端状态管理 |
+| **状态** | ✅ 已修复并验证 |
+| **发现日期** | 2026-05-24 |
+| **修复日期** | 2026-05-24 |
+| **验证日期** | 2026-05-24 |
+
+**复现步骤：**
+1. 修改组件配置（如书签分组）并保存
+2. 立即刷新页面
+
+**预期结果：** 新配置数据保留
+
+**实际结果：** 配置被重置为空
+
+**影响：** 用户修改的配置在保存后立即丢失
+
+**分析：** `dashboardStore.updateWidgetConfig` 中 `save()` 和 `fetch PUT` 存在竞态条件。`save()` 异步调用 `SyncAdapter.saveDashboard()` → 触发 `GET /api/dashboards` → 重新加载整个 dashboard（此时 config 还没被后端保存），导致刚修改的 config 被旧数据覆盖。
+
+**修复方案：** 移除 `updateWidgetConfig` 和 `updateWidgetLayouts` 中的 `save()` 调用，仅通过 PUT 请求持久化：
+```typescript
+function updateWidgetConfig(instanceId: string, config: Record<string, any>) {
+  if (!dashboard.value) return
+  const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
+  if (widget) {
+    widget.config = config
+    fetch(`/api/widgets/${instanceId}`, { ... }) // 仅 PUT，不调用 save()
+  }
+}
+```
+
+**关联测试用例：** TC-WIDGET-006, TC-DATA-002
+
+**验证结果：** 配置修改后刷新页面，数据正确保留。
+
+---
+
+## BUG-009：书签组件无配置入口
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Minor |
+| **模块** | 组件系统 |
+| **状态** | ✅ 已修复并验证 |
+| **发现日期** | 2026-05-24 |
+| **修复日期** | 2026-05-24 |
+| **验证日期** | 2026-05-24 |
+
+**复现步骤：**
+1. 添加书签组件到画布
+2. 点击"点击配置添加书签"
+
+**预期结果：** 打开配置表单
+
+**实际结果：** 无反应，文本未绑定点击事件
+
+**影响：** 用户无法配置书签组件
+
+**分析：** 书签组件显示"点击配置添加书签"提示文本，但未实现点击处理和配置表单。
+
+**修复方案：** 为书签组件添加内联配置表单，包括：
+- 分组名称输入
+- 书签标题/URL 输入
+- 添加/删除分组和书签
+- 保存/取消操作
+- 编辑模式下显示"⚙ 配置"按钮
+
+**关联测试用例：** TC-WIDGET-006
+
+**验证结果：** 点击配置提示打开表单，可添加分组和书签，保存后正确显示。
+
+---
+
+## BUG-010：手机端组件重叠不可见
+
+| 字段 | 内容 |
+|------|------|
+| **严重程度** | Critical |
+| **模块** | 布局系统 |
+| **状态** | ✅ 已修复并验证 |
+| **发现日期** | 2026-05-24 |
+| **修复日期** | 2026-05-24 |
+| **验证日期** | 2026-05-24 |
+
+**复现步骤：**
+1. 在桌面端添加多个组件（如 3 个时钟并排）
+2. 在手机端（375px）查看页面
+
+**预期结果：** 所有组件垂直排列，可滚动查看
+
+**实际结果：** 多个组件重叠在同一位置，只能看到第一个组件
+
+**影响：** 手机端只能看到部分组件，核心体验严重受损
+
+**分析：** vue-grid-layout-v3 的 `responsiveGridLayout()` 在初始渲染时会用 lg 布局覆盖 `state.layouts` 中的响应式断点布局。即使通过 `responsiveLayouts` prop 传入了修正后的布局，也会被库内部覆盖。
+
+**修复方案：** 禁用库的响应式模式（`responsive: false`），手动管理断点切换：
+1. 通过 `window.innerWidth` 检测当前断点
+2. 生成修正后的布局（无重叠），按比例缩放到 12 列
+3. 将缩放后的布局直接传递给 GridItem
+4. 拖拽/调整大小时逆向缩放回实际断点列数
+
+**关联测试用例：** TC-RESP-001~004
+
+**验证结果：** 桌面端 2 列网格正确，手机端垂直排列无重叠，所有组件可见。
+
+---
+
 ## 缺陷统计
 
-| 严重程度 | 数量 |
-|---------|------|
-| Critical | 0 |
-| Important | 1 |
-| Minor | 0 |
-| **总计** | **1** |
+| 严重程度 | 已修复 | 不修复 | 总计 |
+|---------|--------|--------|------|
+| Critical | 3 | 0 | 3 |
+| Important | 4 | 1 | 5 |
+| Minor | 3 | 0 | 3 |
+| **总计** | **10** | **1** | **11** |
