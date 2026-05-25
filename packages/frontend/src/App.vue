@@ -81,23 +81,24 @@ async function handleLoginSuccess() {
 <style scoped>
 .app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  position: relative;
 }
 
 .main {
-  flex: 1;
+  min-height: 100vh;
   padding: 24px;
 }
 
 .sidebar {
   position: fixed;
   right: 0;
-  top: 53px;
+  top: 0;
   bottom: 0;
   width: 280px;
-  background-color: var(--bg-secondary);
-  border-left: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid var(--glass-border);
   overflow-y: auto;
   z-index: 50;
 }
@@ -112,8 +113,8 @@ async function handleLoginSuccess() {
     width: 100%;
     max-height: 50vh;
     border-left: none;
-    border-top: 1px solid var(--border);
-    border-radius: 12px 12px 0 0;
+    border-top: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
 }
 </style>
