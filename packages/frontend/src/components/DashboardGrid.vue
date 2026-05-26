@@ -8,6 +8,7 @@ const props = defineProps<{
   widgets: WidgetInstance[]
   editing: boolean
   editable: boolean
+  columns?: number
 }>()
 
 const emit = defineEmits<{
@@ -17,8 +18,9 @@ const emit = defineEmits<{
 }>()
 
 const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
-const cols = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
-const LIB_COLS = 12
+const lgCols = computed(() => props.columns ?? 12)
+const cols = computed(() => ({ lg: lgCols.value, md: 8, sm: 6, xs: 4, xxs: 2 }))
+const LIB_COLS = computed(() => lgCols.value)
 
 function detectBreakpoint(width: number): string {
   const sorted = Object.entries(breakpoints).sort((a, b) => a[1] - b[1])
@@ -43,7 +45,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateBreakpoint)
 })
 
-function toGridLayouts(widgets: WidgetInstance[]) {
+function toGridLayouts(widgets: WidgetInstance[], libCols: number) {
   const result: Record<string, any[]> = { lg: [], md: [], sm: [], xs: [] }
   for (const w of widgets) {
     for (const bp of ['lg', 'md', 'sm', 'xs'] as const) {
@@ -60,8 +62,8 @@ function toGridLayouts(widgets: WidgetInstance[]) {
     }
   }
 
-  // 修正重叠并缩放到 12 列
-  const colNums = { lg: 12, md: 8, sm: 6, xs: 4 }
+  // 修正重叠并缩放到自定义列数
+  const colNums = { lg: libCols, md: 8, sm: 6, xs: 4 }
   for (const bp of ['md', 'sm', 'xs'] as const) {
     const maxCols = colNums[bp]
     const items = result[bp]
@@ -95,8 +97,8 @@ function toGridLayouts(widgets: WidgetInstance[]) {
       item.y = curY
       curX += item.w
     }
-    // 缩放到 12 列
-    const scale = LIB_COLS / maxCols
+    // 缩放到自定义列数
+    const scale = libCols / maxCols
     for (const item of items) {
       item.x = Math.round(item.x * scale)
       item.w = Math.round(item.w * scale)
@@ -106,7 +108,7 @@ function toGridLayouts(widgets: WidgetInstance[]) {
   return result
 }
 
-const allLayouts = computed(() => toGridLayouts(props.widgets))
+const allLayouts = computed(() => toGridLayouts(props.widgets, LIB_COLS.value))
 
 // 当前断点的布局（缩放到 12 列）
 const currentLayoutScaled = computed(() => {
@@ -125,9 +127,9 @@ function handleLayoutUpdated(newLayout: any[]) {
   for (const item of newLayout) {
     const widget = props.widgets.find((w) => w.id === item.i)
     if (!widget) continue
-    // 逆向缩放：12 列 → 实际断点列数
-    const bpCols = cols[currentBreakpoint.value] ?? 12
-    const scale = bpCols / LIB_COLS
+    // 逆向缩放：自定义列数 → 实际断点列数
+    const bpCols = cols.value[currentBreakpoint.value] ?? 12
+    const scale = bpCols / LIB_COLS.value
     emit('update-layout', item.i, {
       ...widget.layouts,
       [currentBreakpoint.value]: {
@@ -145,7 +147,7 @@ function handleLayoutUpdated(newLayout: any[]) {
   <div class="dashboard-grid">
     <GridLayout
       :layout="currentLayoutScaled"
-      :col-num="12"
+      :col-num="lgCols"
       :row-height="80"
       :is-draggable="editing"
       :is-resizable="editing"

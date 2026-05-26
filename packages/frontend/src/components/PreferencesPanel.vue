@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
+const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color'
 )
@@ -54,6 +55,7 @@ function removeImage(index: number) {
 function save() {
   if (!dashboardStore.dashboard) return
   dashboardStore.dashboard.title = title.value
+  dashboardStore.dashboard.columns = columns.value
   dashboardStore.dashboard.background = {
     mode: bgMode.value,
     color: bgColor.value,
@@ -87,6 +89,25 @@ function cancel() {
           class="prefs-input"
           placeholder="Nav - 个人导航页"
         />
+      </div>
+
+      <!-- 网格列数 -->
+      <div class="prefs-section">
+        <label class="prefs-label">网格列数</label>
+        <div class="columns-row">
+          <input
+            v-model.number="columns"
+            type="range"
+            min="4"
+            max="24"
+            step="2"
+            class="interval-slider"
+          />
+          <span class="interval-value">{{ columns }} 列</span>
+        </div>
+        <div class="columns-preview">
+          <div v-for="n in columns" :key="n" class="col-bar"></div>
+        </div>
       </div>
 
       <!-- 背景模式 -->
@@ -453,6 +474,30 @@ function cancel() {
   color: var(--text-secondary);
   min-width: 50px;
   text-align: right;
+}
+
+.columns-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.columns-preview {
+  display: flex;
+  gap: 3px;
+  margin-top: 10px;
+  height: 20px;
+}
+
+.col-bar {
+  flex: 1;
+  background: rgba(96, 165, 250, 0.15);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.col-bar:hover {
+  background: rgba(96, 165, 250, 0.3);
 }
 
 .prefs-actions {
