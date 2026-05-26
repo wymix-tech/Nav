@@ -62,40 +62,16 @@ function toGridLayouts(widgets: WidgetInstance[], libCols: number) {
     }
   }
 
-  // 修正重叠并缩放到自定义列数
+  // 修正越界
   const colNums = { lg: libCols, md: 8, sm: 6, xs: 4 }
   for (const bp of ['lg', 'md', 'sm', 'xs'] as const) {
     const maxCols = colNums[bp]
     const items = result[bp]
-    items.sort((a, b) => a.y - b.y || a.x - b.x)
-    let curY = 0
-    let curX = 0
     for (const item of items) {
-      if (curX + item.w > maxCols) {
-        curX = 0
-        curY += item.h
+      if (item.x + item.w > maxCols) {
+        item.x = 0
+        item.y += item.h
       }
-      let hasOverlap = true
-      while (hasOverlap) {
-        hasOverlap = false
-        for (const placed of items) {
-          if (placed === item) continue
-          if (placed.y >= curY + item.h || placed.y + placed.h <= curY) continue
-          if (placed.x >= curX + item.w || placed.x + placed.w <= curX) continue
-          hasOverlap = true
-          break
-        }
-        if (hasOverlap) {
-          curX += item.w
-          if (curX + item.w > maxCols) {
-            curX = 0
-            curY += item.h
-          }
-        }
-      }
-      item.x = curX
-      item.y = curY
-      curX += item.w
     }
     // 缩放到自定义列数
     const scale = libCols / maxCols
@@ -151,6 +127,7 @@ function handleLayoutUpdated(newLayout: any[]) {
       :row-height="80"
       :is-draggable="editing"
       :is-resizable="editing"
+      :vertical-compact="true"
       :responsive="false"
       @layout-updated="handleLayoutUpdated"
     >
