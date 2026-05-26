@@ -77,44 +77,27 @@ function handleConfigUpdate(config: Record<string, any>) {
 <style scoped>
 .widget-wrapper {
   height: 100%;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
+  background: transparent;
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 4px 24px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .widget-wrapper:hover {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 8px 40px rgba(0, 0, 0, 0.3),
-    0 0 60px -20px var(--accent-glow);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .widget-wrapper.editing {
-  border: 1px solid rgba(96, 165, 250, 0.15);
-  box-shadow:
-    0 0 0 1px rgba(96, 165, 250, 0.05),
-    0 4px 24px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(96, 165, 250, 0.08);
 }
 
 .widget-wrapper.editing:hover {
-  border-color: rgba(96, 165, 250, 0.3);
-  box-shadow:
-    0 0 0 1px rgba(96, 165, 250, 0.1),
-    0 0 30px rgba(96, 165, 250, 0.05),
-    0 8px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(96, 165, 250, 0.15);
 }
 
 .widget-toolbar {
@@ -161,7 +144,7 @@ function handleConfigUpdate(config: Record<string, any>) {
 .widget-content {
   flex: 1;
   overflow: auto;
-  padding: 16px;
+  padding: 20px;
 }
 
 /* 配置弹窗 */

@@ -64,7 +64,7 @@ function toGridLayouts(widgets: WidgetInstance[], libCols: number) {
 
   // 修正重叠并缩放到自定义列数
   const colNums = { lg: libCols, md: 8, sm: 6, xs: 4 }
-  for (const bp of ['md', 'sm', 'xs'] as const) {
+  for (const bp of ['lg', 'md', 'sm', 'xs'] as const) {
     const maxCols = colNums[bp]
     const items = result[bp]
     items.sort((a, b) => a.y - b.y || a.x - b.x)
