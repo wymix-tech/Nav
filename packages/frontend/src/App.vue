@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import LoginDialog from './components/LoginDialog.vue'
@@ -46,6 +46,11 @@ function handleDragStart() {
 function handleDragEnd() {
   setTimeout(() => { isDragging.value = false }, 300)
 }
+
+// 自定义网页标题
+watch(() => dashboardStore.dashboard?.title, (newTitle) => {
+  document.title = newTitle || 'Nav - 个人导航页'
+}, { immediate: true })
 
 function toggleEdit() {
   editing.value = !editing.value

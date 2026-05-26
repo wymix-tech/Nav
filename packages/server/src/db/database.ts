@@ -11,6 +11,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS dashboards (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
+    title       TEXT DEFAULT 'Nav - 个人导航页',
+    background  TEXT DEFAULT '{}',
     columns     INTEGER DEFAULT 12,
     row_height  INTEGER DEFAULT 80,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -43,5 +45,9 @@ db.exec(`
     synced      INTEGER DEFAULT 0
   );
 `)
+
+// 兼容旧数据库：添加新字段
+try { db.exec('ALTER TABLE dashboards ADD COLUMN title TEXT DEFAULT \'Nav - 个人导航页\'') } catch {}
+try { db.exec('ALTER TABLE dashboards ADD COLUMN background TEXT DEFAULT \'{}\'') } catch {}
 
 export default db
