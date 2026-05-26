@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import LoginDialog from './components/LoginDialog.vue'
 import WidgetLibrary from './components/WidgetLibrary.vue'
 import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
+import PreferencesPanel from './components/PreferencesPanel.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -19,6 +20,9 @@ const showLogin = ref(false)
 const showInstall = ref(false)
 const showLibrary = ref(false)
 const isDragging = ref(false)
+const showPreferences = ref(false)
+const slideshowIndex = ref(0)
+let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -52,6 +56,36 @@ watch(() => dashboardStore.dashboard?.title, (newTitle) => {
   document.title = newTitle || 'Nav - 个人导航页'
 }, { immediate: true })
 
+// 背景样式
+const bgStyle = computed(() => {
+  const bg = dashboardStore.dashboard?.background
+  if (!bg || bg.mode === 'color') {
+    return { backgroundImage: 'none', backgroundColor: bg?.color ?? '#0c1021' }
+  }
+  if (bg.images.length === 0) {
+    return { backgroundImage: 'none', backgroundColor: bg?.color ?? '#0c1021' }
+  }
+  const img = bg.images[slideshowIndex.value % bg.images.length]
+  return {
+    backgroundImage: `url(${img.src})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+})
+
+// 轮播定时器
+watch(() => dashboardStore.dashboard?.background, (bg) => {
+  if (slideshowTimer) clearInterval(slideshowTimer)
+  slideshowTimer = null
+
+  if (bg?.mode === 'slideshow' && bg.images.length > 1) {
+    slideshowTimer = setInterval(() => {
+      slideshowIndex.value = (slideshowIndex.value + 1) % bg.images.length
+    }, (bg.interval ?? 30) * 1000)
+  }
+}, { immediate: true })
+
 function toggleEdit() {
   editing.value = !editing.value
   showLibrary.value = editing.value
@@ -68,12 +102,13 @@ function toggleLibrary() {
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :style="bgStyle">
     <TopBar
       :editing="editing"
       :backend-available="backendAvailable"
       @toggle-edit="toggleEdit"
       @login="handleLogin"
+      @show-preferences="showPreferences = true"
     />
 
     <main class="main">
@@ -105,6 +140,11 @@ function toggleLibrary() {
     <InstallWidgetDialog
       v-if="showInstall"
       @close="showInstall = false"
+    />
+
+    <PreferencesPanel
+      v-if="showPreferences"
+      @close="showPreferences = false"
     />
   </div>
 </template>

@@ -12,6 +12,7 @@ defineProps<{
 const emit = defineEmits<{
   'toggle-edit': []
   'login': []
+  'show-preferences': []
 }>()
 
 const expanded = ref(false)
@@ -37,6 +38,7 @@ const expanded = ref(false)
           <button class="panel-btn primary" @click="emit('toggle-edit')">
             {{ editing ? '完成编辑' : '编辑' }}
           </button>
+          <button class="panel-btn" @click="emit('show-preferences')">⚙</button>
           <button class="panel-btn" @click="auth.logout()">退出登录</button>
         </template>
         <template v-else-if="!backendAvailable">
