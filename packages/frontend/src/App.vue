@@ -106,9 +106,11 @@ function toggleLibrary() {
     <TopBar
       :editing="editing"
       :backend-available="backendAvailable"
+      :library-visible="showLibrary"
       @toggle-edit="toggleEdit"
       @login="handleLogin"
       @show-preferences="showPreferences = true"
+      @toggle-library="toggleLibrary"
     />
 
     <main class="main">

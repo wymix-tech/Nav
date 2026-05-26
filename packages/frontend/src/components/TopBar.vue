@@ -7,12 +7,14 @@ const auth = useAuthStore()
 defineProps<{
   editing: boolean
   backendAvailable: boolean
+  libraryVisible?: boolean
 }>()
 
 const emit = defineEmits<{
   'toggle-edit': []
   'login': []
   'show-preferences': []
+  'toggle-library': []
 }>()
 
 const expanded = ref(false)
@@ -37,6 +39,9 @@ const expanded = ref(false)
         <template v-if="auth.isAuthenticated">
           <button class="panel-btn primary" @click="emit('toggle-edit')">
             {{ editing ? '完成编辑' : '编辑' }}
+          </button>
+          <button v-if="editing" class="panel-btn" @click="emit('toggle-library')">
+            {{ libraryVisible ? '✕' : '☰' }}
           </button>
           <button class="panel-btn" @click="emit('show-preferences')">⚙</button>
           <button class="panel-btn" @click="auth.logout()">退出登录</button>
