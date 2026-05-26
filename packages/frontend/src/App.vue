@@ -17,6 +17,7 @@ const editing = ref(false)
 const backendAvailable = ref(false)
 const showLogin = ref(false)
 const showInstall = ref(false)
+const showLibrary = ref(false)
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -30,12 +31,17 @@ onMounted(async () => {
 
 function toggleEdit() {
   editing.value = !editing.value
+  // 进入编辑模式时显示组件库，退出时隐藏
+  showLibrary.value = editing.value
 }
 function handleLogin() { showLogin.value = true }
 async function handleLoginSuccess() {
-  // 登录成功后重置 adapter 以切换到 SyncAdapter
   resetAdapter()
   await Promise.all([dashboardStore.load(), widgetStore.load()])
+}
+
+function toggleLibrary() {
+  showLibrary.value = !showLibrary.value
 }
 </script>
 
@@ -61,9 +67,12 @@ async function handleLoginSuccess() {
       />
     </main>
 
-    <aside v-if="editing && (!backendAvailable || authStore.isAuthenticated)" class="sidebar">
-      <WidgetLibrary @show-install="showInstall = true" />
-    </aside>
+    <WidgetLibrary
+      v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
+      :visible="showLibrary"
+      @show-install="showInstall = true"
+      @toggle-library="toggleLibrary"
+    />
 
     <LoginDialog
       v-if="showLogin"
@@ -87,34 +96,5 @@ async function handleLoginSuccess() {
 .main {
   min-height: 100vh;
   padding: 24px;
-}
-
-.sidebar {
-  position: fixed;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 280px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-left: 1px solid var(--glass-border);
-  overflow-y: auto;
-  z-index: 50;
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    width: 100%;
-    max-height: 50vh;
-    border-left: none;
-    border-top: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  }
 }
 </style>
