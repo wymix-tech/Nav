@@ -53,36 +53,41 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  gap: 8px;
+  gap: 6px;
   user-select: none;
 }
 
 .time-display {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 4px;
 }
 
 .time-main {
-  font-size: 42px;
+  font-family: var(--font-display);
+  font-size: 56px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 2px;
+  letter-spacing: -1px;
   line-height: 1;
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .time-seconds {
-  font-size: 18px;
-  font-weight: 400;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  opacity: 0.8;
+  color: var(--accent-warm);
   min-width: 1.5em;
-  transition: opacity 0.3s ease;
+  opacity: 0.9;
 }
 
 .date-display {
+  font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-secondary);
   letter-spacing: 0.5px;
