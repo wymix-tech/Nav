@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import LoginDialog from './components/LoginDialog.vue'
@@ -18,6 +18,7 @@ const backendAvailable = ref(false)
 const showLogin = ref(false)
 const showInstall = ref(false)
 const showLibrary = ref(false)
+const isDragging = ref(false)
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -27,11 +28,27 @@ onMounted(async () => {
     // 无后端，忽略
   }
   backendAvailable.value = isBackendAvailable()
+
+  // 拖拽时隐藏组件库
+  document.addEventListener('dragstart', handleDragStart)
+  document.addEventListener('dragend', handleDragEnd)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('dragstart', handleDragStart)
+  document.removeEventListener('dragend', handleDragEnd)
+})
+
+function handleDragStart() {
+  isDragging.value = true
+}
+
+function handleDragEnd() {
+  setTimeout(() => { isDragging.value = false }, 300)
+}
 
 function toggleEdit() {
   editing.value = !editing.value
-  // 进入编辑模式时显示组件库，退出时隐藏
   showLibrary.value = editing.value
 }
 function handleLogin() { showLogin.value = true }
@@ -69,7 +86,7 @@ function toggleLibrary() {
 
     <WidgetLibrary
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
-      :visible="showLibrary"
+      :visible="showLibrary && !isDragging"
       @show-install="showInstall = true"
       @toggle-library="toggleLibrary"
     />
