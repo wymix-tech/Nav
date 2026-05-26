@@ -1,0 +1,17 @@
+node_modules
+dist
+.turbo
+*.local
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+.git
+.gitignore
+docs
+scripts
+CLAUDE.md
+CODEBUDDY.md
+nav.log
+nav.pid

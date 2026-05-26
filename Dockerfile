@@ -1,0 +1,45 @@
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+# better-sqlite3 需要 native 编译工具
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /app
+
+# 复制依赖描述文件，利用 Docker 缓存层
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/frontend/package.json packages/frontend/
+COPY packages/server/package.json packages/server/
+
+RUN pnpm install --frozen-lockfile
+
+# 复制源码并构建
+COPY packages/ packages/
+COPY turbo.json ./
+
+RUN pnpm build
+
+# 将 server 的生产依赖提取到独立目录
+RUN pnpm --filter @nav/server deploy --prod /deploy
+
+
+# Stage 2: 生产运行时
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 复制 server 运行时（含生产依赖 + 编译产物）
+COPY --from=builder /deploy .
+
+# 复制前端构建产物作为静态资源
+COPY --from=builder /app/packages/frontend/dist ./public
+
+ENV NODE_ENV=production
+ENV PORT=4000
+
+EXPOSE 4000
+
+CMD ["node", "dist/index.js"]
