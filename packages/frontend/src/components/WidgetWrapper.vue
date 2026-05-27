@@ -86,18 +86,14 @@ function handleConfigUpdate(config: Record<string, any>) {
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-.widget-wrapper:hover {
-  background: rgba(255, 255, 255, 0.02);
+.editing.widget-wrapper:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(96, 165, 250, 0.15);
 }
 
 .widget-wrapper.editing {
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid rgba(96, 165, 250, 0.08);
-}
-
-.widget-wrapper.editing:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(96, 165, 250, 0.15);
 }
 
 .widget-toolbar {
