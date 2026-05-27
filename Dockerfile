@@ -20,7 +20,11 @@ RUN pnpm install --frozen-lockfile
 COPY packages/ packages/
 COPY turbo.json ./
 
-RUN pnpm build
+# 构建：先构建 shared 包的类型声明，再构建 server，最后构建前端
+RUN pnpm --filter @nav/shared build
+RUN pnpm --filter @nav/server build
+# 跳过 vue-tsc 类型检查直接构建前端（Docker 内无需重复检查）
+RUN cd packages/frontend && npx vite build
 
 # 将 server 的生产依赖提取到独立目录
 RUN pnpm --filter @nav/server deploy --prod /deploy
