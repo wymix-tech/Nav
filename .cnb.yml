@@ -1,0 +1,36 @@
+  main:
+    # 触发事件为 push 事件
+    pull_request.merged:
+      - stages:
+          - name: auto-tag
+            image: cnbcool/git-auto-tag:latest
+            settings:
+              tagFormat: v\${version}
+              toFile: tag_info.json
+              dryRun: false
+              blockWhenFail: false
+              branch: $CNB_BRANCH
+              repoUrlHttps: $CNB_REPO_URL_HTTPS
+            exports:
+              tag: NEW_TAG
+          - name: show tag
+            script: echo $NEW_TAG
+          - name: show tag res
+            script: cat tag_info.json
+          - name: release
+            type: git:release
+            options:
+              tag: $NEW_TAG
+              title: $NEW_TAG
+              descriptionFromFile: LATEST_CHANGELOG.md
+              latest: true
+      - services:
+        - docker
+        stages:
+        # 同名镜像构建&推送
+          - name: Docker build
+            script: docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
+          - name: Docker push
+            script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
+
+
