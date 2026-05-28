@@ -15,6 +15,10 @@
               tag: NEW_TAG
           - name: show tag
             script: echo $NEW_TAG
+          - name: changelog
+            image: cnbcool/changelog
+            settings:
+              latestChangeLogTarget: LATEST_CHANGELOG.md
           - name: release
             type: git:release
             options:
