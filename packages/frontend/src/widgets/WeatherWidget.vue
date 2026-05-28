@@ -113,7 +113,7 @@ watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWe
   align-items: center;
   justify-content: center;
   height: 100%;
-  gap: 2px;
+  gap: 4px;
 }
 
 .weather-icon {
@@ -122,26 +122,31 @@ watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWe
 }
 
 .temp {
-  font-size: 32px;
+  font-family: var(--font-display);
+  font-size: 36px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .desc {
+  font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-secondary);
 }
 
 .city {
+  font-family: var(--font-body);
   font-size: 12px;
-  color: var(--text-secondary);
-  opacity: 0.7;
+  color: var(--text-muted);
 }
 
 .error {
-  color: #ef4444;
+  color: var(--danger);
   font-size: 13px;
   text-align: center;
   padding: 0 12px;
@@ -160,12 +165,12 @@ watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWe
   height: 100%;
   gap: 8px;
   cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  opacity: 0.5;
+  transition: opacity 0.3s;
 }
 
 .config-prompt:hover {
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .config-icon {
@@ -186,17 +191,20 @@ watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWe
 }
 
 .config-input {
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--bg-primary);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 13px;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .config-input:focus {
-  border-color: var(--accent);
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 
 .config-actions {
@@ -206,20 +214,28 @@ watch(() => [props.config.city, props.config.unit, props.config.apiKey], fetchWe
 
 .config-btn {
   flex: 1;
-  padding: 6px;
-  border-radius: var(--radius);
+  padding: 8px;
+  border-radius: 10px;
   border: none;
+  font-family: var(--font-body);
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .config-btn.cancel {
-  background-color: var(--bg-primary);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
 }
 
+.config-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .config-btn.save {
-  background-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: white;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
 }
 </style>
