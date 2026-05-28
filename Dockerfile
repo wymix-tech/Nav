@@ -41,8 +41,13 @@ COPY --from=builder /deploy .
 # 复制前端构建产物作为静态资源
 COPY --from=builder /app/packages/frontend/dist ./public
 
+# 创建上传目录
+RUN mkdir -p /data/uploads
+
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV NAV_DB_PATH=/data/nav.db
+ENV NAV_UPLOAD_DIR=/data/uploads
 
 EXPOSE 4000
 

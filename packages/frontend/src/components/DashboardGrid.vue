@@ -16,79 +16,95 @@ const emit = defineEmits<{
   'update-config': [instanceId: string, config: Record<string, any>]
 }>()
 
-const breakpoints = { lg: 1200, md: 992, sm: 768, xs: 480, xxs: 0 }
-const colNums = { lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }
 const ROW_HEIGHT = 80
 const MARGIN = 10
 
-const currentBreakpoint = ref('lg')
+// 屏幕方向检测：宽 > 高 = 横屏，否则竖屏
+const isLandscape = ref(window.innerWidth > window.innerHeight)
+const windowWidth = ref(window.innerWidth)
 
-function detectBreakpoint(width: number): string {
-  const sorted = Object.entries(breakpoints).sort((a, b) => a[1] - b[1])
-  let result = sorted[0][0]
-  for (const [bp, min] of sorted) {
-    if (width > min) result = bp
-  }
-  return result
-}
-
-function updateBreakpoint() {
-  currentBreakpoint.value = detectBreakpoint(window.innerWidth)
+function updateLayout() {
+  windowWidth.value = window.innerWidth
+  isLandscape.value = window.innerWidth > window.innerHeight
 }
 
 onMounted(() => {
-  updateBreakpoint()
-  window.addEventListener('resize', updateBreakpoint)
+  updateLayout()
+  window.addEventListener('resize', updateLayout)
+  window.addEventListener('orientationchange', updateLayout)
 })
 onUnmounted(() => {
-  window.removeEventListener('resize', updateBreakpoint)
+  window.removeEventListener('resize', updateLayout)
+  window.removeEventListener('orientationchange', updateLayout)
 })
 
-const libCols = computed(() => props.columns ?? 12)
+// 根据屏幕宽度确定默认网格列数（仅在用户未自定义时生效）
+const defaultGridCols = computed(() => {
+  const w = windowWidth.value
+  if (w >= 1200) return 12
+  if (w >= 992) return 10
+  if (w >= 768) return 8
+  return 6
+})
 
-// 获取当前断点下每个组件的布局（使用 lg 布局，缩放到自定义列数）
-function getWidgetLayout(w: WidgetInstance): WidgetLayout {
-  const bp = currentBreakpoint.value
-  const layout = w.layouts[bp] ?? w.layouts.lg
-  const bpCols = colNums[bp] ?? 12
-  const scale = libCols.value / bpCols
+// 用户自定义列数优先，未设置时按屏幕宽度自动适配
+const activeCols = computed(() => props.columns ?? defaultGridCols.value)
+
+// 竖屏 → 堆叠；横屏 → CSS Grid
+const isStackMode = computed(() => !isLandscape.value)
+
+// 从 lg 布局等比缩放到当前网格列数
+function getScaledLayout(w: WidgetInstance): WidgetLayout {
+  const layout = w.layouts.lg
+  const scale = activeCols.value / 12
   return {
     x: Math.round(layout.x * scale),
     y: layout.y,
-    w: Math.round(layout.w * scale),
+    w: Math.max(1, Math.round(layout.w * scale)),
     h: layout.h,
   }
 }
 
-// 计算网格总高度（行数）
 const gridRows = computed(() => {
   let maxY = 0
   for (const w of props.widgets) {
-    const l = getWidgetLayout(w)
+    const l = getScaledLayout(w)
     if (l.y + l.h > maxY) maxY = l.y + l.h
   }
-  return maxY
+  return Math.max(1, maxY)
 })
 
-// CSS Grid 样式
-const gridStyle = computed(() => ({
-  display: 'grid',
-  gridTemplateColumns: `repeat(${libCols.value}, 1fr)`,
-  gridTemplateRows: `repeat(${gridRows.value}, ${ROW_HEIGHT}px)`,
-  gap: `${MARGIN}px`,
-  width: '100%',
-}))
+const gridStyle = computed(() => {
+  if (isStackMode.value) {
+    return {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: `${MARGIN}px`,
+      width: '100%',
+    }
+  }
+  return {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${activeCols.value}, 1fr)`,
+    gridTemplateRows: `repeat(${gridRows.value}, ${ROW_HEIGHT}px)`,
+    gap: `${MARGIN}px`,
+    width: '100%',
+  }
+})
 
-// 每个组件的网格区域样式
 function widgetStyle(w: WidgetInstance) {
-  const l = getWidgetLayout(w)
+  if (isStackMode.value) {
+    const h = w.layouts.lg?.h ?? 3
+    return { width: '100%', minHeight: `${ROW_HEIGHT * h}px` }
+  }
+  const l = getScaledLayout(w)
   return {
     gridColumn: `${l.x + 1} / span ${l.w}`,
     gridRow: `${l.y + 1} / span ${l.h}`,
   }
 }
 
-// --- 拖拽支持 ---
+// --- 拖拽支持（网格模式下生效） ---
 const dragState = ref<{
   widgetId: string
   startMouseX: number
@@ -100,13 +116,14 @@ const dragState = ref<{
 function getGridColWidth(): number {
   const gridEl = document.querySelector('.css-grid-layout')
   if (!gridEl) return 100
-  return (gridEl.clientWidth - (libCols.value + 1) * MARGIN) / libCols.value
+  const cols = activeCols.value
+  return (gridEl.clientWidth - (cols + 1) * MARGIN) / cols
 }
 
 function onDragStart(e: PointerEvent, w: WidgetInstance) {
-  if (!props.editing) return
+  if (!props.editing || isStackMode.value) return
   e.preventDefault()
-  const l = getWidgetLayout(w)
+  const l = getScaledLayout(w)
   dragState.value = {
     widgetId: w.id,
     startMouseX: e.clientX,
@@ -125,23 +142,23 @@ function onDragMove(e: PointerEvent) {
   const rowHeight = ROW_HEIGHT + MARGIN
   const dx = e.clientX - startMouseX
   const dy = e.clientY - startMouseY
-  const newCol = Math.max(0, Math.min(libCols.value - 1, startGridX + Math.round(dx / (colWidth + MARGIN))))
+  const cols = activeCols.value
+  const newCol = Math.max(0, Math.min(cols - 1, startGridX + Math.round(dx / (colWidth + MARGIN))))
   const newRow = Math.max(0, startGridY + Math.round(dy / rowHeight))
 
   const w = props.widgets.find((w) => w.id === widgetId)
   if (!w) return
-  const l = getWidgetLayout(w)
+  const l = getScaledLayout(w)
   if (l.x === newCol && l.y === newRow) return
 
-  const bp = currentBreakpoint.value
-  const bpCols = colNums[bp] ?? 12
-  const reverseScale = bpCols / libCols.value
+  // 当前网格位置反算回 lg 的 12 列坐标
+  const reverseScale = 12 / cols
   emit('update-layout', widgetId, {
     ...w.layouts,
-    [bp]: {
+    lg: {
       x: Math.round(newCol * reverseScale),
       y: newRow,
-      w: Math.round(l.w * reverseScale),
+      w: Math.max(1, Math.round(l.w * reverseScale)),
       h: l.h,
     },
   })
@@ -153,7 +170,7 @@ function onDragEnd() {
   document.removeEventListener('pointerup', onDragEnd)
 }
 
-// --- 调整大小支持 ---
+// --- 调整大小支持（网格模式下生效） ---
 const resizeState = ref<{
   widgetId: string
   startMouseX: number
@@ -163,10 +180,10 @@ const resizeState = ref<{
 } | null>(null)
 
 function onResizeStart(e: PointerEvent, w: WidgetInstance) {
-  if (!props.editing) return
+  if (!props.editing || isStackMode.value) return
   e.preventDefault()
   e.stopPropagation()
-  const l = getWidgetLayout(w)
+  const l = getScaledLayout(w)
   resizeState.value = {
     widgetId: w.id,
     startMouseX: e.clientX,
@@ -185,23 +202,22 @@ function onResizeMove(e: PointerEvent) {
   const rowHeight = ROW_HEIGHT + MARGIN
   const dx = e.clientX - startMouseX
   const dy = e.clientY - startMouseY
-  const newW = Math.max(2, Math.min(libCols.value, startW + Math.round(dx / (colWidth + MARGIN))))
+  const cols = activeCols.value
+  const newW = Math.max(2, Math.min(cols, startW + Math.round(dx / (colWidth + MARGIN))))
   const newH = Math.max(2, startH + Math.round(dy / rowHeight))
 
   const w = props.widgets.find((w) => w.id === widgetId)
   if (!w) return
-  const l = getWidgetLayout(w)
+  const l = getScaledLayout(w)
   if (l.w === newW && l.h === newH) return
 
-  const bp = currentBreakpoint.value
-  const bpCols = colNums[bp] ?? 12
-  const reverseScale = bpCols / libCols.value
+  const reverseScale = 12 / cols
   emit('update-layout', widgetId, {
     ...w.layouts,
-    [bp]: {
+    lg: {
       x: Math.round(l.x * reverseScale),
       y: l.y,
-      w: Math.round(newW * reverseScale),
+      w: Math.max(1, Math.round(newW * reverseScale)),
       h: newH,
     },
   })
@@ -216,13 +232,17 @@ function onResizeEnd() {
 
 <template>
   <div class="dashboard-grid">
-    <div class="css-grid-layout" :style="gridStyle">
+    <div
+      class="css-grid-layout"
+      :class="{ 'stack-mode': isStackMode }"
+      :style="gridStyle"
+    >
       <div
         v-for="widget in widgets"
         :key="widget.id"
         class="css-grid-item"
         :style="widgetStyle(widget)"
-        :class="{ dragging: dragState?.widgetId === widget.id }"
+        :class="{ dragging: dragState?.widgetId === widget.id, 'stack-item': isStackMode }"
         @pointerdown="onDragStart($event, widget)"
       >
         <WidgetWrapper
@@ -233,7 +253,7 @@ function onResizeEnd() {
           @update-config="(config) => emit('update-config', widget.id, config)"
         />
         <div
-          v-if="editing"
+          v-if="editing && !isStackMode"
           class="resize-handle"
           @pointerdown="onResizeStart($event, widget)"
         />
@@ -245,16 +265,29 @@ function onResizeEnd() {
 <style scoped>
 .dashboard-grid {
   width: 100%;
+  overflow: hidden;
 }
 
 .css-grid-layout {
   position: relative;
+  overflow: hidden;
+}
+
+.css-grid-layout.stack-mode {
+  overflow: visible;
 }
 
 .css-grid-item {
   position: relative;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   border-radius: var(--radius-md, 12px);
+}
+
+.css-grid-item.stack-item {
+  overflow: visible;
+  min-height: auto;
 }
 
 .css-grid-item > :deep(.widget-wrapper) {
@@ -280,5 +313,15 @@ function onResizeEnd() {
   border-right: 3px solid rgba(255, 255, 255, 0.15);
   border-radius: 0 0 var(--radius-md, 12px) 0;
   pointer-events: all;
+}
+
+@media (max-width: 480px) {
+  .css-grid-item {
+    border-radius: var(--radius-sm, 8px);
+  }
+
+  .css-grid-item > :deep(.widget-wrapper) {
+    border-radius: var(--radius-sm, 8px);
+  }
 }
 </style>

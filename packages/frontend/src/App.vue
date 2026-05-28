@@ -162,4 +162,16 @@ function toggleLibrary() {
   min-height: 100vh;
   padding: 24px;
 }
+
+@media (max-width: 768px) {
+  .main {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 8px;
+  }
+}
 </style>
