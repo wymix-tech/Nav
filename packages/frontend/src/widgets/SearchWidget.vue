@@ -62,7 +62,7 @@ function switchEngine(engine: string) {
 .search-widget {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   height: 100%;
   justify-content: center;
 }
@@ -70,28 +70,54 @@ function switchEngine(engine: string) {
 .search-form {
   display: flex;
   gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 6px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.search-form:focus-within {
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 
 .search-input {
   flex: 1;
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--bg-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
   color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 15px;
   outline: none;
 }
 
-.search-input:focus {
-  border-color: var(--accent);
+.search-input::placeholder {
+  color: var(--text-muted);
 }
 
 .search-btn {
-  padding: 10px 20px;
-  background-color: var(--accent);
+  padding: 10px 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: white;
+  font-family: var(--font-body);
   font-size: 14px;
+  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.search-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.4);
+}
+
+.search-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 4px rgba(96, 165, 250, 0.3);
 }
 
 .engine-list {
@@ -101,17 +127,26 @@ function switchEngine(engine: string) {
 }
 
 .engine-btn {
-  padding: 4px 10px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
   font-size: 12px;
-  background-color: transparent;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+
+.engine-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 .engine-btn.active {
-  background-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: white;
-  border-color: var(--accent);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
 }
 </style>

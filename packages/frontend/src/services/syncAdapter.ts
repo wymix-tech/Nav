@@ -32,8 +32,16 @@ export class SyncAdapter implements StorageAdapter {
     return {
       id: data.id,
       name: data.name,
+      title: data.title ?? 'Nav - 个人导航页',
       columns: data.columns,
       rowHeight: data.row_height,
+      background: data.background ?? {
+        mode: 'color',
+        color: '#0c1021',
+        images: [],
+        interval: 30,
+        index: 0,
+      },
       widgets: (data.widgets ?? []).map((w: any) => ({
         id: w.id,
         widgetId: w.widget_id,
@@ -49,8 +57,10 @@ export class SyncAdapter implements StorageAdapter {
       method: 'PUT',
       body: JSON.stringify({
         name: dashboard.name,
+        title: dashboard.title,
         columns: dashboard.columns,
         rowHeight: dashboard.rowHeight,
+        background: dashboard.background,
       }),
     })
   }

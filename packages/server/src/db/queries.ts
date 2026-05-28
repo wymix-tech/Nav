@@ -5,16 +5,18 @@ export function getDashboard(id: string) {
   return db.prepare('SELECT * FROM dashboards WHERE id = ?').get(id) as any
 }
 
-export function upsertDashboard(d: { id: string; name: string; columns: number; rowHeight: number }) {
+export function upsertDashboard(d: { id: string; name: string; title?: string; columns: number; rowHeight: number; background?: string }) {
   db.prepare(`
-    INSERT INTO dashboards (id, name, columns, row_height, updated_at)
-    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO dashboards (id, name, title, columns, row_height, background, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
+      title = excluded.title,
       columns = excluded.columns,
       row_height = excluded.row_height,
+      background = excluded.background,
       updated_at = CURRENT_TIMESTAMP
-  `).run(d.id, d.name, d.columns, d.rowHeight)
+  `).run(d.id, d.name, d.title ?? 'Nav - 个人导航页', d.columns, d.rowHeight, d.background ?? '{}')
 }
 
 // Widget Instances

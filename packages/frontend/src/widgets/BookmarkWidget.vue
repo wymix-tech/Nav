@@ -156,7 +156,8 @@ function saveConfig() {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-body);
   font-size: 13px;
 }
 
@@ -168,12 +169,12 @@ function saveConfig() {
   height: 100%;
   gap: 8px;
   cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  opacity: 0.4;
+  transition: opacity 0.3s;
 }
 
 .empty-config:hover {
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .empty-icon {
@@ -181,26 +182,32 @@ function saveConfig() {
 }
 
 .empty-text {
+  font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-secondary);
 }
 
 .edit-hint {
+  font-family: var(--font-body);
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
   text-align: right;
-  padding: 2px 4px;
-  opacity: 0.6;
+  padding: 2px 6px;
+  opacity: 0;
   transition: opacity 0.2s;
 }
 
-.edit-hint:hover {
+.group:hover .edit-hint {
   opacity: 1;
 }
 
+.edit-hint:hover {
+  color: var(--text-secondary);
+}
+
 .group {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .group:last-child {
@@ -208,48 +215,53 @@ function saveConfig() {
 }
 
 .group-name {
+  font-family: var(--font-body);
   font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
 }
 
 .bookmarks {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .bookmark-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  background-color: var(--bg-primary);
-  border-radius: 6px;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   text-decoration: none;
   color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 13px;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .bookmark-item:not(.no-link):hover {
-  background-color: var(--accent);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 
 .bookmark-icon {
   width: 16px;
   height: 16px;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .bookmark-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100px;
+  max-width: 120px;
 }
 
 /* 配置表单 */
@@ -264,17 +276,17 @@ function saveConfig() {
 }
 
 .config-group {
-  background-color: var(--bg-primary);
-  border-radius: var(--radius);
-  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .config-group-header {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -291,47 +303,59 @@ function saveConfig() {
 .config-input {
   flex: 1;
   min-width: 0;
-  padding: 5px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--bg-secondary);
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 12px;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .config-input:focus {
-  border-color: var(--accent);
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 
 .config-icon-btn {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   padding: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
-  border: none;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: all 0.2s;
 }
 
 .config-icon-btn:hover {
-  color: #ef4444;
+  color: var(--danger);
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.2);
 }
 
 .config-add-btn {
+  font-family: var(--font-body);
   font-size: 12px;
   color: var(--accent);
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
-  padding: 2px 0;
+  padding: 4px 0;
+  transition: opacity 0.2s;
+}
+
+.config-add-btn:hover {
+  opacity: 0.8;
 }
 
 .config-actions {
@@ -347,11 +371,14 @@ function saveConfig() {
 }
 
 .config-btn {
-  padding: 5px 12px;
-  border-radius: var(--radius);
+  padding: 7px 14px;
+  border-radius: 10px;
   border: none;
+  font-family: var(--font-body);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .config-btn.add-group {
@@ -360,12 +387,17 @@ function saveConfig() {
 }
 
 .config-btn.cancel {
-  background-color: var(--bg-primary);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
 }
 
+.config-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .config-btn.save {
-  background-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: white;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
 }
 </style>
