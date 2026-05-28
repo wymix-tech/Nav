@@ -15,8 +15,6 @@
               tag: NEW_TAG
           - name: show tag
             script: echo $NEW_TAG
-          - name: show tag res
-            script: cat tag_info.json
           - name: release
             type: git:release
             options:
