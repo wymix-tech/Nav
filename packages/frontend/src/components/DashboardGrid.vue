@@ -21,33 +21,34 @@ const MARGIN = 10
 
 // 屏幕方向检测：宽 > 高 = 横屏，否则竖屏
 const isLandscape = ref(window.innerWidth > window.innerHeight)
+const windowWidth = ref(window.innerWidth)
 
-function updateOrientation() {
+function updateLayout() {
+  windowWidth.value = window.innerWidth
   isLandscape.value = window.innerWidth > window.innerHeight
 }
 
 onMounted(() => {
-  updateOrientation()
-  window.addEventListener('resize', updateOrientation)
-  window.addEventListener('orientationchange', updateOrientation)
+  updateLayout()
+  window.addEventListener('resize', updateLayout)
+  window.addEventListener('orientationchange', updateLayout)
 })
 onUnmounted(() => {
-  window.removeEventListener('resize', updateOrientation)
-  window.removeEventListener('orientationchange', updateOrientation)
+  window.removeEventListener('resize', updateLayout)
+  window.removeEventListener('orientationchange', updateLayout)
 })
 
-const maxCols = computed(() => props.columns ?? 12)
-
-// 根据屏幕宽度确定网格列数（横屏模式）
-const gridCols = computed(() => {
-  const w = window.innerWidth
+// 根据屏幕宽度确定默认网格列数（仅在用户未自定义时生效）
+const defaultGridCols = computed(() => {
+  const w = windowWidth.value
   if (w >= 1200) return 12
   if (w >= 992) return 10
   if (w >= 768) return 8
   return 6
 })
 
-const activeCols = computed(() => Math.min(maxCols.value, gridCols.value))
+// 用户自定义列数优先，未设置时按屏幕宽度自动适配
+const activeCols = computed(() => props.columns ?? defaultGridCols.value)
 
 // 竖屏 → 堆叠；横屏 → CSS Grid
 const isStackMode = computed(() => !isLandscape.value)
@@ -93,7 +94,8 @@ const gridStyle = computed(() => {
 
 function widgetStyle(w: WidgetInstance) {
   if (isStackMode.value) {
-    return { width: '100%', minHeight: `${ROW_HEIGHT * 3}px` }
+    const h = w.layouts.lg?.h ?? 3
+    return { width: '100%', minHeight: `${ROW_HEIGHT * h}px` }
   }
   const l = getScaledLayout(w)
   return {
