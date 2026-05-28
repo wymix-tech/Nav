@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useDashboardStore } from '../stores/dashboardStore'
+import { useAuthStore } from '../stores/authStore'
 import type { DashboardBackground, BackgroundImage } from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
+const authStore = useAuthStore()
 
 const emit = defineEmits<{
   close: []
@@ -18,27 +20,40 @@ const bgColor = ref(dashboardStore.dashboard?.background?.color ?? '#0c1021')
 const bgImages = ref<BackgroundImage[]>(dashboardStore.dashboard?.background?.images ?? [])
 const slideshowInterval = ref(dashboardStore.dashboard?.background?.interval ?? 30)
 const newImageUrl = ref('')
+const uploading = ref(false)
 
 // 监听标题变化，实时更新 document.title
 watch(title, (val) => {
   document.title = val || 'Nav - 个人导航页'
 })
 
-function handleImageUpload(event: Event) {
+async function handleImageUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+  input.value = ''
 
-  const reader = new FileReader()
-  reader.onload = () => {
+  uploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: authStore.getAuthHeaders(),
+      body: formData,
+    })
+    if (!res.ok) throw new Error('上传失败')
+    const data = await res.json()
     bgImages.value.push({
       type: 'upload',
-      src: reader.result as string,
+      src: data.url,
       name: file.name,
     })
+  } catch (e) {
+    console.error('图片上传失败:', e)
+  } finally {
+    uploading.value = false
   }
-  reader.readAsDataURL(file)
-  input.value = ''
 }
 
 function addImageUrl() {
@@ -143,9 +158,9 @@ function cancel() {
         <div class="prefs-section">
           <label class="prefs-label">添加图片</label>
           <div class="image-actions">
-            <label class="upload-btn">
-              <input type="file" accept="image/*" @change="handleImageUpload" hidden />
-              <span>+ 上传图片</span>
+            <label class="upload-btn" :class="{ disabled: uploading }">
+              <input type="file" accept="image/*" @change="handleImageUpload" hidden :disabled="uploading" />
+              <span>{{ uploading ? '上传中...' : '+ 上传图片' }}</span>
             </label>
             <div class="url-row">
               <input
@@ -365,6 +380,11 @@ function cancel() {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(96, 165, 250, 0.3);
   color: var(--accent);
+}
+
+.upload-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .url-row {

@@ -143,6 +143,16 @@ function handleConfigUpdate(config: Record<string, any>) {
   padding: 20px;
 }
 
+@media (max-width: 480px) {
+  .widget-content {
+    padding: 10px;
+  }
+
+  .widget-toolbar {
+    padding: 4px 6px;
+  }
+}
+
 /* 配置弹窗 */
 .config-overlay {
   position: absolute;

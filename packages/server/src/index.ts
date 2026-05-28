@@ -4,12 +4,14 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { existsSync } from 'node:fs'
+import { existsSync, createReadStream } from 'node:fs'
+import { resolve, extname } from 'node:path'
 import './db/database.js'
 import authRoutes from './routes/auth.js'
 import dashboardRoutes from './routes/dashboards.js'
 import widgetRoutes from './routes/widgets.js'
 import installedWidgetRoutes from './routes/installedWidgets.js'
+import uploadRoutes from './routes/upload.js'
 
 const app = new Hono()
 
@@ -27,6 +29,24 @@ app.route('/api/auth', authRoutes)
 app.route('/api/dashboards', dashboardRoutes)
 app.route('/api', widgetRoutes)
 app.route('/api/installed-widgets', installedWidgetRoutes)
+app.route('/api/upload', uploadRoutes)
+
+// 上传文件静态服务
+const uploadDir = resolve(process.env.NAV_UPLOAD_DIR ?? '../uploads')
+const MIME_MAP: Record<string, string> = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+}
+app.get('/uploads/:filename', (c) => {
+  const filename = c.req.param('filename')
+  const filepath = resolve(uploadDir, filename)
+  if (!existsSync(filepath)) return c.notFound()
+  const ext = extname(filename).toLowerCase()
+  const mime = MIME_MAP[ext] ?? 'application/octet-stream'
+  c.header('Content-Type', mime)
+  c.header('Cache-Control', 'public, max-age=31536000, immutable')
+  return c.body(createReadStream(filepath) as any)
+})
 
 // 生产环境：serve 前端静态文件
 const publicDir = './public'

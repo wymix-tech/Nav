@@ -16,17 +16,21 @@ const props = defineProps<{
   visible: boolean
 }>()
 
-function createDefaultLayout(x: number, y: number): WidgetLayout {
-  return { x, y, w: 4, h: 3 }
+function createDefaultLayout(x: number, y: number, cols: number, w: number, h: number): WidgetLayout {
+  const clampedX = Math.max(0, Math.min(cols - w, x))
+  const clampedW = Math.max(1, Math.min(cols, w))
+  return { x: clampedX, y, w: clampedW, h }
 }
 
 function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
   const existingWidgets = dashboardStore.dashboard?.widgets ?? []
 
+  const lgCols = 12
+  const widgetW = 4
+  const widgetH = 3
+
   let bestX = 0
   let bestY = 0
-  const widgetW = 4
-  const maxCols = 12
 
   if (existingWidgets.length === 0) {
     bestX = 0
@@ -37,7 +41,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     bestX = lastLg.x + lastLg.w
     bestY = lastLg.y
 
-    if (bestX + widgetW > maxCols) {
+    if (bestX + widgetW > lgCols) {
       bestX = 0
       bestY = lastLg.y + lastLg.h
     }
@@ -49,10 +53,10 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     source,
     config: {},
     layouts: {
-      lg: createDefaultLayout(bestX, bestY),
-      md: createDefaultLayout(bestX, bestY),
-      sm: createDefaultLayout(0, bestY),
-      xs: createDefaultLayout(0, bestY),
+      lg: createDefaultLayout(bestX, bestY, lgCols, widgetW, widgetH),
+      md: { x: 0, y: 0, w: 1, h: 3 },
+      sm: { x: 0, y: 0, w: 1, h: 3 },
+      xs: { x: 0, y: 0, w: 1, h: 3 },
     },
   }
   dashboardStore.addWidget(instance)
