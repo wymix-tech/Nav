@@ -35,7 +35,7 @@ export class SyncAdapter implements StorageAdapter {
       title: data.title ?? 'Nav - 个人导航页',
       columns: data.columns,
       rowHeight: data.row_height,
-      background: data.background ?? {
+      background: data.background ? JSON.parse(data.background) : {
         mode: 'color',
         color: '#0c1021',
         images: [],
