@@ -56,6 +56,31 @@ watch(() => dashboardStore.dashboard?.title, (newTitle) => {
   document.title = newTitle || 'Nav - 个人导航页'
 }, { immediate: true })
 
+// 判断颜色是否为浅色
+function isLightColor(color: string): boolean {
+  const hex = color.replace('#', '')
+  if (hex.length === 3) {
+    const r = parseInt(hex[0] + hex[0], 16)
+    const g = parseInt(hex[1] + hex[1], 16)
+    const b = parseInt(hex[2] + hex[2], 16)
+    return (r * 299 + g * 587 + b * 114) / 1000 > 128
+  }
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128
+}
+
+// 背景亮度：浅色背景时切换主题
+const isLightBg = computed(() => {
+  const bg = dashboardStore.dashboard?.background
+  if (!bg || bg.mode === 'color' || bg.images.length === 0) {
+    return isLightColor(bg?.color ?? '#0c1021')
+  }
+  // 图片背景默认深色，用户如需浅色需手动设置纯色
+  return false
+})
+
 // 背景样式
 const bgStyle = computed(() => {
   const bg = dashboardStore.dashboard?.background
@@ -102,7 +127,7 @@ function toggleLibrary() {
 </script>
 
 <template>
-  <div class="app" :style="bgStyle">
+  <div class="app" :class="{ 'light-theme': isLightBg }" :style="bgStyle">
     <TopBar
       :editing="editing"
       :backend-available="backendAvailable"
