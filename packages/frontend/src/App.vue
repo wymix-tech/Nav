@@ -74,7 +74,7 @@ function isLightColor(color: string): boolean {
 // 背景亮度：浅色背景时切换主题
 const isLightBg = computed(() => {
   const bg = dashboardStore.dashboard?.background
-  if (!bg || bg.mode === 'color' || bg.images.length === 0) {
+  if (!bg || bg.mode === 'color' || !bg.images || bg.images.length === 0) {
     return isLightColor(bg?.color ?? '#0c1021')
   }
   // 图片背景默认深色，用户如需浅色需手动设置纯色
@@ -87,7 +87,7 @@ const bgStyle = computed(() => {
   if (!bg || bg.mode === 'color') {
     return { backgroundImage: 'none', backgroundColor: bg?.color ?? '#0c1021' }
   }
-  if (bg.images.length === 0) {
+  if (!bg.images || bg.images.length === 0) {
     return { backgroundImage: 'none', backgroundColor: bg?.color ?? '#0c1021' }
   }
   const img = bg.images[slideshowIndex.value % bg.images.length]
@@ -104,7 +104,7 @@ watch(() => dashboardStore.dashboard?.background, (bg) => {
   if (slideshowTimer) clearInterval(slideshowTimer)
   slideshowTimer = null
 
-  if (bg?.mode === 'slideshow' && bg.images.length > 1) {
+  if (bg?.mode === 'slideshow' && bg.images && bg.images.length > 1) {
     slideshowTimer = setInterval(() => {
       slideshowIndex.value = (slideshowIndex.value + 1) % bg.images.length
     }, (bg.interval ?? 30) * 1000)
