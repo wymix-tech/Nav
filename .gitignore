@@ -8,3 +8,5 @@ dist
 *.db-shm
 *.db-wal
 uploads/
+.pnpm-store
+*.tsbuildinfo
