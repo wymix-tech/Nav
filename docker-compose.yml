@@ -12,6 +12,7 @@ services:
       - NAV_JWT_SECRET=${NAV_JWT_SECRET}
       - NAV_PASSWORD=${NAV_PASSWORD}
       - NAV_DB_PATH=/data/nav.db
+      - NAV_UPLOAD_DIR=/data/uploads
       - NAV_CORS_ORIGIN=${NAV_CORS_ORIGIN:-}
     volumes:
       - nav-data:/data
