@@ -24,10 +24,17 @@ function createDefaultLayout(x: number, y: number, cols: number, w: number, h: n
 
 function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
   const existingWidgets = dashboardStore.dashboard?.widgets ?? []
+  const cols = dashboardStore.dashboard?.columns ?? 12
 
-  const lgCols = 12
-  const widgetW = 4
-  const widgetH = 3
+  // 根据列数确定组件默认尺寸
+  const defaultSizes: Record<string, { w: number; h: number }> = {
+    search:   { w: Math.min(Math.round(cols * 2 / 3), cols), h: 2 },
+    clock:    { w: Math.min(4, cols), h: 3 },
+    weather:  { w: Math.min(4, cols), h: 3 },
+    bookmark: { w: Math.min(4, cols), h: 3 },
+    monitor:  { w: Math.min(4, cols), h: 3 },
+  }
+  const size = defaultSizes[widgetId] ?? { w: Math.min(4, cols), h: 3 }
 
   let bestX = 0
   let bestY = 0
@@ -36,14 +43,27 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     bestX = 0
     bestY = 0
   } else {
-    const lastWidget = existingWidgets[existingWidgets.length - 1]
-    const lastLg = lastWidget.layouts.lg
-    bestX = lastLg.x + lastLg.w
-    bestY = lastLg.y
-
-    if (bestX + widgetW > lgCols) {
-      bestX = 0
-      bestY = lastLg.y + lastLg.h
+    // 找到第一个可用的空位
+    const occupied = new Set<string>()
+    for (const w of existingWidgets) {
+      const l = w.layouts.lg
+      for (let dy = 0; dy < l.h; dy++) {
+        for (let dx = 0; dx < l.w; dx++) {
+          occupied.add(`${l.x + dx},${l.y + dy}`)
+        }
+      }
+    }
+    let found = false
+    for (let y = 0; y < 50 && !found; y++) {
+      for (let x = 0; x <= cols - size.w && !found; x++) {
+        let canPlace = true
+        for (let dy = 0; dy < size.h && canPlace; dy++) {
+          for (let dx = 0; dx < size.w && canPlace; dx++) {
+            if (occupied.has(`${x + dx},${y + dy}`)) canPlace = false
+          }
+        }
+        if (canPlace) { bestX = x; bestY = y; found = true }
+      }
     }
   }
 
@@ -53,7 +73,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     source,
     config: {},
     layouts: {
-      lg: createDefaultLayout(bestX, bestY, lgCols, widgetW, widgetH),
+      lg: createDefaultLayout(bestX, bestY, cols, size.w, size.h),
       md: { x: 0, y: 0, w: 1, h: 3 },
       sm: { x: 0, y: 0, w: 1, h: 3 },
       xs: { x: 0, y: 0, w: 1, h: 3 },
