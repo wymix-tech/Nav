@@ -12,6 +12,7 @@ import dashboardRoutes from './routes/dashboards.js'
 import widgetRoutes from './routes/widgets.js'
 import installedWidgetRoutes from './routes/installedWidgets.js'
 import uploadRoutes from './routes/upload.js'
+import systemRoutes from './routes/system.js'
 
 const app = new Hono()
 
@@ -30,6 +31,7 @@ app.route('/api/dashboards', dashboardRoutes)
 app.route('/api', widgetRoutes)
 app.route('/api/installed-widgets', installedWidgetRoutes)
 app.route('/api/upload', uploadRoutes)
+app.route('/api/system', systemRoutes)
 
 // 上传文件静态服务
 const uploadDir = resolve(process.env.NAV_UPLOAD_DIR ?? '../uploads')

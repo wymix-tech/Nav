@@ -67,6 +67,7 @@ const builtinWidgets = [
   { id: 'clock', name: '时钟', icon: '🕐' },
   { id: 'weather', name: '天气', icon: '🌤️' },
   { id: 'bookmark', name: '书签', icon: '📑' },
+  { id: 'monitor', name: '监控', icon: '📊' },
 ]
 </script>
 
