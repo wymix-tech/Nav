@@ -19,6 +19,7 @@ const builtinComponents: Record<string, any> = {
   clock: defineAsyncComponent(() => import('../widgets/ClockWidget.vue')),
   weather: defineAsyncComponent(() => import('../widgets/WeatherWidget.vue')),
   bookmark: defineAsyncComponent(() => import('../widgets/BookmarkWidget.vue')),
+  monitor: defineAsyncComponent(() => import('../widgets/MonitorWidget.vue')),
 }
 
 // 外部组件从 CDN 加载
