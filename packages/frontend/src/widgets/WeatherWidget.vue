@@ -123,6 +123,8 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
     <!-- 天气卡片 -->
     <template v-else-if="weather">
       <div class="wc" :class="'t-' + weatherCode">
+        <!-- 编辑模式下显示配置入口 -->
+        <button v-if="editable" class="wc-cfg" @click.stop="showConfig = true" title="配置">⚙</button>
 
         <!-- 装饰性背景图标 -->
         <div class="deco-icon">
@@ -278,23 +280,57 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   overflow: hidden;
   border-radius: inherit;
   color: #fff;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-/* 渐变背景 */
+/* 渐变背景 — 半透明融入背景 */
 .wc {
-  background: linear-gradient(145deg, #3b82f6, #60a5fa, #93c5fd, #bfdbfe);
+  background: linear-gradient(145deg, rgba(59,130,246,0.6), rgba(96,165,250,0.5), rgba(147,197,253,0.4), rgba(191,219,254,0.3));
 }
 .wc.t-partly-cloudy {
-  background: linear-gradient(145deg, #4b6a8a, #6b8aad, #96adbf, #c5d2de);
+  background: linear-gradient(145deg, rgba(75,106,138,0.6), rgba(107,138,173,0.5), rgba(150,173,191,0.4), rgba(197,210,222,0.3));
 }
 .wc.t-cloudy {
-  background: linear-gradient(145deg, #475569, #64748b, #94a3b8, #cbd5e1);
+  background: linear-gradient(145deg, rgba(71,85,105,0.6), rgba(100,116,139,0.5), rgba(148,163,184,0.4), rgba(203,213,225,0.3));
 }
 .wc.t-rainy {
-  background: linear-gradient(145deg, #334155, #475569, #64748b, #94a3b8);
+  background: linear-gradient(145deg, rgba(51,65,85,0.65), rgba(71,85,105,0.55), rgba(100,116,139,0.45), rgba(148,163,184,0.35));
 }
 .wc.t-snowy {
-  background: linear-gradient(145deg, #6366f1, #818cf8, #a5b4fc, #c7d2fe);
+  background: linear-gradient(145deg, rgba(99,102,241,0.58), rgba(129,140,248,0.48), rgba(165,180,252,0.38), rgba(199,210,254,0.28));
+}
+
+/* 编辑模式下的配置按钮 */
+.wc-cfg {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.wc:hover .wc-cfg {
+  opacity: 1;
+}
+
+.wc-cfg:hover {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
 }
 
 /* 装饰性背景大图标 */
@@ -369,27 +405,27 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
 
 /* ---- 配置表单 ---- */
 .cfg { display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center; padding: 8px; box-sizing: border-box; }
-.cfg-lbl { font-size: 12px; color: #888; }
-.cfg-inp { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.06); color: #eee; font-size: 13px; outline: none; }
-.cfg-inp:focus { border-color: rgba(96,165,250,.4); box-shadow: 0 0 0 3px rgba(96,165,250,.1); }
+.cfg-lbl { font-size: 12px; color: rgba(255,255,255,0.6); }
+.cfg-inp { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.08); color: #eee; font-size: 13px; outline: none; }
+.cfg-inp:focus { border-color: rgba(96,165,250,.5); box-shadow: 0 0 0 3px rgba(96,165,250,.15); }
 .cfg-btns { display: flex; gap: 8px; margin-top: 4px; }
 .cfg-btn { flex: 1; padding: 8px; border-radius: 10px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; }
-.cfg-btn.no { background: rgba(255,255,255,.08); color: #aaa; }
-.cfg-btn.ok { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: #fff; }
+.cfg-btn.no { background: rgba(255,255,255,.1); color: rgba(255,255,255,0.7); }
+.cfg-btn.ok { background: rgba(96,165,250,0.8); color: #fff; }
 
 /* ---- 配置入口 ---- */
 .prompt { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; cursor: pointer; opacity: .5; }
 .prompt:hover { opacity: .9; }
 .prompt-icon { font-size: 20px; }
-.prompt-txt { font-size: 13px; color: #888; }
+.prompt-txt { font-size: 13px; color: rgba(255,255,255,0.6); }
 
 /* ---- 错误 ---- */
 .err { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; }
-.err-msg { color: #f87171; font-size: 13px; text-align: center; padding: 0 12px; }
-.err-retry { font-size: 12px; color: #60a5fa; cursor: pointer; text-decoration: underline; }
+.err-msg { color: #fca5a5; font-size: 13px; text-align: center; padding: 0 12px; }
+.err-retry { font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer; text-decoration: underline; }
 
 /* ---- 加载 ---- */
-.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: #888; font-size: 13px; }
-.spin { width: 26px; height: 26px; border: 2px solid rgba(255,255,255,.1); border-top-color: #60a5fa; border-radius: 50%; animation: spin .7s linear infinite; }
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: rgba(255,255,255,0.6); font-size: 13px; }
+.spin { width: 26px; height: 26px; border: 2px solid rgba(255,255,255,.15); border-top-color: rgba(255,255,255,0.7); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
