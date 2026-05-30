@@ -146,6 +146,7 @@ function toggleLibrary() {
         :editing="editing"
         :editable="!backendAvailable || authStore.isAuthenticated"
         :columns="dashboardStore.dashboard.columns"
+        :row-height="dashboardStore.dashboard.rowHeight"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
         @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
