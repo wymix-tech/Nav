@@ -97,6 +97,10 @@ function handleConfigUpdate(config: Record<string, any>) {
 }
 
 .widget-toolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
   justify-content: flex-end;
   gap: 4px;
