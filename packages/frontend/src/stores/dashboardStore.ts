@@ -72,6 +72,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }).catch(() => {})
   }
 
+  function clearAllWidgets() {
+    if (!dashboard.value) return
+    const ids = dashboard.value.widgets.map((w) => w.id)
+    dashboard.value.widgets = []
+    save()
+    for (const id of ids) {
+      fetch(`/api/widgets/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }).catch(() => {})
+    }
+  }
+
   function updateWidgetConfig(instanceId: string, config: Record<string, any>) {
     if (!dashboard.value) return
     const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
@@ -111,6 +124,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     save,
     addWidget,
     removeWidget,
+    clearAllWidgets,
     updateWidgetConfig,
     updateWidgetLayouts,
   }
