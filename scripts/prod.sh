@@ -28,6 +28,9 @@ LOG_FILE="nav.log"
 build() {
   echo "构建前端..."
   cd packages/frontend && pnpm build && cd ../..
+  echo "复制前端产物到后端..."
+  rm -rf packages/server/public
+  cp -r packages/frontend/dist packages/server/public
   echo "构建后端..."
   cd packages/server && pnpm build && cd ../..
   echo "构建完成"

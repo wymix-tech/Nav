@@ -276,7 +276,7 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   height: 100%;
   width: 100%;
   overflow: hidden;
-  border-radius: inherit;
+  border-radius: var(--radius-md, 16px);
   color: #fff;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

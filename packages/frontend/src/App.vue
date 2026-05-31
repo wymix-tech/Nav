@@ -6,6 +6,7 @@ import LoginDialog from './components/LoginDialog.vue'
 import WidgetLibrary from './components/WidgetLibrary.vue'
 import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
 import PreferencesPanel from './components/PreferencesPanel.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -21,6 +22,7 @@ const showInstall = ref(false)
 const showLibrary = ref(false)
 const isDragging = ref(false)
 const showPreferences = ref(false)
+const showClearConfirm = ref(false)
 const slideshowIndex = ref(0)
 let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
@@ -115,6 +117,13 @@ function toggleEdit() {
   editing.value = !editing.value
   showLibrary.value = editing.value
 }
+function handleClearAll() {
+  showClearConfirm.value = true
+}
+function confirmClearAll() {
+  dashboardStore.clearAllWidgets()
+  showClearConfirm.value = false
+}
 function handleLogin() { showLogin.value = true }
 async function handleLoginSuccess() {
   resetAdapter()
@@ -136,6 +145,7 @@ function toggleLibrary() {
       @login="handleLogin"
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
+      @clear-all="handleClearAll"
     />
 
     <main class="main">
@@ -174,6 +184,16 @@ function toggleLibrary() {
     <PreferencesPanel
       v-if="showPreferences"
       @close="showPreferences = false"
+    />
+
+    <ConfirmDialog
+      v-if="showClearConfirm"
+      title="清空所有组件"
+      message="此操作不可撤销，将删除页面上所有组件及其配置。"
+      confirm-text="清空"
+      danger
+      @confirm="confirmClearAll"
+      @cancel="showClearConfirm = false"
     />
   </div>
 </template>

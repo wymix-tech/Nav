@@ -15,6 +15,7 @@ const emit = defineEmits<{
   'login': []
   'show-preferences': []
   'toggle-library': []
+  'clear-all': []
 }>()
 
 const expanded = ref(false)
@@ -43,6 +44,7 @@ const expanded = ref(false)
           <button v-if="editing" class="panel-btn" @click="emit('toggle-library')">
             {{ libraryVisible ? '✕' : '☰' }}
           </button>
+          <button v-if="editing" class="panel-btn danger" @click="emit('clear-all')">清空</button>
           <button class="panel-btn" @click="emit('show-preferences')">⚙</button>
           <button class="panel-btn" @click="auth.logout()">退出登录</button>
         </template>
@@ -189,6 +191,16 @@ const expanded = ref(false)
   border: none;
   color: white;
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
+}
+
+.panel-btn.danger {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.2);
+}
+
+.panel-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .panel-btn.primary:hover {
