@@ -30,6 +30,9 @@ const showConfig = ref(false)
 const diskPaths = ref<string[]>(props.config.diskPaths ?? ['/'])
 const refreshInterval = ref(props.config.interval ?? 5)
 const newDiskPath = ref('')
+const displayName = ref(props.config.displayName ?? '')
+const editingName = ref(false)
+const nameInput = ref('')
 
 // 各项显示开关
 const showCPU = ref(props.config.showCPU ?? true)
@@ -93,9 +96,21 @@ function saveConfig() {
     showDisk: showDisk.value,
     showHeader: showHeader.value,
     showLoadavg: showLoadavg.value,
+    displayName: displayName.value,
   })
   showConfig.value = false
   startPolling()
+}
+
+function startEditName() {
+  nameInput.value = displayName.value || stats.value?.hostname || ''
+  editingName.value = true
+}
+
+function saveName() {
+  displayName.value = nameInput.value.trim()
+  editingName.value = false
+  emit('update:config', { ...props.config, displayName: displayName.value })
 }
 
 function startPolling() {
@@ -180,7 +195,23 @@ watch(() => props.editing, (val) => {
 
         <!-- 头部：主机名 + 运行时间 -->
         <div v-if="showHeader" class="head">
-          <span class="hostname">{{ stats.hostname }}</span>
+          <div class="hostname-wrap">
+            <input
+              v-if="editingName"
+              v-model="nameInput"
+              class="hostname-input"
+              maxlength="20"
+              @blur="saveName"
+              @keyup.enter="saveName"
+              @keyup.escape="editingName = false"
+            />
+            <span
+              v-else
+              class="hostname"
+              :class="{ editable: editable }"
+              @click="editable ? startEditName() : undefined"
+            >{{ displayName || stats.hostname }}</span>
+          </div>
           <span class="uptime">{{ stats.uptime }}</span>
         </div>
 
@@ -278,6 +309,14 @@ watch(() => props.editing, (val) => {
   align-items: center;
 }
 .hostname { font-size: 12px; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
+.hostname.editable { cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.15); }
+.hostname.editable:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.hostname-input {
+  font-size: 12px; font-weight: 600; font-family: var(--font-mono);
+  color: var(--text-primary); background: rgba(128,128,128,0.1);
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 1px 4px; outline: none; width: 120px;
+}
 .uptime { font-size: 10px; color: var(--text-muted); }
 
 /* ---- 指标行 ---- */

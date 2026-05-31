@@ -130,7 +130,9 @@ const gridRows = computed(() => {
     const l = getScaledLayout(w)
     if (l.y + l.h > maxY) maxY = l.y + l.h
   }
-  return Math.max(1, maxY)
+  // 至少撑满视口（减去顶部约 80px 留给 TopBar）
+  const minRows = Math.ceil((window.innerHeight - 80) / (ROW_HEIGHT.value + MARGIN))
+  return Math.max(1, maxY, minRows)
 })
 
 const gridStyle = computed(() => {
