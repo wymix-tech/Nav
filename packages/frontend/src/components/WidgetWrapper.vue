@@ -143,7 +143,8 @@ function handleConfigUpdate(config: Record<string, any>) {
 
 .widget-content {
   flex: 1;
-  overflow: visible;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 @media (max-width: 480px) {
