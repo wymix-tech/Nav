@@ -1,9 +1,29 @@
 import { Hono } from 'hono'
 import * as os from 'node:os'
 import { execSync } from 'node:child_process'
-import { statfsSync } from 'node:fs'
+import { statfsSync, readFileSync, existsSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const system = new Hono()
+
+// 从项目根目录 __APP_VERSION__ 文件读取本地版本号
+function readVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url))
+    // 开发环境: dist/routes/system.js → ../../ = packages/server → ../ = 项目根目录
+    // Docker 环境: dist/routes/system.js → ../../ = /app（Dockerfile COPY 到 /app）
+    const devPath = resolve(__dirname, '../../../__APP_VERSION__')
+    const dockerPath = resolve(__dirname, '../../__APP_VERSION__')
+    const versionPath = existsSync(dockerPath) ? dockerPath : devPath
+    if (existsSync(versionPath)) {
+      return readFileSync(versionPath, 'utf-8').trim()
+    }
+  } catch {
+    // ignore
+  }
+  return 'v0.1.0'
+}
 
 // CPU 使用率（采样 100ms）
 function getCpuUsage(): number {
@@ -92,6 +112,39 @@ function getUptime(): string {
   const m = Math.floor((s % 3600) / 60)
   return d > 0 ? `${d}天 ${h}时 ${m}分` : `${h}时 ${m}分`
 }
+
+// 当前版本信息（从 version.txt 文件读取，构建时写入）
+system.get('/version', (c) => {
+
+  const version = readVersion()
+  return c.json({
+    version,
+    repo: 'https://cnb.cool/wymix.top/nav',
+  })
+})
+
+// 代理 CNB API 获取最新 release，解决浏览器跨域 OPTIONS 预检问题
+system.get('/latest-release', async (c) => {
+  try {
+    // Token 掩码，运行时解码
+    const TOKEN_MASK = 'ZEpkQTFlZURBUGZNdnQxMDU0U3BVR21scjRi'
+    const token = Buffer.from(TOKEN_MASK, 'base64').toString('utf-8')
+    const res = await fetch('https://api.cnb.cool/wymix.top/nav/-/releases/latest', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.cnb.api+json',
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) {
+      return c.json({ error: '无法获取最新版本信息' }, 502)
+    }
+    const data = await res.json()
+    return c.json(data)
+  } catch {
+    return c.json({ error: '请求 CNB API 超时或失败' }, 504)
+  }
+})
 
 system.get('/stats', (c) => {
   const diskPaths = c.req.query('disks')
