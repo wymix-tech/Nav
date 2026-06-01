@@ -7,22 +7,24 @@ import { fileURLToPath } from 'node:url'
 
 const system = new Hono()
 
-// 从项目根目录 __APP_VERSION__ 文件读取本地版本号
+// 从项目根目录 __APP_VERSION__ 文件读取本地版本号（结果缓存）
+let cachedVersion: string | null = null
 function readVersion(): string {
+  if (cachedVersion !== null) return cachedVersion
   try {
     const __dirname = dirname(fileURLToPath(import.meta.url))
-    // 开发环境: dist/routes/system.js → ../../ = packages/server → ../ = 项目根目录
-    // Docker 环境: dist/routes/system.js → ../../ = /app（Dockerfile COPY 到 /app）
     const devPath = resolve(__dirname, '../../../__APP_VERSION__')
     const dockerPath = resolve(__dirname, '../../__APP_VERSION__')
     const versionPath = existsSync(dockerPath) ? dockerPath : devPath
     if (existsSync(versionPath)) {
-      return readFileSync(versionPath, 'utf-8').trim()
+      cachedVersion = readFileSync(versionPath, 'utf-8').trim()
+      return cachedVersion
     }
   } catch {
     // ignore
   }
-  return 'v0.1.0'
+  cachedVersion = 'v0.1.0'
+  return cachedVersion
 }
 
 // CPU 使用率（采样 100ms）
@@ -115,7 +117,6 @@ function getUptime(): string {
 
 // 当前版本信息（从 version.txt 文件读取，构建时写入）
 system.get('/version', (c) => {
-
   const version = readVersion()
   return c.json({
     version,
