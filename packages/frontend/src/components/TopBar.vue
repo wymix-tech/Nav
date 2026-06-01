@@ -16,6 +16,7 @@ const emit = defineEmits<{
   'show-preferences': []
   'toggle-library': []
   'clear-all': []
+  'show-about': []
 }>()
 
 const expanded = ref(false)
@@ -47,14 +48,17 @@ const expanded = ref(false)
           <button v-if="editing" class="panel-btn danger" @click="emit('clear-all')">清空</button>
           <button class="panel-btn" @click="emit('show-preferences')">⚙</button>
           <button class="panel-btn" @click="auth.logout()">退出登录</button>
+          <button class="panel-btn about-btn" @click="emit('show-about')">关于</button>
         </template>
         <template v-else-if="!backendAvailable">
           <button class="panel-btn primary" @click="emit('toggle-edit')">
             {{ editing ? '完成编辑' : '编辑' }}
           </button>
+          <button class="panel-btn about-btn" @click="emit('show-about')">关于</button>
         </template>
         <template v-else>
           <button class="panel-btn primary" @click="emit('login')">登录</button>
+          <button class="panel-btn about-btn" @click="emit('show-about')">关于</button>
         </template>
       </div>
     </div>
@@ -206,6 +210,21 @@ const expanded = ref(false)
 .panel-btn.primary:hover {
   box-shadow: 0 4px 16px rgba(96, 165, 250, 0.35);
   transform: translateY(-1px);
+}
+
+.panel-btn.about-btn {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: 4px;
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.panel-btn.about-btn:hover {
+  opacity: 1;
+  color: var(--accent);
+  background: rgba(96, 165, 250, 0.08);
 }
 
 /* 手机端：右下角 */

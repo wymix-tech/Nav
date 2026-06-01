@@ -1,6 +1,9 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
+# 接收外部构建参数
+ARG APP_VERSION
+
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # better-sqlite3 需要 native 编译工具
@@ -33,6 +36,9 @@ RUN pnpm --filter @nav/server deploy --prod /deploy
 # Stage 2: 生产运行时
 FROM node:20-alpine
 
+# 需要在此 stage 也声明 ARG 才能从 stage 1 传递过来
+ARG APP_VERSION
+
 WORKDIR /app
 
 # 复制 server 运行时（含生产依赖 + 编译产物）
@@ -40,6 +46,10 @@ COPY --from=builder /deploy .
 
 # 复制前端构建产物作为静态资源
 COPY --from=builder /app/packages/frontend/dist ./public
+
+# 写入构建时传入的版本号；未传入则用本地 __APP_VERSION__ 文件
+COPY __APP_VERSION__ ./
+RUN if [ -n "$APP_VERSION" ]; then echo "$APP_VERSION" > ./__APP_VERSION__; fi
 
 # 创建上传目录
 RUN mkdir -p /data/uploads
