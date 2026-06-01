@@ -7,6 +7,7 @@ import WidgetLibrary from './components/WidgetLibrary.vue'
 import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
 import PreferencesPanel from './components/PreferencesPanel.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
+import AboutDialog from './components/AboutDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
@@ -23,6 +24,7 @@ const showLibrary = ref(false)
 const isDragging = ref(false)
 const showPreferences = ref(false)
 const showClearConfirm = ref(false)
+const showAbout = ref(false)
 const slideshowIndex = ref(0)
 let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
@@ -146,6 +148,7 @@ function toggleLibrary() {
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
       @clear-all="handleClearAll"
+      @show-about="showAbout = true"
     />
 
     <main class="main">
@@ -194,6 +197,11 @@ function toggleLibrary() {
       danger
       @confirm="confirmClearAll"
       @cancel="showClearConfirm = false"
+    />
+
+    <AboutDialog
+      v-if="showAbout"
+      @close="showAbout = false"
     />
   </div>
 </template>
