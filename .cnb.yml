@@ -1,7 +1,9 @@
   main:
     # 触发事件为 push 事件
     pull_request.merged:
-      - stages:
+      - services:
+        - docker
+        stages:
           - name: auto-tag
             image: cnbcool/git-auto-tag:latest
             settings:
@@ -28,12 +30,9 @@
               title: $NEW_TAG
               descriptionFromFile: LATEST_CHANGELOG.md
               latest: true
-      - services:
-        - docker
-        stages:
         # 同名镜像构建&推送
           - name: Docker build
-            script: docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
+            script: docker build --build-arg APP_VERSION=$NEW_TAG -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
           - name: Docker push
             script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
 
