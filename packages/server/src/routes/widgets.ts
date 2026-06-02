@@ -20,13 +20,14 @@ widgets.post('/dashboards/:dashboardId/widgets', authMiddleware, async (c) => {
     source: body.source,
     config: body.config ?? {},
     layouts: body.layouts,
+    canvas: body.canvas ?? null,
   })
   return c.json({ id, ...body })
 })
 
 widgets.put('/widgets/:instanceId', authMiddleware, async (c) => {
   const body = await c.req.json()
-  q.updateWidgetInstance(c.req.param('instanceId')!, { config: body.config, layouts: body.layouts })
+  q.updateWidgetInstance(c.req.param('instanceId')!, { config: body.config, layouts: body.layouts, canvas: body.canvas })
   return c.json({ success: true })
 })
 

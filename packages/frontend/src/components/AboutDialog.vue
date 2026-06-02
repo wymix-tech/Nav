@@ -115,7 +115,7 @@ function openUrl(url: string) {
   <div class="about-overlay" @click.self="emit('close')">
     <div class="about-panel">
       <div class="about-header">
-        <h3>关于 Nav</h3>
+        <h3>关于 INFI.NAV</h3>
         <button class="close-btn" @click="emit('close')">✕</button>
       </div>
 
@@ -123,7 +123,7 @@ function openUrl(url: string) {
         <!-- 项目名称与版本 -->
         <div class="about-section">
           <div class="about-brand">
-            <span class="brand-name">Nav</span>
+            <span class="brand-name">INFI.NAV</span>
             <span class="brand-version">{{ appVersion }}</span>
           </div>
           <p class="brand-desc">个人导航页 — 可定制的仪表盘启动页</p>
@@ -197,7 +197,7 @@ function openUrl(url: string) {
       </div>
 
       <div class="about-footer">
-        <span class="footer-text">Nav — 让每一次出发都简单</span>
+        <span class="footer-text">INFI.NAV — 无限导航，无限可能</span>
       </div>
     </div>
   </div>

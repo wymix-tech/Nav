@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Dashboard, WidgetInstance } from '@nav/shared'
+import type { Dashboard, WidgetInstance, CanvasLayout } from '@nav/shared'
 import { getStorageAdapter } from '../services/storageAdapter'
 import { useAuthStore } from './authStore'
 
@@ -10,7 +10,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function load() {
     const adapter = await getStorageAdapter()
-    dashboard.value = await adapter.getDashboard()
+    const data = await adapter.getDashboard()
+    // 兼容旧数据
+    if (data && !data.layoutMode) data.layoutMode = 'canvas'
+    if (data && !data.viewport) {
+      data.viewport = { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
+    }
+    dashboard.value = data
     loading.value = false
   }
 
@@ -42,6 +48,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
           source: instance.source,
           config: instance.config,
           layouts: instance.layouts,
+          canvas: instance.canvas ?? null,
         }),
       })
       if (res.ok) {
@@ -107,6 +114,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  function updateWidgetCanvas(instanceId: string, canvas: CanvasLayout) {
+    if (!dashboard.value) return
+    const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
+    if (widget) {
+      widget.canvas = canvas
+      save()
+      fetch(`/api/widgets/${instanceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ canvas }),
+      }).catch(() => {})
+    }
+  }
+
   function updateWidgetLayouts(instanceId: string, layouts: WidgetInstance['layouts']) {
     if (!dashboard.value) return
     const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
@@ -132,6 +156,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     removeWidget,
     clearAllWidgets,
     updateWidgetConfig,
+    updateWidgetCanvas,
     updateWidgetLayouts,
   }
 })

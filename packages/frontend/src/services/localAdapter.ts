@@ -37,7 +37,7 @@ const db = new NavDatabase()
 const DEFAULT_DASHBOARD: Dashboard = {
   id: 'default',
   name: '我的导航',
-  title: 'Nav - 个人导航页',
+  title: 'INFI.NAV - 个人导航页',
   widgets: [],
   columns: 12,
   rowHeight: 80,
@@ -48,6 +48,8 @@ const DEFAULT_DASHBOARD: Dashboard = {
     interval: 30,
     index: 0,
   },
+  layoutMode: 'canvas',
+  viewport: { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 },
 }
 
 export class LocalAdapter implements StorageAdapter {

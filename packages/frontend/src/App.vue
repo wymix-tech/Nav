@@ -12,6 +12,7 @@ import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
 import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
+import CanvasControls from './components/CanvasControls.vue'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
@@ -57,7 +58,7 @@ function handleDragEnd() {
 
 // 自定义网页标题
 watch(() => dashboardStore.dashboard?.title, (newTitle) => {
-  document.title = newTitle || 'Nav - 个人导航页'
+  document.title = newTitle || 'INFI.NAV - 个人导航页'
 }, { immediate: true })
 
 // 判断颜色是否为浅色
@@ -135,6 +136,7 @@ async function handleLoginSuccess() {
 function toggleLibrary() {
   showLibrary.value = !showLibrary.value
 }
+
 </script>
 
 <template>
@@ -151,7 +153,7 @@ function toggleLibrary() {
       @show-about="showAbout = true"
     />
 
-    <main class="main">
+    <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' }">
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
@@ -160,11 +162,18 @@ function toggleLibrary() {
         :editable="!backendAvailable || authStore.isAuthenticated"
         :columns="dashboardStore.dashboard.columns"
         :row-height="dashboardStore.dashboard.rowHeight"
+        :layout-mode="dashboardStore.dashboard.layoutMode"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
         @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
+        @update-canvas="(id, c) => dashboardStore.updateWidgetCanvas(id, c)"
       />
     </main>
+
+    <CanvasControls
+      v-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
+      :widgets="dashboardStore.dashboard?.widgets ?? []"
+    />
 
     <WidgetLibrary
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
@@ -215,6 +224,10 @@ function toggleLibrary() {
 .main {
   min-height: 100vh;
   padding: 24px;
+}
+
+.main.canvas-mode {
+  padding: 0;
 }
 
 @media (max-width: 768px) {

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import { useDashboardStore } from '../stores/dashboardStore'
+import { useCanvasStore } from '../stores/canvasStore'
 import type { WidgetInstance, WidgetLayout } from '@nav/shared'
 
 const widgetStore = useWidgetStore()
@@ -78,6 +79,37 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
       sm: { x: 0, y: 0, w: 1, h: 3 },
       xs: { x: 0, y: 0, w: 1, h: 3 },
     },
+  }
+  const layoutMode = dashboardStore.dashboard?.layoutMode ?? 'grid'
+  if (layoutMode === 'canvas') {
+    const canvasStore = useCanvasStore()
+    const vp = canvasStore.getViewport()
+    const newW = 320
+    const newH = 240
+    let newX = Math.round(-vp.panX / vp.zoom + window.innerWidth / vp.zoom / 2 - newW / 2)
+    let newY = Math.round(-vp.panY / vp.zoom + window.innerHeight / vp.zoom / 2 - newH / 2)
+
+    // 检测重叠，找到空位
+    const SNAP = 20
+    newX = Math.round(newX / SNAP) * SNAP
+    newY = Math.round(newY / SNAP) * SNAP
+    const existing = existingWidgets.filter((w) => w.canvas).map((w) => w.canvas!)
+    let hasOverlap = true
+    let attempts = 0
+    while (hasOverlap && attempts < 50) {
+      hasOverlap = false
+      for (const e of existing) {
+        if (newX < e.x + e.w && newX + newW > e.x && newY < e.y + e.h && newY + newH > e.y) {
+          hasOverlap = true
+          newX += SNAP
+          if (newX + newW > 3000) { newX = 0; newY += SNAP }
+          break
+        }
+      }
+      attempts++
+    }
+
+    instance.canvas = { x: newX, y: newY, w: newW, h: newH }
   }
   dashboardStore.addWidget(instance)
 }

@@ -19,11 +19,13 @@ dashboards.get('/', (c) => {
 dashboards.put('/:id', authMiddleware, async (c) => {
   const body = await c.req.json()
   const name = typeof body.name === 'string' ? body.name : '我的导航'
-  const title = typeof body.title === 'string' ? body.title : 'Nav - 个人导航页'
+  const title = typeof body.title === 'string' ? body.title : 'INFI.NAV - 个人导航页'
   const columns = typeof body.columns === 'number' ? body.columns : 12
   const rowHeight = typeof body.rowHeight === 'number' ? body.rowHeight : 80
   const background = body.background ? JSON.stringify(body.background) : '{}'
-  q.upsertDashboard({ id: c.req.param('id')!, name, title, columns, rowHeight, background })
+  const layoutMode = typeof body.layoutMode === 'string' ? body.layoutMode : 'canvas'
+  const viewport = body.viewport ? JSON.stringify(body.viewport) : '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}'
+  q.upsertDashboard({ id: c.req.param('id')!, name, title, columns, rowHeight, background, layoutMode, viewport })
   return c.json({ success: true })
 })
 
