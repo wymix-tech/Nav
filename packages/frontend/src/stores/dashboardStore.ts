@@ -72,16 +72,22 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }).catch(() => {})
   }
 
-  function clearAllWidgets() {
+  async function clearAllWidgets() {
     if (!dashboard.value) return
     const ids = dashboard.value.widgets.map((w) => w.id)
     dashboard.value.widgets = []
     save()
-    for (const id of ids) {
-      fetch(`/api/widgets/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }).catch(() => {})
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        fetch(`/api/widgets/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        })
+      )
+    )
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed > 0) {
+      console.warn(`清空组件：${failed}/${ids.length} 个删除请求失败`)
     }
   }
 

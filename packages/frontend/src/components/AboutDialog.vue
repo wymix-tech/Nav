@@ -14,40 +14,44 @@ const checkingUpdate = ref(false)
 const hasUpdate = ref<boolean | null>(null)
 const latestVersion = ref('')
 const updateError = ref(false)
+
 onMounted(async () => {
-  // 并行获取当前版本（后端）和最新版本（后端代理）
   await Promise.allSettled([fetchCurrentVersion(), fetchLatestRelease()])
 })
 
+// 解析 semver 字符串为可比较的数字数组
+function parseSemver(v: string): number[] {
+  const clean = v.replace(/^v/, '')
+  return clean.split('.').map(Number)
+}
+
+function isNewer(a: string, b: string): boolean {
+  const pa = parseSemver(a)
+  const pb = parseSemver(b)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] ?? 0
+    const nb = pb[i] ?? 0
+    if (na > nb) return true
+    if (na < nb) return false
+  }
+  return false
+}
+
 async function fetchCurrentVersion() {
   try {
-    const res = await fetch('/api/system/version', {
-      signal: AbortSignal.timeout(3000),
-    })
+    const res = await fetch('/api/system/version', { signal: AbortSignal.timeout(3000) })
     if (!res.ok) return
     const data = await res.json()
-    if (data.version) {
-      appVersion.value = data.version
-    }
-  } catch {
-    // 保持默认版本号
-  }
+    if (data.version) appVersion.value = data.version
+  } catch { /* 保持默认版本号 */ }
 }
 
 async function fetchLatestRelease() {
-  // 通过后端代理获取 CNB 最新版本，避免浏览器跨域 OPTIONS 预检问题
   try {
-    const res = await fetch('/api/system/latest-release', {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) {
-      // 降级到静态 changelog
-      setStaticChangelog()
-      return
-    }
+    const res = await fetch('/api/system/latest-release', { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) { setStaticChangelog(); return }
     const data = await res.json()
     latestVersion.value = data.tag_name || ''
-    // 解析 body 为 changelog 列表
     changelog.value = parseReleaseBody(data.body || '')
   } catch {
     setStaticChangelog()
@@ -55,23 +59,20 @@ async function fetchLatestRelease() {
 }
 
 function parseReleaseBody(body: string): string[] {
+  const fallback = setStaticChangelog()
   const lines: string[] = []
-  // 按行分割，过滤空行和纯标题行
   for (const raw of body.split('\n')) {
     const line = raw.trim()
     if (!line || line.startsWith('### ')) continue
-    // 去掉 markdown 链接语法，保留文字部分
     const clean = line
       .replace(/\[\[`([^`]+)`\]\([^)]+\)\]/g, '$1')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/`([^`]+)`/g, '$1')
       .replace(/^\*\*-\*\*\s*/, '')
       .trim()
-    if (clean) {
-      lines.push(clean)
-    }
+    if (clean) lines.push(clean)
   }
-  return lines.length > 0 ? lines : setStaticChangelog()
+  return lines.length > 0 ? lines : fallback
 }
 
 function setStaticChangelog(): string[] {
@@ -81,30 +82,21 @@ function setStaticChangelog(): string[] {
     '支持图片与轮播背景',
     '支持本地离线使用与后端同步',
   ]
-  if (changelog.value.length === 0) {
-    changelog.value = fallback
-  }
+  if (changelog.value.length === 0) changelog.value = fallback
   return fallback
 }
 
 async function checkUpdate() {
-  if (checkingUpdate.value) return // 防止重复点击
+  if (checkingUpdate.value) return
   checkingUpdate.value = true
   hasUpdate.value = null
   updateError.value = false
-
   try {
-    const res = await fetch('/api/system/latest-release', {
-      signal: AbortSignal.timeout(8000),
-    })
+    const res = await fetch('/api/system/latest-release', { signal: AbortSignal.timeout(8000) })
     if (!res.ok) throw new Error('无法获取版本信息')
     const data = await res.json()
     latestVersion.value = data.tag_name || ''
-    if (latestVersion.value && latestVersion.value !== appVersion.value) {
-      hasUpdate.value = true
-    } else {
-      hasUpdate.value = false
-    }
+    hasUpdate.value = !!(latestVersion.value && isNewer(latestVersion.value, appVersion.value))
   } catch {
     updateError.value = true
     hasUpdate.value = null
@@ -119,6 +111,7 @@ function openUrl(url: string) {
 </script>
 
 <template>
+  <Teleport to="body">
   <div class="about-overlay" @click.self="emit('close')">
     <div class="about-panel">
       <div class="about-header">
@@ -208,6 +201,7 @@ function openUrl(url: string) {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -234,10 +228,10 @@ function openUrl(url: string) {
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: var(--shadow-lg);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow: hidden;
 }
 
 .about-header {
@@ -277,6 +271,10 @@ function openUrl(url: string) {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .about-section {
