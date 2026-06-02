@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { WidgetInstance, CanvasLayout } from '@nav/shared'
 import { useCanvasStore } from '../stores/canvasStore'
+import { useDashboardStore } from '../stores/dashboardStore'
 import WidgetWrapper from './WidgetWrapper.vue'
 
 const props = defineProps<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const canvasStore = useCanvasStore()
+const dashboardStore = useDashboardStore()
 
 // --- 引用 ---
 const containerRef = ref<HTMLElement | null>(null)
@@ -80,9 +82,26 @@ onMounted(() => {
   if (contentRef.value) {
     canvasStore.canvasEl = contentRef.value as HTMLElement
   }
+  // 从 dashboard 恢复 viewport
+  const vp = dashboardStore.dashboard?.viewport
+  if (vp) canvasStore.restoreFromViewport(vp)
   document.addEventListener('keydown', onKeyDown)
   document.addEventListener('keyup', onKeyUp)
 })
+
+// --- viewport 持久化（防抖 500ms） ---
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+function debouncedSaveViewport() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    if (dashboardStore.dashboard) {
+      dashboardStore.dashboard.viewport = canvasStore.getViewport()
+      dashboardStore.save()
+    }
+  }, 500)
+}
+
+watch([() => canvasStore.panX, () => canvasStore.panY, () => canvasStore.zoom], debouncedSaveViewport)
 
 onUnmounted(() => {
   canvasStore.canvasEl = null

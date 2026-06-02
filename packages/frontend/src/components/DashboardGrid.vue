@@ -431,7 +431,7 @@ function onResizeEnd() {
 <template>
   <div class="dashboard-grid">
     <CanvasGrid
-      v-if="layoutMode === 'canvas'"
+      v-if="layoutMode === 'canvas' && !isStackMode"
       :widgets="widgets"
       :editing="editing"
       :editable="editable"
