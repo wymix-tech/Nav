@@ -26,7 +26,6 @@ const contentRef = ref<HTMLElement | null>(null)
 
 // --- 平移状态 ---
 const isPanning = ref(false)
-const spaceHeld = ref(false)
 let panStartX = 0
 let panStartY = 0
 let panOriginX = 0
@@ -85,8 +84,6 @@ onMounted(() => {
   // 从 dashboard 恢复 viewport
   const vp = dashboardStore.dashboard?.viewport
   if (vp) canvasStore.restoreFromViewport(vp)
-  document.addEventListener('keydown', onKeyDown)
-  document.addEventListener('keyup', onKeyUp)
 })
 
 // --- viewport 持久化（防抖 500ms） ---
@@ -105,27 +102,10 @@ watch([() => canvasStore.panX, () => canvasStore.panY, () => canvasStore.zoom], 
 
 onUnmounted(() => {
   canvasStore.canvasEl = null
-  document.removeEventListener('keydown', onKeyDown)
-  document.removeEventListener('keyup', onKeyUp)
   removePanListeners()
   removeDragListeners()
   removeResizeListeners()
 })
-
-// --- 键盘事件：空格键控制平移模式 ---
-function onKeyDown(e: KeyboardEvent) {
-  if (e.code === 'Space' && !e.repeat) {
-    e.preventDefault()
-    spaceHeld.value = true
-  }
-}
-
-function onKeyUp(e: KeyboardEvent) {
-  if (e.code === 'Space') {
-    spaceHeld.value = false
-    if (isPanning.value) endPan()
-  }
-}
 
 // --- 平移 ---
 function startPan(clientX: number, clientY: number) {
@@ -160,8 +140,8 @@ function removePanListeners() {
 
 // --- 容器指针事件：触发平移/缩放 ---
 function onContainerPointerDown(e: PointerEvent) {
-  // 中键或空格+左键 → 平移
-  if (e.button === 1 || (e.button === 0 && spaceHeld.value)) {
+  // 左键点击画布背景（非组件区域）→ 平移；中键也可平移
+  if (e.button === 0 || e.button === 1) {
     e.preventDefault()
     startPan(e.clientX, e.clientY)
     return
@@ -307,7 +287,7 @@ function widgetStyle(widget: WidgetInstance) {
   <div
     ref="containerRef"
     class="canvas-container"
-    :class="{ panning: isPanning || spaceHeld }"
+    :class="{ panning: isPanning }"
     @pointerdown="onContainerPointerDown"
     @wheel.prevent="onContainerWheel"
     @dblclick="onDoubleClick"
