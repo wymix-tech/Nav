@@ -183,7 +183,7 @@ function toggleLayoutMode() {
       @toggle-layout-mode="toggleLayoutMode"
     />
 
-    <main class="main">
+    <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' }">
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
@@ -254,6 +254,10 @@ function toggleLayoutMode() {
 .main {
   min-height: 100vh;
   padding: 24px;
+}
+
+.main.canvas-mode {
+  padding: 0;
 }
 
 @media (max-width: 768px) {
