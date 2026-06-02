@@ -70,9 +70,10 @@ function widgetRect(c: CanvasLayout) {
 
 // 当前视口在 minimap 中的矩形
 const viewportRect = computed(() => {
-  const el = canvas.canvasEl
-  if (!el) return null
-  const rect = el.getBoundingClientRect()
+  // 用容器元素（canvas-container）的尺寸，而不是 content 元素
+  const container = document.querySelector('.canvas-container') as HTMLElement | null
+  if (!container) return null
+  const rect = container.getBoundingClientRect()
   const zoom = canvas.clampedZoom
 
   // 屏幕视口 → 画布坐标
@@ -84,8 +85,8 @@ const viewportRect = computed(() => {
   return {
     left: (canvasLeft - bounds.value.minX) * scale.value + offset.value.x,
     top: (canvasTop - bounds.value.minY) * scale.value + offset.value.y,
-    width: (canvasRight - canvasLeft) * scale.value,
-    height: (canvasBottom - canvasTop) * scale.value,
+    width: Math.max(4, (canvasRight - canvasLeft) * scale.value),
+    height: Math.max(4, (canvasBottom - canvasTop) * scale.value),
   }
 })
 
