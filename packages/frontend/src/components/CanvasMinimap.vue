@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import type { WidgetInstance, CanvasLayout } from '@nav/shared'
 import { useCanvasStore } from '../stores/canvasStore'
 
 const props = defineProps<{
   widgets: WidgetInstance[]
-  visible: boolean
-}>()
-
-const emit = defineEmits<{
-  'update:visible': [val: boolean]
 }>()
 
 const canvas = useCanvasStore()
@@ -170,18 +165,16 @@ function fitMinimap() {
 </script>
 
 <template>
-  <Transition name="minimap-fade">
-    <div v-if="visible" class="minimap" ref="minimapEl">
-      <div class="minimap-header">
-        <span class="minimap-title">全景</span>
-        <div class="minimap-zoom-btns">
-          <button class="zoom-btn" @click="zoomMinimap(-0.2)" title="缩小">−</button>
-          <button class="zoom-btn" @click="fitMinimap" title="适应">⊙</button>
-          <button class="zoom-btn" @click="zoomMinimap(0.2)" title="放大">+</button>
-        </div>
-        <button class="minimap-close" @click="emit('update:visible', false)">✕</button>
+  <div class="minimap" ref="minimapEl">
+    <div class="minimap-header">
+      <span class="minimap-title">全景</span>
+      <div class="minimap-zoom-btns">
+        <button class="zoom-btn" @click="zoomMinimap(-0.2)" title="缩小">−</button>
+        <button class="zoom-btn" @click="fitMinimap" title="适应">⊙</button>
+        <button class="zoom-btn" @click="zoomMinimap(0.2)" title="放大">+</button>
       </div>
-      <div class="minimap-body" @pointerdown="onMinimapBgClick">
+    </div>
+    <div class="minimap-body" @pointerdown="onMinimapBgClick">
         <!-- 组件缩略 -->
         <div
           v-for="(style, i) in widgetStyles"
@@ -204,15 +197,11 @@ function fitMinimap() {
         />
       </div>
     </div>
-  </Transition>
+  </div>
 </template>
 
 <style scoped>
 .minimap {
-  position: fixed;
-  top: 24px;
-  right: 24px;
-  z-index: 100;
   width: 220px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(16px);
@@ -266,26 +255,6 @@ function fitMinimap() {
   color: var(--text-primary);
 }
 
-.minimap-close {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  background: none;
-  color: var(--text-muted);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.minimap-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-}
-
 .minimap-body {
   position: relative;
   width: 220px;
@@ -320,15 +289,4 @@ function fitMinimap() {
   box-shadow: 0 0 12px rgba(96, 165, 250, 0.4);
 }
 
-/* 动画 */
-.minimap-fade-enter-active,
-.minimap-fade-leave-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.minimap-fade-enter-from,
-.minimap-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.95);
-}
 </style>

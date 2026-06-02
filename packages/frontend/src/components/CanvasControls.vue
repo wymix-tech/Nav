@@ -19,40 +19,52 @@ function getCanvasRects() {
 </script>
 
 <template>
-  <div class="canvas-controls">
-    <button class="ctrl-btn" title="缩小" @click="canvas.zoomCenter(-0.1)">−</button>
-    <span class="zoom-label">{{ Math.round(canvas.clampedZoom * 100) }}%</span>
-    <button class="ctrl-btn" title="放大" @click="canvas.zoomCenter(0.1)">+</button>
+  <div class="canvas-controls-wrap">
+    <!-- 小地图（点击展开/收起） -->
+    <Transition name="minimap-slide">
+      <CanvasMinimap
+        v-if="showMinimap"
+        :widgets="props.widgets"
+      />
+    </Transition>
 
-    <div class="ctrl-divider" />
+    <!-- 工具栏 -->
+    <div class="canvas-controls">
+      <button class="ctrl-btn" title="缩小" @click="canvas.zoomCenter(-0.1)">−</button>
+      <span class="zoom-label">{{ Math.round(canvas.clampedZoom * 100) }}%</span>
+      <button class="ctrl-btn" title="放大" @click="canvas.zoomCenter(0.1)">+</button>
 
-    <button class="ctrl-btn" title="适配全部" @click="canvas.fitAll(getCanvasRects())">⊞</button>
-    <button class="ctrl-btn" title="重置视图" @click="canvas.resetView()">⊙</button>
-    <button class="ctrl-btn" title="设为首页" @click="canvas.setHomeAsCurrent()">⌂</button>
+      <div class="ctrl-divider" />
 
-    <div class="ctrl-divider" />
+      <button class="ctrl-btn" title="适配全部" @click="canvas.fitAll(getCanvasRects())">⊞</button>
+      <button class="ctrl-btn" title="重置视图" @click="canvas.resetView()">⊙</button>
+      <button class="ctrl-btn" title="设为首页" @click="canvas.setHomeAsCurrent()">⌂</button>
 
-    <button
-      class="ctrl-btn"
-      :class="{ active: showMinimap }"
-      title="全景导航"
-      @click="showMinimap = !showMinimap"
-    >◫</button>
+      <div class="ctrl-divider" />
+
+      <button
+        class="ctrl-btn"
+        :class="{ active: showMinimap }"
+        title="全景导航"
+        @click="showMinimap = !showMinimap"
+      >◫</button>
+    </div>
   </div>
-
-  <CanvasMinimap
-    :widgets="props.widgets"
-    :visible="showMinimap"
-    @update:visible="showMinimap = $event"
-  />
 </template>
 
 <style scoped>
-.canvas-controls {
+.canvas-controls-wrap {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.canvas-controls {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -113,9 +125,21 @@ function getCanvasRects() {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* 移动端适配 */
+/* 小地图展开/收起动画 */
+.minimap-slide-enter-active,
+.minimap-slide-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: bottom right;
+}
+
+.minimap-slide-enter-from,
+.minimap-slide-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+}
+
 @media (max-width: 640px) {
-  .canvas-controls {
+  .canvas-controls-wrap {
     bottom: 80px;
   }
 }
