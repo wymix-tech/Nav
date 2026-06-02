@@ -72,7 +72,7 @@ const gridBgStyle = computed(() => {
   return {
     backgroundSize: `${dotSpacing}px ${dotSpacing}px`,
     backgroundPosition: `${canvasStore.panX}px ${canvasStore.panY}px`,
-    backgroundImage: `radial-gradient(circle, rgba(255, 255, 255, 0.12) ${dotSize}px, transparent ${dotSize}px)`,
+    backgroundImage: `radial-gradient(circle, rgba(255, 255, 255, 0.18) ${dotSize}px, transparent ${dotSize}px)`,
   }
 })
 
@@ -292,8 +292,8 @@ function widgetStyle(widget: WidgetInstance) {
     @wheel.prevent="onContainerWheel"
     @dblclick="onDoubleClick"
   >
-    <!-- 点阵网格背景 -->
-    <div class="canvas-grid-bg" :style="gridBgStyle" />
+    <!-- 点阵网格背景（仅拖拽时显示） -->
+    <div class="canvas-grid-bg" :class="{ visible: isPanning }" :style="gridBgStyle" />
 
     <!-- 画布内容层 -->
     <div ref="contentRef" class="canvas-content" :style="contentTransform">
@@ -358,6 +358,12 @@ function widgetStyle(widget: WidgetInstance) {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.canvas-grid-bg.visible {
+  opacity: 1;
 }
 
 /* 画布内容层：平移和缩放 */
