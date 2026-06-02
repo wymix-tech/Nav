@@ -362,7 +362,7 @@ function widgetStyle(widget: WidgetInstance) {
 .canvas-container {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100vh;
   overflow: hidden;
   user-select: none;
   touch-action: none;
