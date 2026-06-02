@@ -37,7 +37,7 @@ const db = new NavDatabase()
 const DEFAULT_DASHBOARD: Dashboard = {
   id: 'default',
   name: '我的导航',
-  title: 'Nav - 个人导航页',
+  title: 'INFI.NAV - 个人导航页',
   widgets: [],
   columns: 12,
   rowHeight: 80,

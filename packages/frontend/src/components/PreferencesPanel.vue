@@ -11,7 +11,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
+const title = ref(dashboardStore.dashboard?.title ?? 'INFI.NAV - 个人导航页')
 const layoutMode = ref<'grid' | 'canvas'>(dashboardStore.dashboard?.layoutMode ?? 'canvas')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
@@ -25,7 +25,7 @@ const uploading = ref(false)
 
 // 监听标题变化，实时更新 document.title
 watch(title, (val) => {
-  document.title = val || 'Nav - 个人导航页'
+  document.title = val || 'INFI.NAV - 个人导航页'
 })
 
 async function handleImageUpload(event: Event) {
@@ -130,7 +130,7 @@ function cancel() {
           v-model="title"
           type="text"
           class="prefs-input"
-          placeholder="Nav - 个人导航页"
+          placeholder="INFI.NAV - 个人导航页"
         />
       </div>
 

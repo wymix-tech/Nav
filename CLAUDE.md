@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-个人导航页（Nav），支持拖拽布局、组件化扩展、跨设备同步和组件商店。用户可从组件库中选择组件（搜索框、时钟、天气、书签）自由排列在页面上，第三方开发者可通过 GitHub 仓库发布自定义组件。
+无限个人导航页（INFI.NAV），支持拖拽布局、组件化扩展、跨设备同步和组件商店。用户可从组件库中选择组件（搜索框、时钟、天气、书签）自由排列在页面上，第三方开发者可通过 GitHub 仓库发布自定义组件。
 
 设计规格：`docs/superpowers/specs/2026-05-16-personal-nav-dashboard-design.md`
 实现计划：`docs/superpowers/plans/2026-05-16-personal-nav-dashboard.md`

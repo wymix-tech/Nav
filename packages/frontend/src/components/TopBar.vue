@@ -36,7 +36,7 @@ const expanded = ref(false)
 
     <!-- 展开内容 -->
     <div class="panel-content">
-      <div class="panel-brand">Nav</div>
+      <div class="panel-brand">INFI.NAV</div>
       <div class="panel-actions">
         <template v-if="auth.isAuthenticated">
           <button class="panel-btn primary" @click="emit('toggle-edit')">

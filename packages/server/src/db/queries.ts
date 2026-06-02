@@ -18,7 +18,7 @@ export function upsertDashboard(d: { id: string; name: string; title?: string; c
       layout_mode = excluded.layout_mode,
       viewport = excluded.viewport,
       updated_at = CURRENT_TIMESTAMP
-  `).run(d.id, d.name, d.title ?? 'Nav - 个人导航页', d.columns, d.rowHeight, d.background ?? '{}', d.layoutMode ?? 'canvas', d.viewport ?? '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}')
+  `).run(d.id, d.name, d.title ?? 'INFI.NAV - 个人导航页', d.columns, d.rowHeight, d.background ?? '{}', d.layoutMode ?? 'canvas', d.viewport ?? '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}')
 }
 
 // Widget Instances

@@ -58,7 +58,7 @@ function handleDragEnd() {
 
 // 自定义网页标题
 watch(() => dashboardStore.dashboard?.title, (newTitle) => {
-  document.title = newTitle || 'Nav - 个人导航页'
+  document.title = newTitle || 'INFI.NAV - 个人导航页'
 }, { immediate: true })
 
 // 判断颜色是否为浅色

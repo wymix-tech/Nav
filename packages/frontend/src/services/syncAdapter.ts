@@ -32,7 +32,7 @@ export class SyncAdapter implements StorageAdapter {
     return {
       id: data.id,
       name: data.name,
-      title: data.title ?? 'Nav - 个人导航页',
+      title: data.title ?? 'INFI.NAV - 个人导航页',
       columns: data.columns,
       rowHeight: data.row_height,
       background: data.background ? JSON.parse(data.background) : {
