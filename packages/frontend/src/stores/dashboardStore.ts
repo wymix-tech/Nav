@@ -12,7 +12,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     const adapter = await getStorageAdapter()
     const data = await adapter.getDashboard()
     // 兼容旧数据
-    if (data && !data.layoutMode) data.layoutMode = 'grid'
+    if (data && !data.layoutMode) data.layoutMode = 'canvas'
     if (data && !data.viewport) {
       data.viewport = { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
     }

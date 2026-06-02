@@ -49,7 +49,7 @@ export class SyncAdapter implements StorageAdapter {
         config: JSON.parse(w.config ?? '{}'),
         layouts: JSON.parse(w.layouts ?? '{}'),
       })),
-      layoutMode: data.layout_mode ?? 'grid',
+      layoutMode: data.layout_mode ?? 'canvas',
       viewport: data.viewport ? JSON.parse(data.viewport) : { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 },
     }
   }

@@ -137,34 +137,6 @@ function toggleLibrary() {
   showLibrary.value = !showLibrary.value
 }
 
-function toggleLayoutMode() {
-  if (!dashboardStore.dashboard) return
-  const newMode = dashboardStore.dashboard.layoutMode === 'canvas' ? 'grid' : 'canvas'
-  dashboardStore.dashboard.layoutMode = newMode
-
-  // 切换到画布模式时，将没有 canvas 坐标的组件从网格坐标转换为像素坐标
-  if (newMode === 'canvas') {
-    const cols = dashboardStore.dashboard.columns ?? 12
-    const rowH = dashboardStore.dashboard.rowHeight ?? 80
-    const margin = 10
-    const containerW = window.innerWidth - 48 // 减去两侧 padding
-    const colW = (containerW - (cols + 1) * margin) / cols
-
-    for (const w of dashboardStore.dashboard.widgets) {
-      if (!w.canvas) {
-        const lg = w.layouts.lg
-        w.canvas = {
-          x: Math.round(lg.x * (colW + margin) + margin),
-          y: Math.round(lg.y * (rowH + margin) + margin),
-          w: Math.round(lg.w * (colW + margin) - margin),
-          h: Math.round(lg.h * (rowH + margin) - margin),
-        }
-      }
-    }
-  }
-
-  dashboardStore.save()
-}
 </script>
 
 <template>
@@ -173,14 +145,12 @@ function toggleLayoutMode() {
       :editing="editing"
       :backend-available="backendAvailable"
       :library-visible="showLibrary"
-      :layout-mode="dashboardStore.dashboard?.layoutMode"
       @toggle-edit="toggleEdit"
       @login="handleLogin"
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
       @clear-all="handleClearAll"
       @show-about="showAbout = true"
-      @toggle-layout-mode="toggleLayoutMode"
     />
 
     <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' }">

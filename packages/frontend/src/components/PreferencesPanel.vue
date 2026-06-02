@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
+const layoutMode = ref<'grid' | 'canvas'>(dashboardStore.dashboard?.layoutMode ?? 'canvas')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color'
@@ -69,7 +70,12 @@ function removeImage(index: number) {
 
 function save() {
   if (!dashboardStore.dashboard) return
+
+  const oldMode = dashboardStore.dashboard.layoutMode
+  const newMode = layoutMode.value
+
   dashboardStore.dashboard.title = title.value
+  dashboardStore.dashboard.layoutMode = newMode
   dashboardStore.dashboard.columns = columns.value
   dashboardStore.dashboard.background = {
     mode: bgMode.value,
@@ -78,6 +84,28 @@ function save() {
     interval: slideshowInterval.value,
     index: 0,
   }
+
+  // 切换到画布模式时，将网格坐标转换为像素坐标
+  if (oldMode !== newMode && newMode === 'canvas') {
+    const cols = columns.value
+    const rowH = dashboardStore.dashboard.rowHeight ?? 80
+    const margin = 10
+    const containerW = window.innerWidth - 48
+    const colW = (containerW - (cols + 1) * margin) / cols
+
+    for (const w of dashboardStore.dashboard.widgets) {
+      if (!w.canvas) {
+        const lg = w.layouts.lg
+        w.canvas = {
+          x: Math.round(lg.x * (colW + margin) + margin),
+          y: Math.round(lg.y * (rowH + margin) + margin),
+          w: Math.round(lg.w * (colW + margin) - margin),
+          h: Math.round(lg.h * (rowH + margin) - margin),
+        }
+      }
+    }
+  }
+
   dashboardStore.save()
   emit('close')
 }
@@ -104,6 +132,29 @@ function cancel() {
           class="prefs-input"
           placeholder="Nav - 个人导航页"
         />
+      </div>
+
+      <!-- 布局模式 -->
+      <div class="prefs-section">
+        <label class="prefs-label">布局模式</label>
+        <div class="mode-toggle">
+          <button
+            class="mode-btn"
+            :class="{ active: layoutMode === 'canvas' }"
+            @click="layoutMode = 'canvas'"
+          >
+            <span class="mode-icon">◫</span>
+            <span>无限画布</span>
+          </button>
+          <button
+            class="mode-btn"
+            :class="{ active: layoutMode === 'grid' }"
+            @click="layoutMode = 'grid'"
+          >
+            <span class="mode-icon">⊞</span>
+            <span>网格布局</span>
+          </button>
+        </div>
       </div>
 
       <!-- 网格列数 -->
@@ -556,5 +607,43 @@ function cancel() {
 .prefs-btn.save:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(96, 165, 250, 0.35);
+}
+
+/* 布局模式切换 */
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mode-btn.active {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: var(--accent);
+}
+
+.mode-icon {
+  font-size: 16px;
 }
 </style>
