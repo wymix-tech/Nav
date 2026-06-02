@@ -59,6 +59,13 @@ interface ResizeState {
 const resizeState = ref<ResizeState | null>(null)
 const hoveredWidgetId = ref<string | null>(null)
 
+// 吸附网格大小（像素）
+const SNAP_SIZE = 20
+
+function snapToGrid(v: number): number {
+  return Math.round(v / SNAP_SIZE) * SNAP_SIZE
+}
+
 // --- 计算属性 ---
 const contentTransform = computed(() => ({
   transform: `translate(${canvasStore.panX}px, ${canvasStore.panY}px) scale(${canvasStore.clampedZoom})`,
@@ -198,8 +205,8 @@ function onDragMove(e: PointerEvent) {
   if (!widget) return
   const canvas = widget.canvas ?? { x: 0, y: 0, w: 200, h: 120 }
   emit('update-layout', widget.id, {
-    x: Math.round(newX),
-    y: Math.round(newY),
+    x: snapToGrid(newX),
+    y: snapToGrid(newY),
     w: canvas.w,
     h: canvas.h,
   })
