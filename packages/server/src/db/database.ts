@@ -15,6 +15,8 @@ db.exec(`
     background  TEXT DEFAULT '{}',
     columns     INTEGER DEFAULT 12,
     row_height  INTEGER DEFAULT 80,
+    layout_mode TEXT DEFAULT 'canvas',
+    viewport    TEXT DEFAULT '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}',
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -25,6 +27,7 @@ db.exec(`
     source       TEXT NOT NULL,
     config       TEXT,
     layouts      TEXT,
+    canvas       TEXT,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -49,5 +52,8 @@ db.exec(`
 // 兼容旧数据库：添加新字段
 try { db.exec('ALTER TABLE dashboards ADD COLUMN title TEXT DEFAULT \'Nav - 个人导航页\'') } catch {}
 try { db.exec('ALTER TABLE dashboards ADD COLUMN background TEXT DEFAULT \'{}\'') } catch {}
+try { db.exec('ALTER TABLE dashboards ADD COLUMN layout_mode TEXT DEFAULT \'canvas\'') } catch {}
+try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport TEXT DEFAULT \'{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}\'') } catch {}
+try { db.exec('ALTER TABLE widget_instances ADD COLUMN canvas TEXT') } catch {}
 
 export default db

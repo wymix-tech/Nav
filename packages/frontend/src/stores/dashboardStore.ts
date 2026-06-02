@@ -48,6 +48,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
           source: instance.source,
           config: instance.config,
           layouts: instance.layouts,
+          canvas: instance.canvas ?? null,
         }),
       })
       if (res.ok) {
