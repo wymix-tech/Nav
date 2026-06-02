@@ -72,15 +72,15 @@ const contentOffset = computed(() => {
   }
 })
 
-// 组件在小地图中的位置
-function widgetMiniRect(c: CanvasLayout) {
-  return {
-    left: (c.x - bounds.value.minX) * effectiveScale.value + contentOffset.value.x,
-    top: (c.y - bounds.value.minY) * effectiveScale.value + contentOffset.value.y,
-    width: c.w * effectiveScale.value,
-    height: c.h * effectiveScale.value,
-  }
-}
+// 组件在小地图中的位置（返回 CSS 字符串）
+const widgetStyles = computed(() =>
+  canvasWidgets.value.map((c) => ({
+    left: `${(c.x - bounds.value.minX) * effectiveScale.value + contentOffset.value.x}px`,
+    top: `${(c.y - bounds.value.minY) * effectiveScale.value + contentOffset.value.y}px`,
+    width: `${c.w * effectiveScale.value}px`,
+    height: `${c.h * effectiveScale.value}px`,
+  }))
+)
 
 // 视口框：按浏览器宽高比，适配包围盒大小
 const viewportBox = computed(() => {
@@ -184,10 +184,10 @@ function fitMinimap() {
       <div class="minimap-body" @pointerdown="onMinimapBgClick">
         <!-- 组件缩略 -->
         <div
-          v-for="(c, i) in canvasWidgets"
+          v-for="(style, i) in widgetStyles"
           :key="i"
           class="mini-widget"
-          :style="widgetMiniRect(c)"
+          :style="style"
         />
         <!-- 视口框（可拖拽） -->
         <div
