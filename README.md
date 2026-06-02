@@ -1,6 +1,6 @@
 # INFI.NAV
 
-一个可自定义的个人导航仪表盘，支持内置组件和第三方组件扩展。
+无限个人导航仪表盘 — 支持无限画布和网格双模式布局，组件可自由拖拽放置，支持缩放、平移、全景预览小地图、跨设备同步和第三方组件扩展。
 
 ## 技术栈
 
@@ -91,10 +91,10 @@ nav/
 │   ├── shared/          # 共享类型定义（Dashboard, Widget, StorageAdapter 等）
 │   ├── frontend/        # Vue 3 前端
 │   │   ├── src/
-│   │   │   ├── components/   # UI 组件（DashboardGrid, WidgetRenderer 等）
+│   │   │   ├── components/   # UI 组件（CanvasGrid, CanvasMinimap, DashboardGrid, TopBar 等）
 │   │   │   ├── services/     # 存储适配器（LocalAdapter / SyncAdapter）
-│   │   │   ├── stores/       # Pinia Store（auth, dashboard, widget）
-│   │   │   └── widgets/      # 内置组件（Search, Clock, Weather, Bookmark）
+│   │   │   ├── stores/       # Pinia Store（auth, dashboard, widget, canvas）
+│   │   │   └── widgets/      # 内置组件（Search, Clock, Weather, Bookmark, Monitor）
 │   │   └── ...
 │   └── server/          # Hono 后端
 │       └── src/
@@ -122,10 +122,12 @@ nav/
 | `/api/installed-widgets` | GET | 否 | 列出已安装组件 |
 | `/api/installed-widgets` | POST | Token | 安装第三方组件 |
 | `/api/installed-widgets/:id` | DELETE | Token | 卸载组件 |
+| `/api/system/version` | GET | 否 | 当前版本号 |
+| `/api/system/latest-release` | GET | 否 | 最新发布版本（CNB 代理） |
 
 ## 第三方组件开发
 
-第三方组件通过 GitHub 仓库发布，仓库根目录需包含 `manifest.json`：
+第三方组件通过仓库发布，仓库根目录需包含 `manifest.json`：
 
 ```json
 {
@@ -143,11 +145,18 @@ nav/
 
 组件为 Vue SFC，接收 `config`、`editing`、`editable` Props，发出 `update:config` 和 `resize` 事件。
 
+`schema` 字段为 JSON Schema，用于自动生成配置表单。`size` 和 `minSize` 用于画布模式下的自适应缩放。
+
 ## 特性
 
-- **拖拽式网格布局** — 自由拖拽和调整组件大小，支持多断点布局
-- **内置组件** — 搜索框、时钟、天气、书签等开箱即用
-- **第三方组件扩展** — 通过 GitHub 安装自定义组件
+- **无限画布模式** — 组件可自由放置在任意位置，支持鼠标拖拽平移、Ctrl+滚轮缩放、20px 网格吸附
+- **网格布局模式** — 传统 CSS Grid 响应式布局，支持自定义列数
+- **双模式切换** — 在偏好设置中切换画布/网格模式，切换时自动转换组件坐标
+- **全景预览小地图** — 右下角工具栏内嵌小地图，可拖拽视口框快速定位，支持缩放
+- **视口持久化** — 平移/缩放状态保存到后端，刷新后自动恢复
+- **回到中心** — 一键回到默认中心位置，双击画布也可快速回位
+- **内置组件** — 搜索框、时钟、天气、书签、系统监控等开箱即用
+- **第三方组件扩展** — 通过仓库安装自定义组件
 - **离线可用** — 前端支持 IndexedDB 本地存储，后端不可用时自动降级
 - **背景系统** — 支持纯色、图片、轮播三种背景模式
 - **密码保护** — JWT 认证，编辑操作需登录
