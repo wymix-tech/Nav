@@ -5,6 +5,13 @@ export interface WidgetLayout {
   h: number
 }
 
+export interface CanvasLayout {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface WidgetInstance {
   id: string
   widgetId: string
@@ -16,6 +23,17 @@ export interface WidgetInstance {
     sm: WidgetLayout
     xs: WidgetLayout
   }
+  canvas?: CanvasLayout
+}
+
+export type LayoutMode = 'grid' | 'canvas'
+
+export interface DashboardViewport {
+  panX: number
+  panY: number
+  zoom: number
+  homeX: number
+  homeY: number
 }
 
 export interface BackgroundImage {
@@ -40,4 +58,6 @@ export interface Dashboard {
   columns: number
   rowHeight: number
   background: DashboardBackground
+  layoutMode: LayoutMode
+  viewport: DashboardViewport
 }
