@@ -10,3 +10,7 @@ dist
 uploads/
 .pnpm-store
 *.tsbuildinfo
+
+nav.log
+nav.pid
+packages/server/public/
