@@ -197,7 +197,6 @@ function fitMinimap() {
         />
       </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
