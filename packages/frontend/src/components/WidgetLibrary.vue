@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import { useDashboardStore } from '../stores/dashboardStore'
+import { useCanvasStore } from '../stores/canvasStore'
 import type { WidgetInstance, WidgetLayout } from '@nav/shared'
 
 const widgetStore = useWidgetStore()
@@ -78,6 +79,17 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
       sm: { x: 0, y: 0, w: 1, h: 3 },
       xs: { x: 0, y: 0, w: 1, h: 3 },
     },
+  }
+  const layoutMode = dashboardStore.dashboard?.layoutMode ?? 'grid'
+  if (layoutMode === 'canvas') {
+    const canvasStore = useCanvasStore()
+    const vp = canvasStore.getViewport()
+    instance.canvas = {
+      x: Math.round(-vp.panX / vp.zoom + window.innerWidth / vp.zoom / 2 - 160),
+      y: Math.round(-vp.panY / vp.zoom + window.innerHeight / vp.zoom / 2 - 120),
+      w: 320,
+      h: 240,
+    }
   }
   dashboardStore.addWidget(instance)
 }

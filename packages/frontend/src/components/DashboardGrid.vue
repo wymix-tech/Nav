@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import type { WidgetInstance, WidgetLayout } from '@nav/shared'
+import type { WidgetInstance, WidgetLayout, CanvasLayout } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
 import { useWidgetStore } from '../stores/widgetStore'
+import CanvasGrid from './CanvasGrid.vue'
 
 const widgetStore = useWidgetStore()
 
@@ -12,10 +13,12 @@ const props = defineProps<{
   editable: boolean
   columns?: number
   rowHeight?: number
+  layoutMode?: 'grid' | 'canvas'
 }>()
 
 const emit = defineEmits<{
   'update-layout': [instanceId: string, layouts: WidgetInstance['layouts']]
+  'update-canvas': [instanceId: string, canvas: CanvasLayout]
   'remove-widget': [instanceId: string]
   'update-config': [instanceId: string, config: Record<string, any>]
 }>()
@@ -427,7 +430,17 @@ function onResizeEnd() {
 
 <template>
   <div class="dashboard-grid">
+    <CanvasGrid
+      v-if="layoutMode === 'canvas'"
+      :widgets="widgets"
+      :editing="editing"
+      :editable="editable"
+      @update-layout="(id, c) => emit('update-canvas', id, c)"
+      @remove-widget="(id) => emit('remove-widget', id)"
+      @update-config="(id, cfg) => emit('update-config', id, cfg)"
+    />
     <div
+      v-else
       class="css-grid-layout"
       :class="{ 'stack-mode': isStackMode }"
       :style="gridStyle"

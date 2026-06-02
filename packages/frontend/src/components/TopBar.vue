@@ -8,6 +8,7 @@ defineProps<{
   editing: boolean
   backendAvailable: boolean
   libraryVisible?: boolean
+  layoutMode?: 'grid' | 'canvas'
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   'toggle-library': []
   'clear-all': []
   'show-about': []
+  'toggle-layout-mode': []
 }>()
 
 const expanded = ref(false)
@@ -44,6 +46,9 @@ const expanded = ref(false)
           </button>
           <button v-if="editing" class="panel-btn" @click="emit('toggle-library')">
             {{ libraryVisible ? '✕' : '☰' }}
+          </button>
+          <button v-if="editing" class="panel-btn" @click="emit('toggle-layout-mode')" title="切换布局模式">
+            {{ layoutMode === 'canvas' ? '⊞' : '◫' }}
           </button>
           <button v-if="editing" class="panel-btn danger" @click="emit('clear-all')">清空</button>
           <button class="panel-btn" @click="emit('show-preferences')">⚙</button>

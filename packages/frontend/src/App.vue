@@ -12,6 +12,7 @@ import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
 import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
+import CanvasControls from './components/CanvasControls.vue'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
@@ -135,6 +136,12 @@ async function handleLoginSuccess() {
 function toggleLibrary() {
   showLibrary.value = !showLibrary.value
 }
+
+function toggleLayoutMode() {
+  if (!dashboardStore.dashboard) return
+  dashboardStore.dashboard.layoutMode = dashboardStore.dashboard.layoutMode === 'canvas' ? 'grid' : 'canvas'
+  dashboardStore.save()
+}
 </script>
 
 <template>
@@ -143,12 +150,14 @@ function toggleLibrary() {
       :editing="editing"
       :backend-available="backendAvailable"
       :library-visible="showLibrary"
+      :layout-mode="dashboardStore.dashboard?.layoutMode"
       @toggle-edit="toggleEdit"
       @login="handleLogin"
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
       @clear-all="handleClearAll"
       @show-about="showAbout = true"
+      @toggle-layout-mode="toggleLayoutMode"
     />
 
     <main class="main">
@@ -160,11 +169,18 @@ function toggleLibrary() {
         :editable="!backendAvailable || authStore.isAuthenticated"
         :columns="dashboardStore.dashboard.columns"
         :row-height="dashboardStore.dashboard.rowHeight"
+        :layout-mode="dashboardStore.dashboard.layoutMode"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
         @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
+        @update-canvas="(id, c) => dashboardStore.updateWidgetCanvas(id, c)"
       />
     </main>
+
+    <CanvasControls
+      v-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
+      :widgets="dashboardStore.dashboard?.widgets ?? []"
+    />
 
     <WidgetLibrary
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
