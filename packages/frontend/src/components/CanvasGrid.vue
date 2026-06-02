@@ -146,7 +146,18 @@ function removePanListeners() {
 }
 
 // --- 容器指针事件：触发平移/缩放 ---
+// 判断点击目标是否为交互元素（输入框、按钮等），避免拦截输入
+function isInteractiveTarget(el: HTMLElement): boolean {
+  const tag = el.tagName.toLowerCase()
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') return true
+  if (el.isContentEditable) return true
+  if (el.closest('input, textarea, select, button, [contenteditable="true"]')) return true
+  return false
+}
+
 function onContainerPointerDown(e: PointerEvent) {
+  // 点击交互元素时不拦截
+  if (isInteractiveTarget(e.target as HTMLElement)) return
   // 左键点击画布背景（非组件区域）→ 平移；中键也可平移
   if (e.button === 0 || e.button === 1) {
     e.preventDefault()
