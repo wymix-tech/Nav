@@ -70,7 +70,6 @@ function widgetRect(c: CanvasLayout) {
 
 // 当前视口在 minimap 中的矩形
 const viewportRect = computed(() => {
-  // 用容器元素（canvas-container）的尺寸，而不是 content 元素
   const container = document.querySelector('.canvas-container') as HTMLElement | null
   if (!container) return null
   const rect = container.getBoundingClientRect()
@@ -82,12 +81,25 @@ const viewportRect = computed(() => {
   const canvasRight = (rect.width - canvas.panX) / zoom
   const canvasBottom = (rect.height - canvas.panY) / zoom
 
-  return {
-    left: (canvasLeft - bounds.value.minX) * scale.value + offset.value.x,
-    top: (canvasTop - bounds.value.minY) * scale.value + offset.value.y,
-    width: Math.max(4, (canvasRight - canvasLeft) * scale.value),
-    height: Math.max(4, (canvasBottom - canvasTop) * scale.value),
-  }
+  let left = (canvasLeft - bounds.value.minX) * scale.value + offset.value.x
+  let top = (canvasTop - bounds.value.minY) * scale.value + offset.value.y
+  let width = (canvasRight - canvasLeft) * scale.value
+  let height = (canvasBottom - canvasTop) * scale.value
+
+  // 裁切到小地图可视区域内
+  const mapLeft = offset.value.x
+  const mapTop = offset.value.y
+  const mapW = (bounds.value.maxX - bounds.value.minX) * scale.value
+  const mapH = (bounds.value.maxY - bounds.value.minY) * scale.value
+
+  if (left < mapLeft) { width -= mapLeft - left; left = mapLeft }
+  if (top < mapTop) { height -= mapTop - top; top = mapTop }
+  if (left + width > mapLeft + mapW) width = mapLeft + mapW - left
+  if (top + height > mapTop + mapH) height = mapTop + mapH - top
+
+  if (width < 4 || height < 4) return null
+
+  return { left, top, width, height }
 })
 
 // 拖拽状态
