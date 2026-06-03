@@ -171,4 +171,112 @@ system.get('/stats', (c) => {
   })
 })
 
+// ===== Docker 容器监控 =====
+
+interface DockerContainer {
+  id: string
+  name: string
+  image: string
+  state: string       // running, exited, paused, etc.
+  status: string      // "Up 3 days", "Exited (0) 2 hours ago"
+  cpuPercent: number
+  memUsage: string
+  memPercent: number
+  netIO: string
+  blockIO: string
+  pids: number
+}
+
+// 检查 docker 命令是否可用
+let dockerAvailable: boolean | null = null
+function checkDocker(): boolean {
+  if (dockerAvailable !== null) return dockerAvailable
+  try {
+    execSync('docker info --format "{{.ServerVersion}}"', { timeout: 3000, stdio: 'pipe' })
+    dockerAvailable = true
+  } catch {
+    dockerAvailable = false
+  }
+  return dockerAvailable
+}
+
+function getDockerContainers(): DockerContainer[] {
+  if (!checkDocker()) return []
+
+  try {
+    // 获取容器基本信息
+    const psOutput = execSync(
+      `docker ps -a --format '{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}'`,
+      { timeout: 5000, encoding: 'utf-8' }
+    ).trim()
+
+    if (!psOutput) return []
+
+    const containers: DockerContainer[] = psOutput.split('\n').filter(Boolean).map((line) => {
+      const [id, name, image, state, status] = line.split('|')
+      return {
+        id: id.slice(0, 12),
+        name,
+        image,
+        state,
+        status,
+        cpuPercent: 0,
+        memUsage: '-',
+        memPercent: 0,
+        netIO: '-',
+        blockIO: '-',
+        pids: 0,
+      }
+    })
+
+    // 获取运行中容器的资源使用率
+    const runningIds = containers.filter((c) => c.state === 'running').map((c) => c.id)
+    if (runningIds.length > 0) {
+      try {
+        const statsOutput = execSync(
+          `docker stats ${runningIds.join(' ')} --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}'`,
+          { timeout: 10000, encoding: 'utf-8' }
+        ).trim()
+
+        for (const line of statsOutput.split('\n').filter(Boolean)) {
+          const [name, cpu, memUsage, memPerc, netIO, blockIO, pids] = line.split('|')
+          const container = containers.find((c) => c.name === name)
+          if (container) {
+            container.cpuPercent = parseFloat(cpu.replace('%', '')) || 0
+            container.memUsage = memUsage
+            container.memPercent = parseFloat(memPerc.replace('%', '')) || 0
+            container.netIO = netIO
+            container.blockIO = blockIO
+            container.pids = parseInt(pids) || 0
+          }
+        }
+      } catch {
+        // docker stats 可能超时，保留基本信息
+      }
+    }
+
+    return containers
+  } catch {
+    return []
+  }
+}
+
+system.get('/docker', (c) => {
+  const available = checkDocker()
+  if (!available) {
+    return c.json({
+      available: false,
+      message: 'Docker 未可用，请确保已映射 /var/run/docker.sock',
+      containers: [],
+    })
+  }
+  const containers = getDockerContainers()
+  return c.json({
+    available: true,
+    containers,
+    total: containers.length,
+    running: containers.filter((c) => c.state === 'running').length,
+  })
+})
+
 export default system
