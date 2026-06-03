@@ -21,6 +21,7 @@ const builtinComponents: Record<string, any> = {
   bookmark: defineAsyncComponent(() => import('../widgets/BookmarkWidget.vue')),
   monitor: defineAsyncComponent(() => import('../widgets/MonitorWidget.vue')),
   docker: defineAsyncComponent(() => import('../widgets/DockerWidget.vue')),
+  chat: defineAsyncComponent(() => import('../widgets/ChatWidget.vue')),
 }
 
 // 外部组件从 CDN 加载

@@ -35,6 +35,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     bookmark: { w: Math.min(4, cols), h: 3 },
     monitor:  { w: Math.min(4, cols), h: 3 },
     docker:   { w: Math.min(4, cols), h: 4 },
+    chat:    { w: Math.min(5, cols), h: 5 },
   }
   const size = defaultSizes[widgetId] ?? { w: Math.min(4, cols), h: 3 }
 
@@ -124,6 +125,7 @@ const builtinWidgets = [
   { id: 'bookmark', name: '书签', icon: '📑' },
   { id: 'monitor', name: '监控', icon: '📊' },
   { id: 'docker', name: 'Docker', icon: '🐳' },
+  { id: 'chat', name: 'AI 助手', icon: '✦' },
 ]
 </script>
 
