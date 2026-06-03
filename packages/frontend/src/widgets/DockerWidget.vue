@@ -37,6 +37,10 @@ const error = ref('')
 const loading = ref(false)
 const dockerAvailable = ref(true)
 
+// 网速计算状态
+const netSpeed = ref({ rx: 0, tx: 0 })
+let prevNetIO: { rxBytes: number; txBytes: number; time: number } | null = null
+
 let timer: ReturnType<typeof setInterval> | null = null
 
 const isSetup = computed(() => !!containerName.value)
@@ -64,6 +68,50 @@ function formatImage(image: string): string {
   return image.split('@')[0]
 }
 
+// 解析 "1.95kB / 764B" 格式为 { rxBytes, txBytes }
+function parseNetIO(netIO: string): { rxBytes: number; txBytes: number } {
+  const parts = netIO.split('/')
+  const parseSize = (s: string): number => {
+    const trimmed = s.trim()
+    const num = parseFloat(trimmed)
+    if (isNaN(num)) return 0
+    if (trimmed.includes('GB')) return num * 1024 * 1024 * 1024
+    if (trimmed.includes('MB')) return num * 1024 * 1024
+    if (trimmed.includes('kB') || trimmed.includes('KB')) return num * 1024
+    if (trimmed.includes('B')) return num
+    return num
+  }
+  return {
+    rxBytes: parseSize(parts[0] ?? '0'),
+    txBytes: parseSize(parts[1] ?? '0'),
+  }
+}
+
+// 格式化字节为人类可读的网速
+function formatSpeed(bytesPerSec: number): string {
+  if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`
+  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`
+  if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`
+  return `${(bytesPerSec / 1024 / 1024 / 1024).toFixed(1)} GB/s`
+}
+
+// 根据两次采样计算实时网速
+function updateNetSpeed(netIO: string) {
+  const now = Date.now()
+  const current = parseNetIO(netIO)
+
+  if (prevNetIO) {
+    const dt = (now - prevNetIO.time) / 1000
+    if (dt > 0) {
+      const rxSpeed = Math.max(0, (current.rxBytes - prevNetIO.rxBytes) / dt)
+      const txSpeed = Math.max(0, (current.txBytes - prevNetIO.txBytes) / dt)
+      netSpeed.value = { rx: rxSpeed, tx: txSpeed }
+    }
+  }
+
+  prevNetIO = { rxBytes: current.rxBytes, txBytes: current.txBytes, time: now }
+}
+
 async function fetchContainers() {
   try {
     const res = await fetch('/api/system/docker')
@@ -88,6 +136,9 @@ async function fetchContainerDetail() {
     dockerAvailable.value = data.available
     if (data.containers?.length > 0) {
       container.value = data.containers[0]
+      if (container.value.state === 'running') {
+        updateNetSpeed(container.value.netIO)
+      }
     } else {
       container.value = null
       error.value = `容器 "${containerName.value}" 未找到`
@@ -110,6 +161,8 @@ async function fetchAll() {
 
 function selectContainer(name: string) {
   containerName.value = name
+  prevNetIO = null
+  netSpeed.value = { rx: 0, tx: 0 }
   emit('update:config', { ...props.config, containerName: name, interval: refreshInterval.value })
   fetchAll()
 }
@@ -260,13 +313,17 @@ watch(() => props.editing, (val) => {
           <div class="metric-sub">{{ container.memUsage }}</div>
         </div>
 
-        <!-- 网络 / 进程 -->
-        <div v-if="container.state === 'running'" class="detail-row">
-          <div class="detail-item">
-            <span class="detail-label">网络</span>
-            <span class="detail-value mono">{{ container.netIO }}</span>
+        <!-- 网速 / 进程 -->
+        <div v-if="container.state === 'running'" class="net-row">
+          <div class="net-item">
+            <span class="net-direction">↑</span>
+            <span class="detail-value mono">{{ formatSpeed(netSpeed.tx) }}</span>
           </div>
-          <div class="detail-item">
+          <div class="net-item">
+            <span class="net-direction">↓</span>
+            <span class="detail-value mono">{{ formatSpeed(netSpeed.rx) }}</span>
+          </div>
+          <div class="net-item">
             <span class="detail-label">进程</span>
             <span class="detail-value mono">{{ container.pids }}</span>
           </div>
@@ -543,6 +600,29 @@ watch(() => props.editing, (val) => {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+
+/* ======== 网速行 ======== */
+.net-row {
+  display: flex;
+  gap: 10px;
+}
+
+.net-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.net-direction {
+  font-size: 11px;
+  font-weight: 700;
+  width: 14px;
+  text-align: center;
+}
+
+.net-item:first-child .net-direction { color: #22c55e; }
+.net-item:nth-child(2) .net-direction { color: #60a5fa; }
 
 /* ======== 配置 ======== */
 .cfg-toggle {
