@@ -4,6 +4,7 @@ import type { WidgetInstance, WidgetLayout, CanvasLayout } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import CanvasGrid from './CanvasGrid.vue'
+import { useScreenOrientation } from '../composables/useScreenOrientation'
 
 const widgetStore = useWidgetStore()
 
@@ -26,23 +27,22 @@ const emit = defineEmits<{
 const ROW_HEIGHT = computed(() => props.rowHeight ?? 80)
 const MARGIN = 10
 
-// 屏幕方向检测：宽 > 高 = 横屏，否则竖屏
-const isLandscape = ref(window.innerWidth > window.innerHeight)
+// 屏幕方向检测（共享 composable）
+const { isLandscape } = useScreenOrientation()
+
+// 窗口宽度（用于网格列数自适应）
 const windowWidth = ref(window.innerWidth)
 
-function updateLayout() {
+function updateWindowWidth() {
   windowWidth.value = window.innerWidth
-  isLandscape.value = window.innerWidth > window.innerHeight
 }
 
 onMounted(() => {
-  updateLayout()
-  window.addEventListener('resize', updateLayout)
-  window.addEventListener('orientationchange', updateLayout)
+  updateWindowWidth()
+  window.addEventListener('resize', updateWindowWidth)
 })
 onUnmounted(() => {
-  window.removeEventListener('resize', updateLayout)
-  window.removeEventListener('orientationchange', updateLayout)
+  window.removeEventListener('resize', updateWindowWidth)
 })
 
 // 根据屏幕宽度确定默认网格列数（仅在用户未自定义时生效）
