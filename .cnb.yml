@@ -1,4 +1,53 @@
-$:
+main:
+  # 触发事件为 push 事件
+  pull_request.merged:
+    - services:
+      - docker
+      stages:
+        - name: auto-tag
+          image: cnbcool/git-auto-tag:latest
+          settings:
+            tagFormat: v\${version}
+            toFile: tag_info.json
+            dryRun: false
+            blockWhenFail: false
+            branch: $CNB_BRANCH
+            repoUrlHttps: $CNB_REPO_URL_HTTPS
+          exports:
+            tag: NEW_TAG
+        - name: show tag
+          script: echo $NEW_TAG
+        - name: show tag res
+          script: cat tag_info.json
+        - name: changelog
+          image: cnbcool/changelog
+          settings:
+            latestChangeLogTarget: LATEST_CHANGELOG.md
+        - name: release
+          type: git:release
+          options:
+            tag: $NEW_TAG
+            title: $NEW_TAG
+            descriptionFromFile: LATEST_CHANGELOG.md
+            latest: true
+      # 同名镜像构建&推送
+        - name: Docker build
+          script: docker build --build-arg APP_VERSION=$NEW_TAG -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
+        - name: Docker push
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
+
+$: 
+  push:
+    - stages:
+        - name: sync to github
+          image: tencentcom/git-sync
+          imports:
+            - https://cnb.cool/wymix.top/nav_sync/-/blob/main/env.prod.yml
+          settings:
+            target_url: https://github.com/wymix-tech/Nav.git
+            auth_type: https
+            username: ${GITHUB_USERNAME}
+            password: ${GITHUB_TOKEN}
   vscode:
     - docker:
         image: cnbcool/default-dev-env:latest
