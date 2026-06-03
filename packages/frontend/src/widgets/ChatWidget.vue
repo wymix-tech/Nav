@@ -219,7 +219,7 @@ watch(() => props.editing, (val) => {
       <div class="cfg">
         <div class="cfg-field">
           <label class="cfg-lbl">Base URL（留空使用环境变量，默认 OpenAI）</label>
-          <input v-model="baseUrl" type="text" placeholder="https://api.openai.com" class="cfg-inp" />
+          <input v-model="baseUrl" type="text" placeholder="https://api.openai.com/v1" class="cfg-inp" />
         </div>
         <div class="cfg-field">
           <label class="cfg-lbl">API Key（留空使用环境变量）</label>
