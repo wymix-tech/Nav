@@ -305,10 +305,10 @@ watch(() => props.editing, (val) => {
   gap: 6px;
 }
 
-.pick-icon { font-size: 14px; }
+.pick-icon { font-size: 16px; }
 
 .pick-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-display);
@@ -347,7 +347,7 @@ watch(() => props.editing, (val) => {
 }
 
 .pick-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -358,7 +358,7 @@ watch(() => props.editing, (val) => {
 }
 
 .pick-image {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
   overflow: hidden;
@@ -373,7 +373,7 @@ watch(() => props.editing, (val) => {
   justify-content: center;
   height: 60px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* ======== 头部 ======== */
@@ -398,7 +398,7 @@ watch(() => props.editing, (val) => {
 }
 
 .head-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -415,7 +415,7 @@ watch(() => props.editing, (val) => {
 }
 
 .head-state {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -423,7 +423,7 @@ watch(() => props.editing, (val) => {
 }
 
 .head-change {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
@@ -444,7 +444,7 @@ watch(() => props.editing, (val) => {
 }
 
 .info-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -452,7 +452,7 @@ watch(() => props.editing, (val) => {
 }
 
 .info-value {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -463,7 +463,7 @@ watch(() => props.editing, (val) => {
 
 .info-value.mono {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -481,7 +481,7 @@ watch(() => props.editing, (val) => {
 }
 
 .metric-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -489,19 +489,19 @@ watch(() => props.editing, (val) => {
 }
 
 .metric-value {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   font-family: var(--font-mono);
 }
 
 .metric-sub {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
 
 .bar {
-  height: 4px;
+  height: 5px;
   background: rgba(128, 128, 128, 0.15);
   border-radius: 2px;
   overflow: hidden;
@@ -527,7 +527,7 @@ watch(() => props.editing, (val) => {
 }
 
 .detail-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -535,13 +535,13 @@ watch(() => props.editing, (val) => {
 }
 
 .detail-value {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .detail-value.mono {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* ======== 配置 ======== */
