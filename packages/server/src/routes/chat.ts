@@ -50,7 +50,7 @@ function streamResponse(reader: ReadableStreamDefaultReader<Uint8Array>): Respon
 
 // OpenAI 兼容协议
 async function streamOpenAI(c: any, baseUrl: string, apiKey: string, req: ChatRequest) {
-  const url = `${baseUrl}/v1/chat/completions`
+  const url = `${baseUrl}/chat/completions`
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -86,7 +86,7 @@ async function streamAnthropic(c: any, baseUrl: string, apiKey: string, req: Cha
     body.system = systemMsg.content
   }
 
-  const url = `${baseUrl}/v1/messages`
+  const url = `${baseUrl}/messages`
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -112,7 +112,7 @@ chat.post('/stream', async (c) => {
       return c.json({ error: { code: 'BAD_REQUEST', message: '消息不能为空' } }, 400)
     }
 
-    const baseUrl = (req.baseUrl || process.env.NAV_AI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '').replace(/\/v1$/, '')
+    const baseUrl = (req.baseUrl || process.env.NAV_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '')
     const apiKey = req.apiKey || process.env.NAV_AI_API_KEY
 
     if (!apiKey) {
