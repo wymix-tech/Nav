@@ -405,7 +405,7 @@ function widgetStyle(widget: WidgetInstance) {
 .canvas-widget-body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
   border-radius: var(--radius-md, 12px);
 }
 
