@@ -13,6 +13,7 @@ import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
 import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
 import CanvasControls from './components/CanvasControls.vue'
+import { useScreenOrientation } from './composables/useScreenOrientation'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
@@ -29,11 +30,8 @@ const showAbout = ref(false)
 const slideshowIndex = ref(0)
 let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
-// 屏幕方向检测：竖屏模式下禁用画布相关功能
-const isStackMode = ref(window.innerWidth <= window.innerHeight)
-function updateScreenOrientation() {
-  isStackMode.value = window.innerWidth <= window.innerHeight
-}
+// 屏幕方向检测（matchMedia 基于设备物理方向，桌面端窗口缩放不会误触发）
+const { isPortrait } = useScreenOrientation()
 
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -47,18 +45,11 @@ onMounted(async () => {
   // 拖拽时隐藏组件库
   document.addEventListener('dragstart', handleDragStart)
   document.addEventListener('dragend', handleDragEnd)
-
-  // 屏幕方向监听
-  window.addEventListener('resize', updateScreenOrientation)
-  window.addEventListener('orientationchange', updateScreenOrientation)
 })
 
 onUnmounted(() => {
   document.removeEventListener('dragstart', handleDragStart)
   document.removeEventListener('dragend', handleDragEnd)
-
-  window.removeEventListener('resize', updateScreenOrientation)
-  window.removeEventListener('orientationchange', updateScreenOrientation)
 })
 
 function handleDragStart() {
@@ -166,7 +157,7 @@ function toggleLibrary() {
       @show-about="showAbout = true"
     />
 
-    <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' }">
+    <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' && !isPortrait }">
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
@@ -184,7 +175,7 @@ function toggleLibrary() {
     </main>
 
     <CanvasControls
-      v-if="dashboardStore.dashboard?.layoutMode === 'canvas' && !isStackMode"
+      v-if="dashboardStore.dashboard?.layoutMode === 'canvas' && !isPortrait"
       :widgets="dashboardStore.dashboard?.widgets ?? []"
     />
 
