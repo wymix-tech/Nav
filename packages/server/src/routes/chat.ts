@@ -112,7 +112,7 @@ chat.post('/stream', async (c) => {
       return c.json({ error: { code: 'BAD_REQUEST', message: '消息不能为空' } }, 400)
     }
 
-    const baseUrl = (req.baseUrl || process.env.NAV_AI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')
+    const baseUrl = (req.baseUrl || process.env.NAV_AI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '').replace(/\/v1$/, '')
     const apiKey = req.apiKey || process.env.NAV_AI_API_KEY
 
     if (!apiKey) {
