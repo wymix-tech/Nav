@@ -29,6 +29,12 @@ const showAbout = ref(false)
 const slideshowIndex = ref(0)
 let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
+// 屏幕方向检测：竖屏模式下禁用画布相关功能
+const isStackMode = ref(window.innerWidth <= window.innerHeight)
+function updateScreenOrientation() {
+  isStackMode.value = window.innerWidth <= window.innerHeight
+}
+
 onMounted(async () => {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
   try {
@@ -41,11 +47,18 @@ onMounted(async () => {
   // 拖拽时隐藏组件库
   document.addEventListener('dragstart', handleDragStart)
   document.addEventListener('dragend', handleDragEnd)
+
+  // 屏幕方向监听
+  window.addEventListener('resize', updateScreenOrientation)
+  window.addEventListener('orientationchange', updateScreenOrientation)
 })
 
 onUnmounted(() => {
   document.removeEventListener('dragstart', handleDragStart)
   document.removeEventListener('dragend', handleDragEnd)
+
+  window.removeEventListener('resize', updateScreenOrientation)
+  window.removeEventListener('orientationchange', updateScreenOrientation)
 })
 
 function handleDragStart() {
@@ -171,7 +184,7 @@ function toggleLibrary() {
     </main>
 
     <CanvasControls
-      v-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
+      v-if="dashboardStore.dashboard?.layoutMode === 'canvas' && !isStackMode"
       :widgets="dashboardStore.dashboard?.widgets ?? []"
     />
 
