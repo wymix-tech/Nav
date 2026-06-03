@@ -38,14 +38,41 @@ cd packages/shared && npx tsc --build
 
 ## 环境变量
 
-| 变量 | 必填 | 默认值 | 说明 |
-|---|---|---|---|
-| `NAV_JWT_SECRET` | 是 | - | JWT 签名密钥 |
-| `NAV_PASSWORD` | 是 | - | 登录密码（明文） |
-| `NAV_PASSWORD_HASH` | 否 | - | 登录密码（bcrypt 哈希，优先级高于明文） |
-| `NAV_DB_PATH` | 否 | `./nav.db` | SQLite 数据库路径 |
-| `NAV_CORS_ORIGIN` | 否 | `http://localhost:3000` | CORS 允许的源 |
-| `PORT` | 否 | `4000` | 服务端口 |
+### 必填
+
+| 变量 | 说明 |
+|---|---|
+| `NAV_JWT_SECRET` | JWT 签名密钥 |
+| `NAV_PASSWORD` | 登录密码（明文） |
+
+### 可选
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `NAV_PASSWORD_HASH` | - | 登录密码（bcrypt 哈希，优先级高于明文） |
+| `NAV_DB_PATH` | `./nav.db` | SQLite 数据库路径 |
+| `NAV_CORS_ORIGIN` | `http://localhost:3000` | CORS 允许的源 |
+| `PORT` | `4000` | 服务端口 |
+
+### AI 聊天助手
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `NAV_AI_BASE_URL` | `https://api.openai.com/v1` | API 地址，自动识别 OpenAI/Anthropic 协议 |
+| `NAV_AI_API_KEY` | - | API Key |
+| `NAV_AI_MODELS` | `gpt-4o-mini` | 可用模型列表（逗号分隔） |
+| `NAV_AI_SYSTEM_PROMPT` | - | 默认系统提示词（定义 AI 性格/说话方式/原则） |
+
+> BaseURL 会根据域名自动判断协议：包含 `anthropic` 或 `claude` 走 Anthropic 协议，其他走 OpenAI 兼容协议。支持自定义代理/中转站地址。
+
+### Docker 监控
+
+Docker 监控组件需要映射 Docker Socket，在 `docker-compose.yml` 中已配置：
+
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
 
 ## 生产部署
 
@@ -56,6 +83,8 @@ cd packages/shared && npx tsc --build
 cat > .env << EOF
 NAV_JWT_SECRET=your-secret-key
 NAV_PASSWORD=your-password
+NAV_AI_BASE_URL=https://api.openai.com/v1
+NAV_AI_API_KEY=sk-your-api-key
 EOF
 
 # 构建并启动
@@ -92,9 +121,10 @@ nav/
 │   ├── frontend/        # Vue 3 前端
 │   │   ├── src/
 │   │   │   ├── components/   # UI 组件（CanvasGrid, CanvasMinimap, DashboardGrid, TopBar 等）
+│   │   │   ├── composables/  # 组合式函数（useScreenOrientation 等）
 │   │   │   ├── services/     # 存储适配器（LocalAdapter / SyncAdapter）
 │   │   │   ├── stores/       # Pinia Store（auth, dashboard, widget, canvas）
-│   │   │   └── widgets/      # 内置组件（Search, Clock, Weather, Bookmark, Monitor）
+│   │   │   └── widgets/      # 内置组件
 │   │   └── ...
 │   └── server/          # Hono 后端
 │       └── src/
@@ -106,6 +136,18 @@ nav/
 ├── Dockerfile           # 多阶段 Docker 构建
 └── turbo.json           # Turborepo 构建配置
 ```
+
+## 内置组件
+
+| 组件 | 说明 |
+|---|---|
+| 🔍 搜索框 | 多搜索引擎快捷搜索 |
+| 🕐 时钟 | 实时时钟显示 |
+| 🌤️ 天气 | 天气查询（wttr.in API） |
+| 📑 书签 | 书签分组管理 |
+| 📊 监控 | 系统监控（CPU/Memory/GPU/Disk） |
+| 🐳 Docker | 容器状态监控（CPU/内存/实时网速） |
+| ✦ AI 助手 | AI 聊天（支持 OpenAI/Anthropic，流式输出） |
 
 ## API 端点
 
@@ -122,8 +164,14 @@ nav/
 | `/api/installed-widgets` | GET | 否 | 列出已安装组件 |
 | `/api/installed-widgets` | POST | Token | 安装第三方组件 |
 | `/api/installed-widgets/:id` | DELETE | Token | 卸载组件 |
+| `/api/system/stats` | GET | 否 | 系统状态（CPU/Mem/GPU/Disk） |
+| `/api/system/docker` | GET | 否 | Docker 容器列表及状态 |
+| `/api/system/docker?name=xxx` | GET | 否 | 指定容器详细信息 |
 | `/api/system/version` | GET | 否 | 当前版本号 |
 | `/api/system/latest-release` | GET | 否 | 最新发布版本（CNB 代理） |
+| `/api/chat/stream` | POST | 否 | AI 聊天流式代理 |
+| `/api/chat/models` | GET | 否 | 可用模型列表 |
+| `/api/chat/defaults` | GET | 否 | 默认系统提示词 |
 
 ## 第三方组件开发
 
@@ -155,7 +203,10 @@ nav/
 - **全景预览小地图** — 右下角工具栏内嵌小地图，可拖拽视口框快速定位，支持缩放
 - **视口持久化** — 平移/缩放状态保存到后端，刷新后自动恢复
 - **回到中心** — 一键回到默认中心位置，双击画布也可快速回位
-- **内置组件** — 搜索框、时钟、天气、书签、系统监控等开箱即用
+- **内置组件** — 搜索框、时钟、天气、书签、系统监控、Docker 监控、AI 聊天助手
+- **Docker 监控** — 实时查看容器状态、CPU/内存使用率、网络速度
+- **AI 聊天助手** — 支持 OpenAI/Anthropic 双协议，流式输出，聊天记录保存在浏览器会话中
+- **智能适配** — 手机竖屏自动切换堆叠模式，画布工具栏自动隐藏
 - **第三方组件扩展** — 通过仓库安装自定义组件
 - **离线可用** — 前端支持 IndexedDB 本地存储，后端不可用时自动降级
 - **背景系统** — 支持纯色、图片、轮播三种背景模式
