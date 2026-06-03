@@ -20,6 +20,7 @@ const builtinComponents: Record<string, any> = {
   weather: defineAsyncComponent(() => import('../widgets/WeatherWidget.vue')),
   bookmark: defineAsyncComponent(() => import('../widgets/BookmarkWidget.vue')),
   monitor: defineAsyncComponent(() => import('../widgets/MonitorWidget.vue')),
+  docker: defineAsyncComponent(() => import('../widgets/DockerWidget.vue')),
 }
 
 // 外部组件从 CDN 加载
