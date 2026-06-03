@@ -447,30 +447,21 @@ function widgetStyle(widget: WidgetInstance) {
   cursor: grabbing;
 }
 
-/* 缩放手柄 */
+/* 缩放手柄（与网格模式一致） */
 .resize-handle {
   position: absolute;
-  bottom: -3px;
-  right: -3px;
-  width: 20px;
-  height: 20px;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
   cursor: se-resize;
   z-index: 5;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.15);
+  border-right: 3px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0 0 var(--radius-md, 12px) 0;
   pointer-events: all;
   opacity: 0;
   transition: opacity 0.2s;
-}
-
-.resize-handle::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid rgba(255, 255, 255, 0.3);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0 0 3px 0;
 }
 
 .canvas-widget:hover .resize-handle,
