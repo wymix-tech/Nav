@@ -268,7 +268,7 @@ watch(() => props.editing, (val) => {
     <!-- 单容器详细监控 -->
     <template v-else-if="container">
       <div class="panel">
-        <button v-if="editable" class="cfg-toggle" @click.stop="showConfig = true" title="配置">⚙</button>
+        <button v-if="editable && !editing" class="cfg-toggle" @click.stop="showConfig = true" title="配置">⚙</button>
 
         <!-- 头部：容器名 + 状态 -->
         <div class="head">
