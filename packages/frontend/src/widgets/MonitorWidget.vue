@@ -191,7 +191,7 @@ watch(() => props.editing, (val) => {
     <template v-else-if="stats">
       <div class="panel">
         <!-- 配置按钮 -->
-        <button v-if="editable" class="cfg-toggle" @click.stop="showConfig = true" title="配置">⚙</button>
+        <button v-if="editable && !editing" class="cfg-toggle" @click.stop="showConfig = true" title="配置">⚙</button>
 
         <!-- 头部：主机名 + 运行时间 -->
         <div v-if="showHeader" class="head">

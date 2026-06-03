@@ -122,7 +122,7 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
     <template v-else-if="weather">
       <div class="wc" :class="'t-' + weatherCode">
         <!-- 编辑模式下显示配置入口 -->
-        <button v-if="editable" class="wc-cfg" @click.stop="showConfig = true" title="配置">⚙</button>
+        <button v-if="editable && !editing" class="wc-cfg" @click.stop="showConfig = true" title="配置">⚙</button>
 
         <!-- 装饰性背景图标 -->
         <div class="deco-icon">

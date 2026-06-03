@@ -253,7 +253,7 @@ watch(() => props.editing, (val) => {
           </div>
           <div class="toolbar-right">
             <button class="tool-btn" title="新建对话" @click="newConversation">✦</button>
-            <button v-if="editable" class="tool-btn" title="配置" @click="showConfig = true">⚙</button>
+            <button v-if="editable && !editing" class="tool-btn" title="配置" @click="showConfig = true">⚙</button>
           </div>
         </div>
 
