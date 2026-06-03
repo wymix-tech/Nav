@@ -77,7 +77,8 @@ function handleConfigUpdate(config: Record<string, any>) {
 <style scoped>
 .widget-wrapper {
   height: 100%;
-  background: transparent;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 50%, transparent 80%);
+  mix-blend-mode: plus-lighter;
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
@@ -87,12 +88,12 @@ function handleConfigUpdate(config: Record<string, any>) {
 }
 
 .editing.widget-wrapper:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 80%);
   border-color: rgba(96, 165, 250, 0.15);
 }
 
 .widget-wrapper.editing {
-  background: rgba(255, 255, 255, 0.01);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 50%, transparent 80%);
   border: 1px solid rgba(96, 165, 250, 0.08);
 }
 
