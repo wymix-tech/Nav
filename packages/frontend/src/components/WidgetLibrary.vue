@@ -89,8 +89,9 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     let newX = Math.round(-vp.panX / vp.zoom + window.innerWidth / vp.zoom / 2 - newW / 2)
     let newY = Math.round(-vp.panY / vp.zoom + window.innerHeight / vp.zoom / 2 - newH / 2)
 
-    // 检测重叠，找到空位
+    // 检测重叠，找到空位（含最小间距）
     const SNAP = 20
+    const MIN_GAP = 16
     newX = Math.round(newX / SNAP) * SNAP
     newY = Math.round(newY / SNAP) * SNAP
     const existing = existingWidgets.filter((w) => w.canvas).map((w) => w.canvas!)
@@ -99,7 +100,8 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     while (hasOverlap && attempts < 50) {
       hasOverlap = false
       for (const e of existing) {
-        if (newX < e.x + e.w && newX + newW > e.x && newY < e.y + e.h && newY + newH > e.y) {
+        if (newX < e.x + e.w + MIN_GAP && newX + newW + MIN_GAP > e.x &&
+            newY < e.y + e.h + MIN_GAP && newY + newH + MIN_GAP > e.y) {
           hasOverlap = true
           newX += SNAP
           if (newX + newW > 3000) { newX = 0; newY += SNAP }
