@@ -79,6 +79,7 @@ const widgetOptimalSize: Record<string, { w: number; h: number; minW: number }> 
   weather:  { w: 4,  h: 3, minW: 3 },
   bookmark: { w: 4,  h: 3, minW: 2 },
   monitor:  { w: 4,  h: 3, minW: 3 },
+  docker:   { w: 4,  h: 4, minW: 3 },
 }
 
 // 列数变化时自适应组件尺寸

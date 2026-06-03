@@ -41,6 +41,9 @@ ARG APP_VERSION
 
 WORKDIR /app
 
+# 安装 docker-cli 以支持容器内操作
+RUN apk add --no-cache docker-cli
+
 # 复制 server 运行时（含生产依赖 + 编译产物）
 COPY --from=builder /deploy .
 
