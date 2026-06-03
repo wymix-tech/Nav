@@ -105,7 +105,7 @@ function debouncedSaveViewport() {
   }, 500)
 }
 
-watch([() => canvasStore.panX, () => canvasStore.panY, () => canvasStore.zoom], debouncedSaveViewport)
+watch([() => canvasStore.panX, () => canvasStore.panY, () => canvasStore.zoom, () => canvasStore.homeX, () => canvasStore.homeY], debouncedSaveViewport)
 
 onUnmounted(() => {
   canvasStore.canvasEl = null
