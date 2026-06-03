@@ -270,7 +270,17 @@ system.get('/docker', (c) => {
       containers: [],
     })
   }
-  const containers = getDockerContainers()
+
+  const nameFilter = c.req.query('name')
+  let containers = getDockerContainers()
+
+  // 按名称过滤（支持模糊匹配）
+  if (nameFilter) {
+    containers = containers.filter((c) =>
+      c.name.includes(nameFilter) || c.id.startsWith(nameFilter)
+    )
+  }
+
   return c.json({
     available: true,
     containers,
