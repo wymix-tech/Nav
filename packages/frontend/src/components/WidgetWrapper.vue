@@ -30,6 +30,23 @@ const widgetSchema = computed(() => {
   return manifest.value?.schema ?? null
 })
 
+// 画布模式下内容自适应缩放
+const contentScaled = computed(() => {
+  const c = props.widget.canvas
+  if (!c?.originalW || !c?.originalH) return false
+  const sx = c.w / c.originalW
+  const sy = c.h / c.originalH
+  return Math.min(sx, sy) < 1
+})
+
+const contentScaleValue = computed(() => {
+  const c = props.widget.canvas
+  if (!c?.originalW || !c?.originalH) return 1
+  const sx = c.w / c.originalW
+  const sy = c.h / c.originalH
+  return Math.min(sx, sy)
+})
+
 function handleConfigUpdate(config: Record<string, any>) {
   emit('update-config', config)
 }
@@ -46,7 +63,7 @@ function handleConfigUpdate(config: Record<string, any>) {
       >⚙</button>
       <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
     </div>
-    <div class="widget-content">
+    <div class="widget-content" :class="{ scaled: contentScaled }" :style="contentScaled ? { transform: `scale(${contentScaleValue})`, transformOrigin: 'top left' } : {}">
       <WidgetRenderer
         :widget="widget"
         :manifest="manifest"
@@ -146,6 +163,13 @@ function handleConfigUpdate(config: Record<string, any>) {
   flex: 1;
   overflow: hidden;
   border-radius: inherit;
+}
+
+.widget-content.scaled {
+  flex: none;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 @media (max-width: 480px) {

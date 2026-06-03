@@ -113,7 +113,7 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
       attempts++
     }
 
-    instance.canvas = { x: newX, y: newY, w: newW, h: newH }
+    instance.canvas = { x: newX, y: newY, w: newW, h: newH, originalW: newW, originalH: newH }
   }
   dashboardStore.addWidget(instance)
 }

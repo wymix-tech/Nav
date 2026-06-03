@@ -10,6 +10,9 @@ export interface CanvasLayout {
   y: number
   w: number
   h: number
+  /** 原始尺寸（首次创建时记录），用于内部内容自适应缩放 */
+  originalW?: number
+  originalH?: number
 }
 
 export interface WidgetInstance {
@@ -60,4 +63,6 @@ export interface Dashboard {
   background: DashboardBackground
   layoutMode: LayoutMode
   viewport: DashboardViewport
+  viewportWidth: number
+  viewportHeight: number
 }

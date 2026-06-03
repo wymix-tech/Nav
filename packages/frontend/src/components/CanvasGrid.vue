@@ -54,6 +54,7 @@ interface ResizeState {
   startH: number
   startCanvasX: number
   startCanvasY: number
+  aspectRatio: number
 }
 
 const resizeState = ref<ResizeState | null>(null)
@@ -83,14 +84,72 @@ const gridBgStyle = computed(() => {
   }
 })
 
+// --- 视口自适应缩放 ---
+// 保存原始坐标（缩放前），resize 时基于原始坐标重新计算
+let savedViewportW = 1920
+let savedViewportH = 1080
+let originalWidgetCoords: Map<string, { x: number; y: number; w: number; h: number; originalW?: number; originalH?: number }> = new Map()
+let originalPan = { panX: 0, panY: 0, homeX: 0, homeY: 0 }
+
+function recordOriginalState() {
+  savedViewportW = dashboardStore.dashboard?.viewportWidth ?? 1920
+  savedViewportH = dashboardStore.dashboard?.viewportHeight ?? 1080
+  originalWidgetCoords.clear()
+  for (const w of props.widgets) {
+    if (w.canvas) {
+      originalWidgetCoords.set(w.id, { x: w.canvas.x, y: w.canvas.y, w: w.canvas.w, h: w.canvas.h, originalW: w.canvas.originalW, originalH: w.canvas.originalH })
+    }
+  }
+  const d = dashboardStore.dashboard?.viewport
+  if (d) {
+    originalPan = { panX: d.panX, panY: d.panY, homeX: d.homeX, homeY: d.homeY }
+  }
+}
+
+function applyViewportScale() {
+  const curW = window.innerWidth
+  if (savedViewportW <= 0 || savedViewportH <= 0) return
+  const sx = curW / savedViewportW
+  // 基于原始坐标缩放（不重复缩放）
+  for (const w of props.widgets) {
+    const orig = originalWidgetCoords.get(w.id)
+    if (!orig || !w.canvas) continue
+    emit('update-layout', w.id, {
+      x: Math.round(orig.x * sx),
+      y: Math.round(orig.y * sx),
+      w: Math.round(orig.w * sx),
+      h: Math.round(orig.h * sx),
+      originalW: orig.originalW,
+      originalH: orig.originalH,
+    })
+  }
+  // 同步缩放 pan 和 home
+  const d = dashboardStore.dashboard
+  if (d?.viewport) {
+    d.viewport.panX = Math.round(originalPan.panX * sx)
+    d.viewport.panY = Math.round(originalPan.panY * sx)
+    d.viewport.homeX = Math.round(originalPan.homeX * sx)
+    d.viewport.homeY = Math.round(originalPan.homeY * sx)
+    canvasStore.restoreFromViewport(d.viewport)
+  }
+}
+
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+function onResize() {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(applyViewportScale, 200)
+}
+
 // --- 生命周期 ---
 onMounted(() => {
   if (contentRef.value) {
     canvasStore.canvasEl = contentRef.value as HTMLElement
   }
-  // 从 dashboard 恢复 viewport
-  const vp = dashboardStore.dashboard?.viewport
-  if (vp) canvasStore.restoreFromViewport(vp)
+  // 记录原始状态，然后根据当前屏幕缩放
+  recordOriginalState()
+  applyViewportScale()
+
+  window.addEventListener('resize', onResize)
 })
 
 // --- viewport 持久化（防抖 500ms） ---
@@ -100,6 +159,9 @@ function debouncedSaveViewport() {
   saveTimer = setTimeout(() => {
     if (dashboardStore.dashboard) {
       dashboardStore.dashboard.viewport = canvasStore.getViewport()
+      // 记录当前浏览器视口尺寸
+      dashboardStore.dashboard.viewportWidth = window.innerWidth
+      dashboardStore.dashboard.viewportHeight = window.innerHeight
       dashboardStore.save()
     }
   }, 500)
@@ -112,6 +174,8 @@ onUnmounted(() => {
   removePanListeners()
   removeDragListeners()
   removeResizeListeners()
+  window.removeEventListener('resize', onResize)
+  if (resizeTimer) clearTimeout(resizeTimer)
 })
 
 // --- 平移 ---
@@ -248,6 +312,7 @@ function onResizePointerDown(e: PointerEvent, widget: WidgetInstance) {
     startH: canvas.h,
     startCanvasX: canvas.x,
     startCanvasY: canvas.y,
+    aspectRatio: canvas.w / canvas.h,
   }
   document.addEventListener('pointermove', onResizeMove)
   document.addEventListener('pointerup', onResizeUp)
@@ -255,11 +320,22 @@ function onResizePointerDown(e: PointerEvent, widget: WidgetInstance) {
 
 function onResizeMove(e: PointerEvent) {
   if (!resizeState.value) return
-  const { widgetId, startMouseX, startMouseY, startW, startH } = resizeState.value
+  const { widgetId, startMouseX, startMouseY, startW, startH, aspectRatio } = resizeState.value
   const dx = (e.clientX - startMouseX) / canvasStore.clampedZoom
   const dy = (e.clientY - startMouseY) / canvasStore.clampedZoom
-  const newW = Math.max(100, startW + dx)
-  const newH = Math.max(60, startH + dy)
+  let newW = Math.max(100, startW + dx)
+  let newH = Math.max(60, startH + dy)
+
+  // 按住 Shift 保持宽高比
+  if (e.shiftKey) {
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      newH = Math.round(newW / aspectRatio)
+    } else {
+      newW = Math.round(newH * aspectRatio)
+    }
+    newW = Math.max(100, newW)
+    newH = Math.max(60, newH)
+  }
 
   const widget = props.widgets.find((w) => w.id === widgetId)
   if (!widget) return
@@ -405,7 +481,7 @@ function widgetStyle(widget: WidgetInstance) {
 .canvas-widget-body {
   width: 100%;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   border-radius: var(--radius-md, 12px);
 }
 

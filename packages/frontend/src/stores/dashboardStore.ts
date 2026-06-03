@@ -16,6 +16,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (data && !data.viewport) {
       data.viewport = { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
     }
+    if (data && !data.viewportWidth) data.viewportWidth = 1920
+    if (data && !data.viewportHeight) data.viewportHeight = 1080
     dashboard.value = data
     loading.value = false
   }

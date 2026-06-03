@@ -5,10 +5,10 @@ export function getDashboard(id: string) {
   return db.prepare('SELECT * FROM dashboards WHERE id = ?').get(id) as any
 }
 
-export function upsertDashboard(d: { id: string; name: string; title?: string; columns: number; rowHeight: number; background?: string; layoutMode?: string; viewport?: string }) {
+export function upsertDashboard(d: { id: string; name: string; title?: string; columns: number; rowHeight: number; background?: string; layoutMode?: string; viewport?: string; viewportWidth?: number; viewportHeight?: number }) {
   db.prepare(`
-    INSERT INTO dashboards (id, name, title, columns, row_height, background, layout_mode, viewport, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO dashboards (id, name, title, columns, row_height, background, layout_mode, viewport, viewport_width, viewport_height, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       title = excluded.title,
@@ -17,8 +17,10 @@ export function upsertDashboard(d: { id: string; name: string; title?: string; c
       background = excluded.background,
       layout_mode = excluded.layout_mode,
       viewport = excluded.viewport,
+      viewport_width = excluded.viewport_width,
+      viewport_height = excluded.viewport_height,
       updated_at = CURRENT_TIMESTAMP
-  `).run(d.id, d.name, d.title ?? 'INFI.NAV - 个人导航页', d.columns, d.rowHeight, d.background ?? '{}', d.layoutMode ?? 'canvas', d.viewport ?? '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}')
+  `).run(d.id, d.name, d.title ?? 'INFI.NAV - 个人导航页', d.columns, d.rowHeight, d.background ?? '{}', d.layoutMode ?? 'canvas', d.viewport ?? '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}', d.viewportWidth ?? 1920, d.viewportHeight ?? 1080)
 }
 
 // Widget Instances
