@@ -307,7 +307,7 @@ function widgetStyle(widget: WidgetInstance) {
     class="canvas-container"
     :class="{ panning: isPanning }"
     @pointerdown="onContainerPointerDown"
-    @wheel.prevent="onContainerWheel"
+    @wheel="onContainerWheel"
     @dblclick="onDoubleClick"
   >
     <!-- 点阵网格背景（仅拖拽时显示） -->
