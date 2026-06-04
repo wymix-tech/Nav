@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { marked } from 'marked'
+
+// 配置 marked
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+})
 
 const props = defineProps<{
   config: Record<string, any>
@@ -198,6 +205,102 @@ function saveConfig() {
   showConfig.value = false
 }
 
+// ====== Markdown 渲染 ======
+function formatContent(text: string): string {
+  if (!text) return ''
+  try {
+    return marked.parse(text) as string
+  } catch {
+    return text.replace(/\n/g, '<br>')
+  }
+}
+
+// ====== 新窗口预览 ======
+function openPreview(content: string) {
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 回复预览</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #e0e0e0;
+      background: #1a1a2e;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4, h5, h6 { margin: 16px 0 8px; color: #fff; }
+    h1 { font-size: 1.8em; border-bottom: 1px solid #333; padding-bottom: 8px; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #333; padding-bottom: 6px; }
+    h3 { font-size: 1.2em; }
+    p { margin: 8px 0; }
+    ul, ol { margin: 8px 0 8px 20px; }
+    li { margin: 4px 0; }
+    code {
+      font-family: 'SF Mono', Monaco, monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    pre {
+      background: rgba(0,0,0,0.3);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 16px;
+      margin: 12px 0;
+      color: #aaa;
+    }
+    a { color: #667eea; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; margin: 12px 0; width: 100%; }
+    th, td { border: 1px solid #333; padding: 8px 12px; text-align: left; }
+    th { background: rgba(255,255,255,0.05); }
+    hr { border: none; border-top: 1px solid #333; margin: 16px 0; }
+    img { max-width: 100%; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  ${marked.parse(content)}
+</body>
+</html>`
+
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  // 10分钟后释放URL
+  setTimeout(() => URL.revokeObjectURL(url), 600000)
+}
+
+// ====== 复制原文 ======
+async function copyOriginal(content: string) {
+  try {
+    await navigator.clipboard.writeText(content)
+    // 简单的复制成功提示
+    const msg = document.createElement('div')
+    msg.textContent = '已复制'
+    msg.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#667eea;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:9999;animation:fadeOut 2s forwards'
+    document.body.appendChild(msg)
+    setTimeout(() => msg.remove(), 2000)
+  } catch (e) {
+    console.error('复制失败:', e)
+  }
+}
+
 // ====== 生命周期 ======
 onMounted(() => {
   loadMessages()
@@ -264,12 +367,14 @@ watch(() => props.editing, (val) => {
           </div>
           <div v-for="(msg, i) in messages" :key="i" class="message" :class="msg.role">
             <div class="msg-role">{{ msg.role === 'user' ? '你' : 'AI' }}</div>
-            <div class="msg-content" v-html="formatContent(msg.content)"></div>
-          </div>
-          <div v-if="loading" class="message assistant">
-            <div class="msg-role">AI</div>
-            <div class="msg-content typing">
+            <div v-if="msg.content" class="msg-content" v-html="formatContent(msg.content)"></div>
+            <div v-else-if="loading && i === messages.length - 1 && msg.role === 'assistant'" class="msg-content typing">
               <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+            <div v-else class="msg-content"></div>
+            <div v-if="msg.role === 'assistant' && msg.content" class="msg-actions">
+              <button class="action-btn" title="新窗口预览" @click="openPreview(msg.content)">↗</button>
+              <button class="action-btn" title="复制原文" @click="copyOriginal(msg.content)">⎘</button>
             </div>
           </div>
         </div>
@@ -291,17 +396,6 @@ watch(() => props.editing, (val) => {
     </template>
   </div>
 </template>
-
-<script lang="ts">
-function formatContent(text: string): string {
-  if (!text) return ''
-  return text
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="lang-$1">$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
-}
-</script>
 
 <style scoped>
 .chat-widget { height: 100%; width: 100%; }
@@ -450,6 +544,38 @@ function formatContent(text: string): string {
   border-bottom-left-radius: 4px;
 }
 
+.msg-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.action-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.message:hover .action-btn {
+  opacity: 1;
+}
+
+.action-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border);
+}
+
 .msg-content :deep(pre) {
   background: rgba(0, 0, 0, 0.3);
   padding: 8px 10px;
@@ -471,6 +597,78 @@ function formatContent(text: string): string {
   background: none;
   padding: 0;
 }
+
+.msg-content :deep(p) {
+  margin: 6px 0;
+}
+
+.msg-content :deep(ul),
+.msg-content :deep(ol) {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.msg-content :deep(li) {
+  margin: 4px 0;
+}
+
+.msg-content :deep(blockquote) {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--text-muted);
+}
+
+.msg-content :deep(a) {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.msg-content :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.msg-content :deep(table) {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 12px;
+}
+
+.msg-content :deep(th),
+.msg-content :deep(td) {
+  border: 1px solid var(--glass-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.msg-content :deep(th) {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+}
+
+.msg-content :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  margin: 12px 0;
+}
+
+.msg-content :deep(img) {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.msg-content :deep(h1),
+.msg-content :deep(h2),
+.msg-content :deep(h3),
+.msg-content :deep(h4) {
+  margin: 12px 0 6px;
+  color: var(--text-primary);
+}
+
+.msg-content :deep(h1) { font-size: 1.3em; }
+.msg-content :deep(h2) { font-size: 1.15em; }
+.msg-content :deep(h3) { font-size: 1.05em; }
 
 .typing {
   display: flex;

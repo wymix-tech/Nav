@@ -52,6 +52,8 @@ export class SyncAdapter implements StorageAdapter {
       })),
       layoutMode: data.layout_mode ?? 'canvas',
       viewport: data.viewport ? JSON.parse(data.viewport) : { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 },
+      viewportWidth: data.viewport_width ?? 1920,
+      viewportHeight: data.viewport_height ?? 1080,
     }
   }
 
@@ -66,6 +68,8 @@ export class SyncAdapter implements StorageAdapter {
         background: dashboard.background,
         layoutMode: dashboard.layoutMode,
         viewport: dashboard.viewport,
+        viewportWidth: dashboard.viewportWidth,
+        viewportHeight: dashboard.viewportHeight,
       }),
     })
   }

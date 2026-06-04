@@ -25,7 +25,9 @@ dashboards.put('/:id', authMiddleware, async (c) => {
   const background = body.background ? JSON.stringify(body.background) : '{}'
   const layoutMode = typeof body.layoutMode === 'string' ? body.layoutMode : 'canvas'
   const viewport = body.viewport ? JSON.stringify(body.viewport) : '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}'
-  q.upsertDashboard({ id: c.req.param('id')!, name, title, columns, rowHeight, background, layoutMode, viewport })
+  const viewportWidth = typeof body.viewportWidth === 'number' ? body.viewportWidth : 1920
+  const viewportHeight = typeof body.viewportHeight === 'number' ? body.viewportHeight : 1080
+  q.upsertDashboard({ id: c.req.param('id')!, name, title, columns, rowHeight, background, layoutMode, viewport, viewportWidth, viewportHeight })
   return c.json({ success: true })
 })
 

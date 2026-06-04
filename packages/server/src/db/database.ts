@@ -17,6 +17,8 @@ db.exec(`
     row_height  INTEGER DEFAULT 80,
     layout_mode TEXT DEFAULT 'canvas',
     viewport    TEXT DEFAULT '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}',
+    viewport_width  INTEGER DEFAULT 1920,
+    viewport_height INTEGER DEFAULT 1080,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -55,5 +57,7 @@ try { db.exec('ALTER TABLE dashboards ADD COLUMN background TEXT DEFAULT \'{}\''
 try { db.exec('ALTER TABLE dashboards ADD COLUMN layout_mode TEXT DEFAULT \'canvas\'') } catch {}
 try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport TEXT DEFAULT \'{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}\'') } catch {}
 try { db.exec('ALTER TABLE widget_instances ADD COLUMN canvas TEXT') } catch {}
+try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport_width INTEGER DEFAULT 1920') } catch {}
+try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport_height INTEGER DEFAULT 1080') } catch {}
 
 export default db

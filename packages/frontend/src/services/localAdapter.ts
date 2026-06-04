@@ -50,6 +50,8 @@ const DEFAULT_DASHBOARD: Dashboard = {
   },
   layoutMode: 'canvas',
   viewport: { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 },
+  viewportWidth: 1920,
+  viewportHeight: 1080,
 }
 
 export class LocalAdapter implements StorageAdapter {
