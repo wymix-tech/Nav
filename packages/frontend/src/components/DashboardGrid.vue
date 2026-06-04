@@ -617,8 +617,8 @@ function onResizeEnd() {
 .grid-dot {
   width: 4px;
   height: 4px;
-  border-radius: 50%;
-  background: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.4);
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
   transition: background 0.2s;
 }
 
