@@ -73,14 +73,17 @@ const contentTransform = computed(() => ({
   transformOrigin: '0 0',
 }))
 
+// 四角星 SVG 图案
+const starSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='5' height='5' viewBox='0 0 20 20'><path d='M10 1 L11.8 8.2 L19 10 L11.8 11.8 L10 19 L8.2 11.8 L1 10 L8.2 8.2 Z' fill='rgba(255,255,255,0.18)'/></svg>`
+const starDataUri = `url("data:image/svg+xml,${encodeURIComponent(starSvg)}")`
+
 // 点阵网格背景样式：随 pan/zoom 同步移动
 const gridBgStyle = computed(() => {
   const dotSpacing = 24 * canvasStore.clampedZoom
-  const dotSize = Math.max(1, 1.2 * canvasStore.clampedZoom)
   return {
     backgroundSize: `${dotSpacing}px ${dotSpacing}px`,
     backgroundPosition: `${canvasStore.panX}px ${canvasStore.panY}px`,
-    backgroundImage: `radial-gradient(circle, rgba(255, 255, 255, 0.18) ${dotSize}px, transparent ${dotSize}px)`,
+    backgroundImage: starDataUri,
   }
 })
 
@@ -386,8 +389,8 @@ function widgetStyle(widget: WidgetInstance) {
     @wheel="onContainerWheel"
     @dblclick="onDoubleClick"
   >
-    <!-- 点阵网格背景（仅拖拽时显示） -->
-    <div class="canvas-grid-bg" :class="{ visible: isPanning }" :style="gridBgStyle" />
+    <!-- 点阵网格背景（拖拽/平移时显示） -->
+    <div class="canvas-grid-bg" :class="{ visible: isPanning || !!dragState }" :style="gridBgStyle" />
 
     <!-- 画布内容层 -->
     <div ref="contentRef" class="canvas-content" :style="contentTransform">
