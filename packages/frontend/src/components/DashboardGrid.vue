@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { WidgetInstance, WidgetLayout, CanvasLayout } from '@nav/shared'
+import { getAutoColumns } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import CanvasGrid from './CanvasGrid.vue'
@@ -33,8 +34,13 @@ const { isLandscape } = useScreenOrientation()
 // 窗口宽度（用于网格列数自适应）
 const windowWidth = ref(window.innerWidth)
 
+// resize 防抖：避免拖动窗口边框时高频触发 adaptAllWidgets 导致布局抖动
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
 function updateWindowWidth() {
-  windowWidth.value = window.innerWidth
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    windowWidth.value = window.innerWidth
+  }, 150)
 }
 
 onMounted(() => {
@@ -42,20 +48,19 @@ onMounted(() => {
   window.addEventListener('resize', updateWindowWidth)
 })
 onUnmounted(() => {
+  if (resizeTimer) clearTimeout(resizeTimer)
   window.removeEventListener('resize', updateWindowWidth)
 })
 
 // 根据屏幕宽度确定默认网格列数（仅在用户未自定义时生效）
-const defaultGridCols = computed(() => {
-  const w = windowWidth.value
-  if (w >= 1200) return 12
-  if (w >= 992) return 10
-  if (w >= 768) return 8
-  return 6
-})
+// 引用 shared 统一断点逻辑，保持全项目断点一致
+const defaultGridCols = computed(() => getAutoColumns(windowWidth.value))
 
-// 用户自定义列数优先，未设置时按屏幕宽度自动适配
-const activeCols = computed(() => props.columns ?? defaultGridCols.value)
+// 用户自定义列数优先（>0 视为自定义，0/null/undefined 视为自动适配）
+const activeCols = computed(() => {
+  const c = props.columns
+  return c && c > 0 ? c : defaultGridCols.value
+})
 
 // 列数变化时自适应组件尺寸
 let prevCols = activeCols.value
@@ -68,6 +73,7 @@ watch(activeCols, (newCols) => {
 const isStackMode = computed(() => !isLandscape.value)
 
 // 获取组件在当前网格列数下的布局坐标
+// lg 即"当前活跃列数下的布局"，由 adaptAllWidgets 在列数变化时同步缩放
 function getScaledLayout(w: WidgetInstance): WidgetLayout {
   return w.layouts.lg
 }
@@ -120,10 +126,14 @@ function adaptAllWidgets(oldCols: number, newCols: number) {
     while (newW > newCols) newW--
     if (newW < opt.minW) newW = opt.minW
 
-    if (newW !== l.w || newH !== l.h) {
+    // 按比例缩放 x 坐标，并 clamp 到有效范围 [0, newCols - newW]
+    let newX = Math.round(l.x * scale)
+    newX = Math.max(0, Math.min(newX, newCols - newW))
+
+    if (newW !== l.w || newH !== l.h || newX !== l.x) {
       emit('update-layout', w.id, {
         ...w.layouts,
-        lg: { x: l.x, y: l.y, w: newW, h: newH },
+        lg: { x: newX, y: l.y, w: newW, h: newH },
       })
     }
   }

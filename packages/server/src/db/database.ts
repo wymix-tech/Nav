@@ -13,7 +13,7 @@ db.exec(`
     name        TEXT NOT NULL,
     title       TEXT DEFAULT 'INFI.NAV - 个人导航页',
     background  TEXT DEFAULT '{}',
-    columns     INTEGER DEFAULT 12,
+    columns     INTEGER DEFAULT 0,
     row_height  INTEGER DEFAULT 80,
     layout_mode TEXT DEFAULT 'canvas',
     viewport    TEXT DEFAULT '{"panX":0,"panY":0,"zoom":1,"homeX":0,"homeY":0}',
@@ -59,5 +59,8 @@ try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport TEXT DEFAULT \'{"panX"
 try { db.exec('ALTER TABLE widget_instances ADD COLUMN canvas TEXT') } catch {}
 try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport_width INTEGER DEFAULT 1920') } catch {}
 try { db.exec('ALTER TABLE dashboards ADD COLUMN viewport_height INTEGER DEFAULT 1080') } catch {}
+
+// 迁移：将旧的 columns=12（硬编码默认值）更新为 0（自动适配）
+try { db.exec('UPDATE dashboards SET columns = 0 WHERE columns = 12') } catch {}
 
 export default db

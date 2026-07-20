@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
 import type { DashboardBackground, BackgroundImage } from '@nav/shared'
+import { getAutoColumns } from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
@@ -13,7 +14,9 @@ const emit = defineEmits<{
 
 const title = ref(dashboardStore.dashboard?.title ?? 'INFI.NAV - 个人导航页')
 const layoutMode = ref<'grid' | 'canvas'>(dashboardStore.dashboard?.layoutMode ?? 'canvas')
-const columns = ref(dashboardStore.dashboard?.columns ?? 12)
+// columns === 0 表示"自动适配屏幕宽度"，>0 表示用户手动指定列数
+const autoColumns = ref(!(dashboardStore.dashboard?.columns && dashboardStore.dashboard.columns > 0))
+const columns = ref(dashboardStore.dashboard?.columns && dashboardStore.dashboard.columns > 0 ? dashboardStore.dashboard.columns : 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color'
 )
@@ -76,7 +79,8 @@ function save() {
 
   dashboardStore.dashboard.title = title.value
   dashboardStore.dashboard.layoutMode = newMode
-  dashboardStore.dashboard.columns = columns.value
+  // 自动适配时 columns 存为 0，由 DashboardGrid 按断点动态计算
+  dashboardStore.dashboard.columns = autoColumns.value ? 0 : columns.value
   dashboardStore.dashboard.background = {
     mode: bgMode.value,
     color: bgColor.value,
@@ -87,7 +91,7 @@ function save() {
 
   // 切换到画布模式时，将网格坐标转换为像素坐标
   if (oldMode !== newMode && newMode === 'canvas') {
-    const cols = columns.value
+    const cols = autoColumns.value ? getAutoColumns(window.innerWidth) : columns.value
     const rowH = dashboardStore.dashboard.rowHeight ?? 80
     const margin = 10
     const containerW = window.innerWidth - 48
@@ -161,6 +165,10 @@ function cancel() {
       <div class="prefs-section">
         <label class="prefs-label">网格列数</label>
         <div class="columns-row">
+          <label class="auto-cols-toggle">
+            <input type="checkbox" v-model="autoColumns" />
+            <span>自动适配屏幕</span>
+          </label>
           <input
             v-model.number="columns"
             type="range"
@@ -168,10 +176,11 @@ function cancel() {
             max="24"
             step="2"
             class="interval-slider"
+            :disabled="autoColumns"
           />
-          <span class="interval-value">{{ columns }} 列</span>
+          <span class="interval-value">{{ autoColumns ? '自动' : columns + ' 列' }}</span>
         </div>
-        <div class="columns-preview">
+        <div class="columns-preview" v-if="!autoColumns">
           <div v-for="n in columns" :key="n" class="col-bar"></div>
         </div>
       </div>
@@ -550,7 +559,27 @@ function cancel() {
 .columns-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.auto-cols-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-cols-toggle input {
+  cursor: pointer;
+}
+
+.interval-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .columns-preview {

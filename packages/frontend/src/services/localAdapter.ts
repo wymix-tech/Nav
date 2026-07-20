@@ -39,7 +39,7 @@ const DEFAULT_DASHBOARD: Dashboard = {
   name: '我的导航',
   title: 'INFI.NAV - 个人导航页',
   widgets: [],
-  columns: 12,
+  columns: 0, // 0 = 自动按断点适配（lg=12 / md=10 / sm=8 / xs=6）
   rowHeight: 80,
   background: {
     mode: 'color',
