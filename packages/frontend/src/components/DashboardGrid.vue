@@ -90,6 +90,7 @@ const layout = computed(() => draft.value ?? derived.value)
 const canEdit = computed(() => props.editing && props.editable)
 let observer: ResizeObserver | undefined,
   frame = 0,
+  measureFrame = 0,
   pendingWidth: number | undefined
 let interaction: {
   id: string
@@ -110,12 +111,17 @@ function resizeContainer(w: number) {
 onMounted(() => {
   if (!root.value) return
   resizeContainer(root.value.clientWidth)
-  observer = new ResizeObserver((entries) => resizeContainer(entries[0].contentRect.width))
+  observer = new ResizeObserver((entries) => {
+    const nextWidth = entries[0].contentRect.width
+    cancelAnimationFrame(measureFrame)
+    measureFrame = requestAnimationFrame(() => resizeContainer(nextWidth))
+  })
   observer.observe(root.value)
   window.addEventListener('keydown', escape)
 })
 onUnmounted(() => {
   observer?.disconnect()
+  cancelAnimationFrame(measureFrame)
   cancel()
   window.removeEventListener('keydown', escape)
 })

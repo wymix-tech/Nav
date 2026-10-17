@@ -51,6 +51,7 @@ test.beforeEach(async ({ page, request }) => {
   }, token)
   await page.route('https://wttr.in/**', (route) =>
     route.fulfill({
+      headers: { 'Access-Control-Allow-Origin': '*' },
       json: {
         current_condition: [
           {
@@ -87,6 +88,11 @@ test.beforeEach(async ({ page, request }) => {
   )
   await page.goto('/')
   await expect(page.locator('.css-grid-item')).toHaveCount(5)
+  await expect(page.locator('.clock-widget')).toBeVisible()
+  await expect(page.locator('.search-widget')).toBeVisible()
+  await expect(page.locator('.bookmark-widget')).toBeVisible()
+  await expect(page.locator('.weather-widget')).toContainText('Sunny')
+  await expect(page.locator('.monitor-widget')).toContainText('test-host')
   if (process.env.NAV_TEST_DIST === 'true')
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
 })
@@ -282,6 +288,8 @@ test('a plugin survives reload and cannot access its host or unapproved network'
   )
   await page.reload()
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
+  await expect(page.locator('.weather-widget')).toContainText('Sunny')
+  await expect(page.locator('.monitor-widget')).toContainText('test-host')
   await page.reload()
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
 })

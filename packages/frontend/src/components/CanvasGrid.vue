@@ -75,6 +75,7 @@ let active: {
 } | null = null
 let observer: ResizeObserver | undefined,
   frame = 0,
+  measureFrame = 0,
   wheelTimer: ReturnType<typeof setTimeout> | undefined
 let pendingSize: { width: number; height: number } | undefined
 watch(
@@ -302,17 +303,21 @@ function keyboard(e: KeyboardEvent, w: WidgetInstance) {
 onMounted(() => {
   observer = new ResizeObserver(([entry]) => {
     const size = { width: entry.contentRect.width, height: entry.contentRect.height }
-    if (active) pendingSize = size
-    else {
-      width.value = size.width
-      height.value = size.height
-    }
+    cancelAnimationFrame(measureFrame)
+    measureFrame = requestAnimationFrame(() => {
+      if (active) pendingSize = size
+      else {
+        width.value = size.width
+        height.value = size.height
+      }
+    })
   })
   if (root.value) observer.observe(root.value)
   window.addEventListener('keydown', escape)
 })
 onUnmounted(() => {
   observer?.disconnect()
+  cancelAnimationFrame(measureFrame)
   cancel()
   flushWheel(false)
   window.removeEventListener('keydown', escape)
