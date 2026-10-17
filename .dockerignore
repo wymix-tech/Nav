@@ -15,3 +15,8 @@ CLAUDE.md
 CODEBUDDY.md
 nav.log
 nav.pid
+
+**/*.tsbuildinfo
+**/node_modules
+test-results
+playwright-report

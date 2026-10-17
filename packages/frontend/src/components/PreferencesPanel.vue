@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
+import ModalShell from './ModalShell.vue'
 import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
-import type { DashboardBackground, BackgroundImage } from '@nav/shared'
+import { type BackgroundImage } from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
@@ -14,19 +15,22 @@ const emit = defineEmits<{
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
-  dashboardStore.dashboard?.background?.mode ?? 'color'
+  dashboardStore.dashboard?.background?.mode ?? 'color',
 )
 const bgColor = ref(dashboardStore.dashboard?.background?.color ?? '#0c1021')
-const bgImages = ref<BackgroundImage[]>(dashboardStore.dashboard?.background?.images ?? [])
+const bgImages = ref<BackgroundImage[]>(
+  JSON.parse(JSON.stringify(dashboardStore.dashboard?.background?.images ?? [])),
+)
 const slideshowInterval = ref(dashboardStore.dashboard?.background?.interval ?? 30)
 const newImageUrl = ref('')
 const uploading = ref(false)
 
-// 监听标题变化，实时更新 document.title
-watch(title, (val) => {
-  document.title = val || 'Nav - 个人导航页'
-})
-
+const uploadError = ref('')
+const columnMode = ref(dashboardStore.dashboard?.layoutSettings?.columnMode ?? 'auto')
+const contentWidthMode = ref(
+  dashboardStore.dashboard?.layoutSettings?.contentWidthMode ?? 'centered',
+)
+const maxContentWidth = ref(dashboardStore.dashboard?.layoutSettings?.maxContentWidth ?? 1600)
 async function handleImageUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -50,7 +54,7 @@ async function handleImageUpload(event: Event) {
       name: file.name,
     })
   } catch (e) {
-    console.error('图片上传失败:', e)
+    uploadError.value = '图片上传失败：仅支持 5 MiB 以内的栅格图片，动画将转为静态，SVG 不受支持'
   } finally {
     uploading.value = false
   }
@@ -67,19 +71,24 @@ function removeImage(index: number) {
   bgImages.value.splice(index, 1)
 }
 
-function save() {
+async function save() {
   if (!dashboardStore.dashboard) return
-  dashboardStore.dashboard.title = title.value
-  dashboardStore.dashboard.columns = columns.value
-  dashboardStore.dashboard.background = {
+  const next = JSON.parse(JSON.stringify(dashboardStore.dashboard))
+  next.title = title.value
+  next.columns = columns.value
+  next.layoutSettings = {
+    columnMode: columnMode.value,
+    contentWidthMode: contentWidthMode.value,
+    maxContentWidth: maxContentWidth.value,
+  }
+  next.background = {
     mode: bgMode.value,
     color: bgColor.value,
     images: bgImages.value,
     interval: slideshowInterval.value,
     index: 0,
   }
-  dashboardStore.save()
-  emit('close')
+  if (await dashboardStore.commit(next)) emit('close')
 }
 
 function cancel() {
@@ -88,7 +97,7 @@ function cancel() {
 </script>
 
 <template>
-  <div class="prefs-overlay" @click.self="cancel">
+  <ModalShell label="偏好设置" @close="cancel">
     <div class="prefs-panel">
       <div class="prefs-header">
         <h3>偏好设置</h3>
@@ -98,17 +107,26 @@ function cancel() {
       <!-- 页面标题 -->
       <div class="prefs-section">
         <label class="prefs-label">页面标题</label>
-        <input
-          v-model="title"
-          type="text"
-          class="prefs-input"
-          placeholder="Nav - 个人导航页"
-        />
+        <input v-model="title" type="text" class="prefs-input" placeholder="Nav - 个人导航页" />
       </div>
 
       <!-- 网格列数 -->
       <div class="prefs-section">
-        <label class="prefs-label">网格列数</label>
+        <label class="prefs-label">列数策略</label
+        ><select v-model="columnMode">
+          <option value="auto">自动适配</option>
+          <option value="custom">自定义列数上限</option>
+        </select>
+        <label class="prefs-label">内容宽度</label
+        ><select v-model="contentWidthMode">
+          <option value="centered">居中</option>
+          <option value="fluid">铺满</option>
+        </select>
+        <label v-if="contentWidthMode === 'centered'"
+          >最大宽度
+          <input v-model.number="maxContentWidth" type="number" min="800" max="3840" step="100"
+        /></label>
+        <label class="prefs-label">基准网格列数 / 自定义上限</label>
         <div class="columns-row">
           <input
             v-model.number="columns"
@@ -129,18 +147,18 @@ function cancel() {
       <div class="prefs-section">
         <label class="prefs-label">页面背景</label>
         <div class="mode-tabs">
-          <button
-            :class="['mode-tab', { active: bgMode === 'color' }]"
-            @click="bgMode = 'color'"
-          >纯色</button>
-          <button
-            :class="['mode-tab', { active: bgMode === 'image' }]"
-            @click="bgMode = 'image'"
-          >图片</button>
+          <button :class="['mode-tab', { active: bgMode === 'color' }]" @click="bgMode = 'color'">
+            纯色
+          </button>
+          <button :class="['mode-tab', { active: bgMode === 'image' }]" @click="bgMode = 'image'">
+            图片
+          </button>
           <button
             :class="['mode-tab', { active: bgMode === 'slideshow' }]"
             @click="bgMode = 'slideshow'"
-          >轮播</button>
+          >
+            轮播
+          </button>
         </div>
       </div>
 
@@ -159,7 +177,13 @@ function cancel() {
           <label class="prefs-label">添加图片</label>
           <div class="image-actions">
             <label class="upload-btn" :class="{ disabled: uploading }">
-              <input type="file" accept="image/*" @change="handleImageUpload" hidden :disabled="uploading" />
+              <input
+                type="file"
+                accept="image/*"
+                @change="handleImageUpload"
+                hidden
+                :disabled="uploading"
+              />
               <span>{{ uploading ? '上传中...' : '+ 上传图片' }}</span>
             </label>
             <div class="url-row">
@@ -204,13 +228,15 @@ function cancel() {
         </div>
       </template>
 
-      <!-- 操作按钮 -->
+      <p v-if="uploadError" role="alert">{{ uploadError }}</p>
+      <p v-if="dashboardStore.error" role="alert">{{ dashboardStore.error }}</p>
+      <small>上传动画仅保留第一帧；SVG 不受支持。</small><!-- 操作按钮 -->
       <div class="prefs-actions">
         <button class="prefs-btn cancel" @click="cancel">取消</button>
         <button class="prefs-btn save" @click="save">保存</button>
       </div>
     </div>
-  </div>
+  </ModalShell>
 </template>
 
 <style scoped>
@@ -297,7 +323,9 @@ function cancel() {
   font-family: var(--font-body);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .prefs-input:focus {
@@ -349,8 +377,13 @@ function cancel() {
   padding: 0;
 }
 
-.color-picker::-webkit-color-swatch-wrapper { padding: 2px; }
-.color-picker::-webkit-color-swatch { border-radius: 6px; border: none; }
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.color-picker::-webkit-color-swatch {
+  border-radius: 6px;
+  border: none;
+}
 
 .color-text {
   flex: 1;

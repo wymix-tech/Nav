@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import { useDashboardStore } from '../stores/dashboardStore'
-import type { WidgetInstance, WidgetLayout } from '@nav/shared'
+import { constraints, findPlacement } from '@nav/shared'
 
 const widgetStore = useWidgetStore()
 const dashboardStore = useDashboardStore()
@@ -12,74 +11,30 @@ const emit = defineEmits<{
   'toggle-library': []
 }>()
 
-const props = defineProps<{
+defineProps<{
   visible: boolean
 }>()
 
-function createDefaultLayout(x: number, y: number, cols: number, w: number, h: number): WidgetLayout {
-  const clampedX = Math.max(0, Math.min(cols - w, x))
-  const clampedW = Math.max(1, Math.min(cols, w))
-  return { x: clampedX, y, w: clampedW, h }
-}
-
 function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
-  const existingWidgets = dashboardStore.dashboard?.widgets ?? []
-  const cols = dashboardStore.dashboard?.columns ?? 12
-
-  // 根据列数确定组件默认尺寸
-  const defaultSizes: Record<string, { w: number; h: number }> = {
-    search:   { w: Math.min(Math.round(cols * 2 / 3), cols), h: 2 },
-    clock:    { w: Math.min(4, cols), h: 3 },
-    weather:  { w: Math.min(4, cols), h: 3 },
-    bookmark: { w: Math.min(4, cols), h: 3 },
-    monitor:  { w: Math.min(4, cols), h: 3 },
+  const dashboard = dashboardStore.dashboard
+  if (!dashboard) return
+  try {
+    const cols = dashboard.baseColumns ?? dashboard.columns
+    const size = constraints[widgetId] ??
+      widgetStore.getWidget(widgetId)?.manifest.size ?? { w: 4, h: 3 }
+    const placed = Object.fromEntries(dashboard.widgets.map((w) => [w.id, w.layouts.lg]))
+    const layout = findPlacement(placed, Math.min(size.w, cols), size.h, cols)
+    const id = crypto.randomUUID()
+    dashboardStore.addWidget({
+      id,
+      widgetId,
+      source,
+      config: {},
+      layouts: { lg: layout, md: layout, sm: layout, xs: layout },
+    })
+  } catch (e) {
+    dashboardStore.error = (e as Error).message
   }
-  const size = defaultSizes[widgetId] ?? { w: Math.min(4, cols), h: 3 }
-
-  let bestX = 0
-  let bestY = 0
-
-  if (existingWidgets.length === 0) {
-    bestX = 0
-    bestY = 0
-  } else {
-    // 找到第一个可用的空位
-    const occupied = new Set<string>()
-    for (const w of existingWidgets) {
-      const l = w.layouts.lg
-      for (let dy = 0; dy < l.h; dy++) {
-        for (let dx = 0; dx < l.w; dx++) {
-          occupied.add(`${l.x + dx},${l.y + dy}`)
-        }
-      }
-    }
-    let found = false
-    for (let y = 0; y < 50 && !found; y++) {
-      for (let x = 0; x <= cols - size.w && !found; x++) {
-        let canPlace = true
-        for (let dy = 0; dy < size.h && canPlace; dy++) {
-          for (let dx = 0; dx < size.w && canPlace; dx++) {
-            if (occupied.has(`${x + dx},${y + dy}`)) canPlace = false
-          }
-        }
-        if (canPlace) { bestX = x; bestY = y; found = true }
-      }
-    }
-  }
-
-  const instance: WidgetInstance = {
-    id: `inst_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    widgetId,
-    source,
-    config: {},
-    layouts: {
-      lg: createDefaultLayout(bestX, bestY, cols, size.w, size.h),
-      md: { x: 0, y: 0, w: 1, h: 3 },
-      sm: { x: 0, y: 0, w: 1, h: 3 },
-      xs: { x: 0, y: 0, w: 1, h: 3 },
-    },
-  }
-  dashboardStore.addWidget(instance)
 }
 
 const builtinWidgets = [
@@ -89,6 +44,14 @@ const builtinWidgets = [
   { id: 'bookmark', name: '书签', icon: '📑' },
   { id: 'monitor', name: '监控', icon: '📊' },
 ]
+async function uninstall(id: string) {
+  try {
+    await widgetStore.uninstall(id)
+    widgetStore.error = ''
+  } catch (e) {
+    widgetStore.error = (e as Error).message
+  }
+}
 </script>
 
 <template>
@@ -109,6 +72,9 @@ const builtinWidgets = [
             v-for="w in builtinWidgets"
             :key="w.id"
             class="widget-item"
+            role="button"
+            tabindex="0"
+            @keydown.enter="addToDashboard(w.id, 'builtin')"
             @click="addToDashboard(w.id, 'builtin')"
           >
             <span class="widget-icon">{{ w.icon }}</span>
@@ -119,6 +85,7 @@ const builtinWidgets = [
 
       <div v-if="widgetStore.installedWidgets.length > 0" class="section">
         <h4>已安装组件</h4>
+        <p v-if="widgetStore.error" role="alert">{{ widgetStore.error }}</p>
         <div class="widget-list">
           <div
             v-for="w in widgetStore.installedWidgets"
@@ -127,7 +94,8 @@ const builtinWidgets = [
             @click="addToDashboard(w.widgetId, 'installed')"
           >
             <span class="widget-icon">{{ w.manifest.icon }}</span>
-            <span class="widget-name">{{ w.manifest.displayName }}</span>
+            <span class="widget-name">{{ w.manifest.displayName }}</span
+            ><button @click.stop="uninstall(w.widgetId)">卸载</button>
           </div>
         </div>
       </div>
@@ -138,8 +106,9 @@ const builtinWidgets = [
 <style scoped>
 .library-wrapper {
   position: fixed;
-  left: 24px;
-  bottom: 80px;
+  left: 12px;
+  top: 24px;
+  bottom: 88px;
   z-index: 90;
   transform: translateY(20px);
   opacity: 0;
@@ -154,7 +123,9 @@ const builtinWidgets = [
 }
 
 .library-panel {
-  width: 280px;
+  width: 260px;
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -271,7 +242,7 @@ const builtinWidgets = [
 }
 
 /* 手机端：底部抽屉 */
-@media (max-width: 768px) {
+@media (max-width: 1099px) {
   .library-wrapper {
     left: 0;
     right: 0;

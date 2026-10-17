@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import ModalShell from './ModalShell.vue'
 import type { WidgetInstance } from '@nav/shared'
 import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
@@ -43,7 +44,9 @@ function handleConfigUpdate(config: Record<string, any>) {
         class="toolbar-btn config-btn"
         title="配置"
         @click="showConfig = true"
-      >⚙</button>
+      >
+        ⚙
+      </button>
       <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
     </div>
     <div class="widget-content">
@@ -57,7 +60,7 @@ function handleConfigUpdate(config: Record<string, any>) {
     </div>
 
     <!-- 配置弹窗 -->
-    <div v-if="showConfig" class="config-overlay" @click.self="showConfig = false">
+    <ModalShell v-if="showConfig" label="组件配置" @close="showConfig = false">
       <div class="config-dialog">
         <h3>组件配置</h3>
         <WidgetConfigForm
@@ -70,7 +73,7 @@ function handleConfigUpdate(config: Record<string, any>) {
           <button @click="showConfig = false">关闭</button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   </div>
 </template>
 
@@ -124,7 +127,8 @@ function handleConfigUpdate(config: Record<string, any>) {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.widget-wrapper:hover .toolbar-btn {
+.widget-wrapper:hover .toolbar-btn,
+.widget-wrapper:focus-within .toolbar-btn {
   opacity: 1;
   transform: scale(1);
 }
@@ -143,7 +147,8 @@ function handleConfigUpdate(config: Record<string, any>) {
 
 .widget-content {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow: auto;
   border-radius: inherit;
 }
 

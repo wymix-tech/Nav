@@ -10,3 +10,8 @@ dist
 uploads/
 .pnpm-store
 *.tsbuildinfo
+
+test-results/
+playwright-report/
+nav.pid
+nav.log

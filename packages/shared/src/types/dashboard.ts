@@ -40,4 +40,16 @@ export interface Dashboard {
   columns: number
   rowHeight: number
   background: DashboardBackground
+  baseColumns?: number
+  instanceId?: string
+  revision?: number
+  layoutVersion?: 2
+  layoutSettings?: LayoutSettings
+  layoutProfiles?: Record<string, Record<string, WidgetLayout>>
+}
+
+export interface LayoutSettings {
+  columnMode: 'auto' | 'custom'
+  contentWidthMode: 'centered' | 'fluid'
+  maxContentWidth: number
 }

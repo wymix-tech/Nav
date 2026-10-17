@@ -1,4 +1,5 @@
 export interface WidgetManifest {
+  manifestVersion?: 2
   name: string
   displayName: string
   version: string
@@ -15,6 +16,7 @@ export interface WidgetManifest {
     breakpoints: Record<string, { minWidth: number; layout: string }>
   }
   permissions?: string[]
+  networkOrigins?: string[]
 }
 
 export interface InstalledWidget {
@@ -22,6 +24,7 @@ export interface InstalledWidget {
   manifest: WidgetManifest
   cdnUrl: string
   installedAt: string
+  commit?: string
 }
 
 export interface WidgetProps {
@@ -32,5 +35,5 @@ export interface WidgetProps {
 
 export interface WidgetEmits {
   'update:config': [value: Record<string, any>]
-  'resize': [size: { w: number; h: number }]
+  resize: [size: { w: number; h: number }]
 }

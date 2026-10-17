@@ -1,103 +1,51 @@
-import Dexie, { type Table } from 'dexie'
-import type {
-  Dashboard,
-  InstalledWidget,
-  StorageAdapter,
-  Change,
-  SyncState,
+import {
+  createDashboard,
+  migrateDashboard,
+  validateDashboard,
+  type Dashboard,
+  type InstalledWidget,
+  type StorageAdapter,
+  type SyncState,
 } from '@nav/shared'
-
-interface DashboardRow {
-  id: string
-  data: string
-  updatedAt: string
-}
-
-interface InstalledWidgetRow {
-  widgetId: string
-  data: string
-  installedAt: string
-}
-
-class NavDatabase extends Dexie {
-  dashboards!: Table<DashboardRow>
-  installedWidgets!: Table<InstalledWidgetRow>
-
-  constructor() {
-    super('nav')
-    this.version(1).stores({
-      dashboards: 'id',
-      installedWidgets: 'widgetId',
-    })
-  }
-}
-
-const db = new NavDatabase()
-
-const DEFAULT_DASHBOARD: Dashboard = {
-  id: 'default',
-  name: '我的导航',
-  title: 'Nav - 个人导航页',
-  widgets: [],
-  columns: 12,
-  rowHeight: 80,
-  background: {
-    mode: 'color',
-    color: '#0c1021',
-    images: [],
-    interval: 30,
-    index: 0,
-  },
-}
-
+import { localDatabase as db, clone } from './localDatabase'
 export class LocalAdapter implements StorageAdapter {
   async getDashboard(): Promise<Dashboard> {
     const row = await db.dashboards.get('default')
-    if (!row) {
-      await db.dashboards.put({
-        id: 'default',
-        data: JSON.stringify(DEFAULT_DASHBOARD),
-        updatedAt: new Date().toISOString(),
-      })
-      return DEFAULT_DASHBOARD
-    }
-    return JSON.parse(row.data)
+    const raw = row ? JSON.parse(row.data) : createDashboard()
+    if (raw.layoutVersion !== 2)
+      await db.backups.put({ key: 'layout-v1:standalone', data: JSON.stringify(raw) })
+    const d = migrateDashboard(raw)
+    if (!row || raw.layoutVersion !== 2) await this.saveDashboard(d)
+    return d
   }
-
   async saveDashboard(dashboard: Dashboard): Promise<void> {
+    validateDashboard(dashboard)
     await db.dashboards.put({
       id: dashboard.id,
       data: JSON.stringify(dashboard),
       updatedAt: new Date().toISOString(),
     })
   }
-
   async getInstalledWidgets(): Promise<InstalledWidget[]> {
-    const rows = await db.installedWidgets.toArray()
-    return rows.map((r) => JSON.parse(r.data))
+    return (await db.installedWidgets.toArray()).map((r) => JSON.parse(r.data))
   }
-
   async installWidget(widget: InstalledWidget): Promise<void> {
     await db.installedWidgets.put({
       widgetId: widget.widgetId,
-      data: JSON.stringify(widget),
-      installedAt: new Date().toISOString(),
+      data: JSON.stringify(clone(widget)),
+      installedAt: widget.installedAt,
     })
   }
-
-  async uninstallWidget(widgetId: string): Promise<void> {
-    await db.installedWidgets.delete(widgetId)
+  async uninstallWidget(id: string): Promise<void> {
+    await db.installedWidgets.delete(id)
   }
-
   async getSyncState(): Promise<SyncState> {
-    return { lastSyncAt: null, pendingChanges: 0 }
+    return { lastSyncAt: null, pendingChanges: 0, status: 'local-only' }
   }
-
-  async push(_changes: Change[]): Promise<void> {
-    // 本地模式无需 push
+  async push(): Promise<void> {
+    throw new Error('本地模式不提供独立 push；请使用保存接口')
   }
-
-  async pull(): Promise<Change[]> {
+  async pull(): Promise<never[]> {
     return []
   }
 }

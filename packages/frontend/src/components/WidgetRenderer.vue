@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent, computed } from 'vue'
+import { useWidgetStore } from '../stores/widgetStore'
+import SandboxWidget from './SandboxWidget.vue'
 import type { WidgetInstance, WidgetManifest } from '@nav/shared'
 
 const props = defineProps<{
@@ -22,29 +24,25 @@ const builtinComponents: Record<string, any> = {
   monitor: defineAsyncComponent(() => import('../widgets/MonitorWidget.vue')),
 }
 
-// 外部组件从 CDN 加载
-const externalComponent = computed(() => {
-  if (props.widget.source !== 'installed' || !props.manifest) return null
-  return defineAsyncComponent({
-    loader: () => import(/* @vite-ignore */ props.manifest!.entry),
-    timeout: 10000,
-    onError(error, retry, fail) {
-      console.error('组件加载失败:', error)
-      fail()
-    },
-  })
-})
-
-const component = computed(() => {
-  if (props.widget.source === 'builtin') {
-    return builtinComponents[props.widget.widgetId] ?? null
-  }
-  return externalComponent.value
-})
+const store = useWidgetStore()
+const installed = computed(() => store.getWidget(props.widget.widgetId))
+const component = computed(() =>
+  props.widget.source === 'builtin' ? builtinComponents[props.widget.widgetId] : null,
+)
 </script>
 
 <template>
-  <Suspense>
+  <template v-if="widget.source === 'installed'">
+    <SandboxWidget
+      v-if="installed?.manifest.manifestVersion === 2"
+      :installed="installed"
+      :config="widget.config"
+      :editable="editable"
+      @update:config="$emit('update:config', $event)"
+    />
+    <p v-else class="widget-loading">旧插件需要升级到隔离协议 v2；配置和位置已保留。</p>
+  </template>
+  <Suspense v-else>
     <component
       v-if="component"
       :is="component"

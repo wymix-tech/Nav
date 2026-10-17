@@ -1,157 +1,104 @@
 # Nav
 
-一个可自定义的个人导航仪表盘，支持内置组件和第三方组件扩展。
+可自定义的个人导航仪表盘，支持 PC 多尺寸布局、内置组件、隔离插件和本地优先保存。
+
+## 开发与验证
+
+需要 Node.js 22+、pnpm 9.15.0。
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm check             # 类型、ESLint、单元/路由/仓储测试、生产构建
+pnpm dev               # 前端 3000，后端 4000
+```
+
+后端通过环境变量或根目录 `.env` 配置 `NAV_JWT_SECRET`，并设置 `NAV_PASSWORD_HASH` 或 `NAV_PASSWORD`。密码登录最多 72 字节，推荐使用 bcrypt 哈希。
+
+仅使用本地 IndexedDB 的独立模式需显式启用：
+
+```bash
+VITE_STORAGE_MODE=local pnpm dev:frontend
+VITE_STORAGE_MODE=local pnpm --filter @nav/frontend build
+```
+
+默认服务器模式不会因网络超时自动开放匿名编辑。界面分别显示“已保存到本机”“等待同步”“已同步”“冲突”等状态，数据错误不会静默忽略。
+
+## PC 布局
+
+- 依据实际内容容器的 CSS 宽度选择布局，支持笔记本、分屏、竖屏、超宽和大屏。
+- 默认居中、最大内容宽度 1600 px，可以切换铺满；列数可自动选择或设置上限。
+- 基准布局与断点布局分开，窗口变化不会写回用户配置。
+- 拖拽、缩放、键盘调整结束后提交一次原子布局；支持撤销、重做、自动整理和设为基准。
+- 小卡片采用内容适配和内部滚动；竖屏不会仅因长宽比切成单列。
+
+## 保存、同步与离线
+
+独立模式使用 IndexedDB。服务器模式先以本地事务保存快照与待同步操作，再以版本条件和稳定操作 ID 同步到 SQLite。多设备冲突不会自动覆盖，双方草稿可导出并明确处理；跨标签页草稿变化也有版本保护。
+
+生产应用壳成功加载并缓存后可离线打开。离线草稿刷新后仍保留；联网且授权有效时继续同步。插件安装、卸载需要联网；天气、远程插件代码及背景资源不保证离线可用。首次从未访问的页面不支持离线冷启动。
+
+仪表盘读取仍公开，登录用于编辑；组件公开配置中不应存放访问密钥。
+
+## 浏览器测试
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:browser
+NAV_TEST_DIST=true pnpm test:browser
+# 额外浏览器需先安装相应运行文件：
+NAV_TEST_BROWSERS=chromium,firefox,webkit pnpm test:browser
+```
+
+测试自动启动隔离的测试数据库和本地服务；不要设置测试地址为生产地址。
+
+## 部署
+
+```bash
+# 配置 .env 后
+ docker compose up -d --build
+# 或直接运行
+pnpm prod:build
+pnpm prod:start
+pnpm prod:status
+pnpm prod:stop
+```
+
+服务默认在 4000 端口同时提供页面和 API。Docker 使用 Node.js 22 与非 root 用户；旧卷升级前请按[升级与回滚说明](docs/upgrade-and-rollback.md)备份并调整数据目录权限。
+
+| 环境变量             | 默认值                | 说明                                |
+| -------------------- | --------------------- | ----------------------------------- |
+| NAV_JWT_SECRET       | 必填                  | JWT 签名密钥                        |
+| NAV_PASSWORD_HASH    | 无                    | bcrypt 密码哈希，优先使用           |
+| NAV_PASSWORD         | 无                    | 未设置哈希时使用的密码              |
+| NAV_DB_PATH          | 当前目录 nav.db       | SQLite 文件                         |
+| NAV_UPLOAD_DIR       | ../uploads            | 上传目录，Docker 为 /data/uploads   |
+| NAV_UPLOAD_MAX_FILES | 1000                  | 上传文件数量上限                    |
+| NAV_CORS_ORIGIN      | http://localhost:3000 | 允许的 API 源                       |
+| NAV_TRUSTED_PROXIES  | 空                    | 可信代理地址列表；默认不信任转发头  |
+| NAV_PUBLIC_MONITOR   | false                 | 是否公开脱敏监控信息                |
+| NAV_MONITOR_DISKS    | /                     | 管理员允许采样的磁盘路径，最多 8 项 |
+| PORT                 | 4000                  | 服务监听端口                        |
+
+上传限 5 MiB 栅格图片，转换为 WebP；动画只保留第一帧，SVG 不受支持。历史安全栅格图片保留地址，SVG 背景需要替换。
+
+## 数据备份与兼容
+
+```bash
+pnpm build
+NAV_DB_PATH=/absolute/path/nav.db pnpm db:preflight
+NAV_DB_PATH=/absolute/path/nav.db pnpm db:backup /absolute/path/backup.db
+```
+
+数据库备份使用 SQLite 一致性备份接口；同时保留 uploads 和部署配置。旧布局自动生成迁移备份，不删除用户组件。旧盲写客户端会收到 426，需要刷新。
+
+- [完整修复设计](docs/repair-plan-2026-10-17.md)
+- [实际修复与验证记录](docs/repair-status.md)
+- [升级、备份及回滚](docs/upgrade-and-rollback.md)
+- [第三方组件协议 v2](docs/widget-protocol-v2.md)
+
+第三方组件需预构建为自带依赖的 ESM bundle，并使用 manifestVersion 2；固定到不可变提交，在受限 iframe 内运行。旧 SFC 插件保留配置与位置，升级后才能执行。
 
 ## 技术栈
 
-| 层 | 技术 |
-|---|---|
-| 前端 | Vue 3 + Vite + Pinia + Dexie.js |
-| 后端 | Hono + better-sqlite3 + JWT |
-| 共享类型 | TypeScript |
-| 构建工具 | Turborepo + pnpm workspace |
-| 部署 | Docker / 直接运行 |
-
-## 快速开始
-
-### 环境要求
-
-- Node.js >= 20
-- pnpm >= 9.15.0
-
-### 安装与开发
-
-```bash
-pnpm install
-pnpm dev          # 同时启动前端 (3000) 和后端 (4000)
-pnpm dev:frontend # 仅启动前端
-pnpm dev:server   # 仅启动后端
-```
-
-### 类型检查
-
-修改 `packages/shared` 后，需要重新构建类型声明：
-
-```bash
-cd packages/shared && npx tsc --build
-```
-
-## 环境变量
-
-| 变量 | 必填 | 默认值 | 说明 |
-|---|---|---|---|
-| `NAV_JWT_SECRET` | 是 | - | JWT 签名密钥 |
-| `NAV_PASSWORD` | 是 | - | 登录密码（明文） |
-| `NAV_PASSWORD_HASH` | 否 | - | 登录密码（bcrypt 哈希，优先级高于明文） |
-| `NAV_DB_PATH` | 否 | `./nav.db` | SQLite 数据库路径 |
-| `NAV_CORS_ORIGIN` | 否 | `http://localhost:3000` | CORS 允许的源 |
-| `PORT` | 否 | `4000` | 服务端口 |
-
-## 生产部署
-
-### Docker（推荐）
-
-```bash
-# 创建 .env 文件
-cat > .env << EOF
-NAV_JWT_SECRET=your-secret-key
-NAV_PASSWORD=your-password
-EOF
-
-# 构建并启动
-docker compose up -d --build
-
-# 查看状态
-docker compose ps
-
-# 停止
-docker compose down
-```
-
-### 直接部署
-
-```bash
-export NAV_JWT_SECRET=your-secret-key
-export NAV_PASSWORD=your-password
-
-pnpm prod:build    # 构建前端和后端
-pnpm prod:start    # 启动服务
-pnpm prod:status   # 检查健康状态
-pnpm prod:stop     # 停止服务
-pnpm prod:restart  # 重启服务
-```
-
-服务启动后访问 `http://localhost:4000`。
-
-## 项目结构
-
-```
-nav/
-├── packages/
-│   ├── shared/          # 共享类型定义（Dashboard, Widget, StorageAdapter 等）
-│   ├── frontend/        # Vue 3 前端
-│   │   ├── src/
-│   │   │   ├── components/   # UI 组件（DashboardGrid, WidgetRenderer 等）
-│   │   │   ├── services/     # 存储适配器（LocalAdapter / SyncAdapter）
-│   │   │   ├── stores/       # Pinia Store（auth, dashboard, widget）
-│   │   │   └── widgets/      # 内置组件（Search, Clock, Weather, Bookmark）
-│   │   └── ...
-│   └── server/          # Hono 后端
-│       └── src/
-│           ├── db/           # SQLite 数据库层
-│           ├── middleware/   # 认证中间件（JWT + 限流）
-│           └── routes/       # API 路由
-├── scripts/             # 生产部署脚本
-├── docker-compose.yml   # Docker Compose 配置
-├── Dockerfile           # 多阶段 Docker 构建
-└── turbo.json           # Turborepo 构建配置
-```
-
-## API 端点
-
-| 端点 | 方法 | 认证 | 说明 |
-|---|---|---|---|
-| `/api/health` | GET | 否 | 健康检查 |
-| `/api/auth/login` | POST | 否 | 密码登录，返回 JWT |
-| `/api/auth/verify` | POST | Token | 验证 token 有效性 |
-| `/api/dashboards` | GET | 否 | 获取仪表盘数据 |
-| `/api/dashboards/:id` | PUT | Token | 更新仪表盘元数据 |
-| `/api/dashboards/:id/widgets` | POST | Token | 添加组件实例 |
-| `/api/widgets/:id` | PUT | Token | 更新组件配置/布局 |
-| `/api/widgets/:id` | DELETE | Token | 删除组件实例 |
-| `/api/installed-widgets` | GET | 否 | 列出已安装组件 |
-| `/api/installed-widgets` | POST | Token | 安装第三方组件 |
-| `/api/installed-widgets/:id` | DELETE | Token | 卸载组件 |
-
-## 第三方组件开发
-
-第三方组件通过 GitHub 仓库发布，仓库根目录需包含 `manifest.json`：
-
-```json
-{
-  "name": "my-widget",
-  "displayName": "我的组件",
-  "version": "1.0.0",
-  "entry": "index.vue",
-  "schema": { ... },
-  "size": { "w": 4, "h": 3 },
-  "minSize": { "w": 2, "h": 2 },
-  "responsive": true,
-  "permissions": []
-}
-```
-
-组件为 Vue SFC，接收 `config`、`editing`、`editable` Props，发出 `update:config` 和 `resize` 事件。
-
-## 特性
-
-- **拖拽式网格布局** — 自由拖拽和调整组件大小，支持多断点布局
-- **内置组件** — 搜索框、时钟、天气、书签等开箱即用
-- **第三方组件扩展** — 通过 GitHub 安装自定义组件
-- **离线可用** — 前端支持 IndexedDB 本地存储，后端不可用时自动降级
-- **背景系统** — 支持纯色、图片、轮播三种背景模式
-- **密码保护** — JWT 认证，编辑操作需登录
-
-## License
-
-MIT
+Vue 3、Pinia、Dexie、Vite；Hono、better-sqlite3、JWT；共享 TypeScript 模型与校验；Turborepo、pnpm workspace。布局算法为独立纯函数，不再使用旧网格库。

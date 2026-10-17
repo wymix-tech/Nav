@@ -15,8 +15,8 @@ export function generateToken(): string {
 
 export function verifyToken(token: string): boolean {
   try {
-    jwt.verify(token, JWT_SECRET_VALUE)
-    return true
+    const payload = jwt.verify(token, JWT_SECRET_VALUE, { algorithms: ['HS256'] })
+    return typeof payload !== 'string' && payload.role === 'admin'
   } catch {
     return false
   }

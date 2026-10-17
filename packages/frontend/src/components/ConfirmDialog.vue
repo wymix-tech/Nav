@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModalShell from './ModalShell.vue'
 defineProps<{
   title: string
   message: string
@@ -15,18 +16,38 @@ const emit = defineEmits<{
 
 <template>
   <Teleport to="body">
-    <div class="confirm-overlay" @click.self="emit('cancel')">
+    <ModalShell label="确认操作" @close="emit('cancel')">
       <div class="confirm-dialog">
         <div class="confirm-icon" :class="{ danger }">
-          <svg v-if="danger" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          <svg
+            v-if="danger"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="16" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          <svg
+            v-else
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
           </svg>
         </div>
         <h3 class="confirm-title">{{ title }}</h3>
@@ -44,7 +65,7 @@ const emit = defineEmits<{
           </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   </Teleport>
 </template>
 
@@ -162,8 +183,12 @@ const emit = defineEmits<{
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes dialogEnter {

@@ -1,131 +1,241 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Dashboard, WidgetInstance } from '@nav/shared'
-import { getStorageAdapter } from '../services/storageAdapter'
+import {
+  validateDashboard,
+  profileKey,
+  type Dashboard,
+  type WidgetInstance,
+  type LayoutMap,
+  type SyncState,
+} from '@nav/shared'
+import { getStorageAdapter, localMode } from '../services/storageAdapter'
 import { useAuthStore } from './authStore'
-
+import { clone, localDatabase } from '../services/localDatabase'
 export const useDashboardStore = defineStore('dashboard', () => {
-  const dashboard = ref<Dashboard | null>(null)
-  const loading = ref(true)
-
+  const dashboard = ref<Dashboard | null>(null),
+    loading = ref(true),
+    error = ref('')
+  const syncState = ref<SyncState>({ lastSyncAt: null, pendingChanges: 0, status: 'local-only' })
+  const history = ref<Dashboard[]>([]),
+    future = ref<Dashboard[]>([])
+  let writes = 0,
+    queue = Promise.resolve(),
+    unsaved = false
+  async function refreshStatus() {
+    syncState.value = await (await getStorageAdapter()).getSyncState()
+  }
+  let isEditing = false
+  window.addEventListener('nav-editing-changed', (e) => {
+    isEditing = !!(e as CustomEvent).detail
+  })
   async function load() {
-    const adapter = await getStorageAdapter()
-    dashboard.value = await adapter.getDashboard()
-    loading.value = false
-  }
-
-  async function save() {
-    if (!dashboard.value) return
-    const adapter = await getStorageAdapter()
-    await adapter.saveDashboard(dashboard.value)
-  }
-
-  function getAuthHeaders(): Record<string, string> {
-    try {
-      const authStore = useAuthStore()
-      return authStore.getAuthHeaders()
-    } catch {
-      return {}
-    }
-  }
-
-  async function saveWidgetToBackend(instance: WidgetInstance) {
-    try {
-      const res = await fetch(`/api/dashboards/default/widgets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          widgetId: instance.widgetId,
-          source: instance.source,
-          config: instance.config,
-          layouts: instance.layouts,
-        }),
+    if (unsaved && dashboard.value)
+      await localDatabase.backups.put({
+        key: 'unsaved:' + Date.now(),
+        data: JSON.stringify(dashboard.value),
       })
-      if (res.ok) {
-        const data = await res.json()
-        instance.id = data.id
-      }
-    } catch {
-      // 后端不可用，忽略
+    loading.value = true
+    error.value = ''
+    try {
+      dashboard.value = await (await getStorageAdapter()).getDashboard()
+      unsaved = false
+      window.dispatchEvent(new CustomEvent('nav-unsaved-changed', { detail: false }))
+      await refreshStatus()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '加载失败'
+    } finally {
+      loading.value = false
     }
   }
-
-  function addWidget(instance: WidgetInstance) {
-    if (!dashboard.value) return
-    dashboard.value.widgets.push(instance)
-    save()
-    saveWidgetToBackend(instance)
+  function editable() {
+    return localMode || useAuthStore().isAuthenticated
   }
-
-  function removeWidget(instanceId: string) {
-    if (!dashboard.value) return
-    dashboard.value.widgets = dashboard.value.widgets.filter(
-      (w) => w.id !== instanceId
-    )
-    save()
-    fetch(`/api/widgets/${instanceId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    }).catch(() => {})
+  async function persist(d: Dashboard): Promise<boolean> {
+    writes++
+    const operation = queue
+      .catch(() => {})
+      .then(async () => {
+        await (await getStorageAdapter()).saveDashboard(d)
+      })
+    queue = operation
+    try {
+      await operation
+      unsaved = false
+      window.dispatchEvent(new CustomEvent('nav-unsaved-changed', { detail: false }))
+      error.value = ''
+      await refreshStatus()
+      return true
+    } catch (e) {
+      unsaved = true
+      window.dispatchEvent(new CustomEvent('nav-unsaved-changed', { detail: true }))
+      error.value = e instanceof Error ? e.message : '保存失败'
+      return false
+    } finally {
+      writes--
+    }
   }
-
+  async function commit(next: Dashboard, remember = true): Promise<boolean> {
+    if (!editable()) {
+      error.value = '请先登录再编辑'
+      return false
+    }
+    try {
+      validateDashboard(next)
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '配置无效'
+      return false
+    }
+    if (remember && dashboard.value) {
+      history.value.push(clone(dashboard.value))
+      if (history.value.length > 50) history.value.shift()
+      future.value = []
+    }
+    dashboard.value = clone(next)
+    return persist(clone(next))
+  }
+  function mutate(fn: (d: Dashboard) => void) {
+    if (!dashboard.value) return Promise.resolve(false)
+    const next = clone(dashboard.value)
+    fn(next)
+    return commit(next)
+  }
+  async function save() {
+    if (dashboard.value) return persist(clone(dashboard.value))
+    return false
+  }
+  function addWidget(w: WidgetInstance) {
+    return mutate((d) => {
+      d.widgets.push(w)
+    })
+  }
+  function removeWidget(id: string) {
+    return mutate((d) => {
+      d.widgets = d.widgets.filter((w) => w.id !== id)
+      for (const map of Object.values(d.layoutProfiles ?? {})) delete map[id]
+    })
+  }
   function clearAllWidgets() {
-    if (!dashboard.value) return
-    const ids = dashboard.value.widgets.map((w) => w.id)
-    dashboard.value.widgets = []
-    save()
-    for (const id of ids) {
-      fetch(`/api/widgets/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }).catch(() => {})
+    return mutate((d) => {
+      d.widgets = []
+      d.layoutProfiles = {}
+    })
+  }
+  function updateWidgetConfig(id: string, config: Record<string, any>) {
+    return mutate((d) => {
+      const w = d.widgets.find((w) => w.id === id)
+      if (w) w.config = clone(config)
+    })
+  }
+  function updateWidgetLayouts(id: string, layouts: WidgetInstance['layouts']) {
+    return mutate((d) => {
+      const w = d.widgets.find((w) => w.id === id)
+      if (w) w.layouts = clone(layouts)
+    })
+  }
+  function updateLayouts(layout: LayoutMap, cols: number) {
+    return mutate((d) => {
+      if (cols === (d.baseColumns ?? d.columns)) {
+        for (const w of d.widgets) if (layout[w.id]) w.layouts.lg = layout[w.id]
+        delete d.layoutProfiles?.[profileKey(cols)]
+      } else {
+        d.layoutProfiles ??= {}
+        d.layoutProfiles[profileKey(cols)] = clone(layout)
+      }
+    })
+  }
+  function resetProfile(cols: number) {
+    return mutate((d) => {
+      delete d.layoutProfiles?.[profileKey(cols)]
+    })
+  }
+  function setBase(layout: LayoutMap, cols: number) {
+    return mutate((d) => {
+      d.layoutProfiles ??= {}
+      d.layoutProfiles[profileKey(d.baseColumns ?? d.columns)] = Object.fromEntries(
+        d.widgets.map((w) => [w.id, clone(w.layouts.lg)]),
+      )
+      d.baseColumns = cols
+      for (const w of d.widgets) if (layout[w.id]) w.layouts.lg = clone(layout[w.id])
+      delete d.layoutProfiles[profileKey(cols)]
+    })
+  }
+  async function undo() {
+    if (!history.value.length || !dashboard.value) return
+    const target = history.value.pop()!
+    future.value.push(clone(dashboard.value))
+    await commit({ ...target, revision: dashboard.value.revision }, false)
+  }
+  async function redo() {
+    if (!future.value.length || !dashboard.value) return
+    const target = future.value.pop()!
+    history.value.push(clone(dashboard.value))
+    await commit({ ...target, revision: dashboard.value.revision }, false)
+  }
+  async function retry() {
+    if (unsaved && dashboard.value) await persist(clone(dashboard.value))
+    const a = await getStorageAdapter()
+    await a.push([])
+    await refreshStatus()
+  }
+  async function resolveConflict(local: boolean) {
+    const a = await getStorageAdapter()
+    if ('resolveConflict' in a) {
+      await (a as any).resolveConflict(local)
+      history.value = []
+      future.value = []
+      await load()
     }
   }
-
-  function updateWidgetConfig(instanceId: string, config: Record<string, any>) {
-    if (!dashboard.value) return
-    const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
-    if (widget) {
-      widget.config = config
-      fetch(`/api/widgets/${instanceId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ config }),
-      }).catch(() => {})
-    }
+  async function exportData() {
+    const backups = await localDatabase.backups.toArray()
+    const text = JSON.stringify(
+      { dashboard: dashboard.value, backups, sync: await localDatabase.sync.toArray() },
+      null,
+      2,
+    )
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'nav-backup.json'
+    a.click()
+    URL.revokeObjectURL(url)
   }
-
-  function updateWidgetLayouts(instanceId: string, layouts: WidgetInstance['layouts']) {
-    if (!dashboard.value) return
-    const widget = dashboard.value.widgets.find((w) => w.id === instanceId)
-    if (widget) {
-      widget.layouts = layouts
-      fetch(`/api/widgets/${instanceId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ layouts }),
-      }).catch(() => {})
-    }
-  }
-
+  window.addEventListener('nav-storage-changed', (event) => {
+    void (async () => {
+      const adapter = await getStorageAdapter()
+      await refreshStatus()
+      if (!writes && !unsaved && !isEditing && 'cached' in adapter) {
+        if ((event as CustomEvent).detail?.external) {
+          history.value = []
+          future.value = []
+        }
+        const cached = await (adapter as any).cached()
+        if (cached) dashboard.value = cached
+      }
+    })().catch(() => {})
+  })
   return {
     dashboard,
     loading,
+    error,
+    syncState,
+    history,
+    future,
     load,
     save,
+    commit,
     addWidget,
     removeWidget,
     clearAllWidgets,
     updateWidgetConfig,
     updateWidgetLayouts,
+    updateLayouts,
+    resetProfile,
+    setBase,
+    undo,
+    redo,
+    retry,
+    resolveConflict,
+    exportData,
   }
 })

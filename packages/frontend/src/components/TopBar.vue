@@ -12,7 +12,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'toggle-edit': []
-  'login': []
+  login: []
   'show-preferences': []
   'toggle-library': []
   'clear-all': []
@@ -29,9 +29,14 @@ const expanded = ref(false)
     @mouseleave="expanded = false"
   >
     <!-- 激活指示点 -->
-    <div class="panel-dot">
+    <button
+      class="panel-dot"
+      aria-label="展开控制面板"
+      :aria-expanded="expanded"
+      @click="expanded = !expanded"
+    >
       <span class="dot-ring"></span>
-    </div>
+    </button>
 
     <!-- 展开内容 -->
     <div class="panel-content">
@@ -50,8 +55,10 @@ const expanded = ref(false)
         </template>
         <template v-else-if="!backendAvailable">
           <button class="panel-btn primary" @click="emit('toggle-edit')">
-            {{ editing ? '完成编辑' : '编辑' }}
-          </button>
+            {{ editing ? '完成编辑' : '编辑' }}</button
+          ><button class="panel-btn" @click="emit('show-preferences')">设置</button
+          ><button v-if="editing" class="panel-btn" @click="emit('toggle-library')">组件库</button
+          ><button v-if="editing" class="panel-btn danger" @click="emit('clear-all')">清空</button>
         </template>
         <template v-else>
           <button class="panel-btn primary" @click="emit('login')">登录</button>
@@ -84,8 +91,9 @@ const expanded = ref(false)
   box-shadow:
     0 2px 12px rgba(96, 165, 250, 0.3),
     0 0 0 0 rgba(96, 165, 250, 0.2);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s;
   flex-shrink: 0;
 }
 
@@ -150,7 +158,8 @@ const expanded = ref(false)
   box-shadow: var(--shadow-lg);
 }
 
-.expanded .panel-content {
+.expanded .panel-content,
+.floating-panel:focus-within .panel-content {
   opacity: 1;
   transform: translateX(0) scale(1);
   pointer-events: all;
@@ -221,5 +230,14 @@ const expanded = ref(false)
     flex-direction: row-reverse;
     padding: 8px 20px 8px 8px;
   }
+}
+</style>
+
+<style scoped>
+.panel-actions {
+  flex-wrap: wrap;
+}
+.panel-content {
+  max-width: calc(100vw - 100px);
 }
 </style>

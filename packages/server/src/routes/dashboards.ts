@@ -1,30 +1,41 @@
 import { Hono } from 'hono'
+import { assert, record } from '@nav/shared'
 import { authMiddleware } from '../middleware/auth.js'
-import * as q from '../db/queries.js'
-
+import { readSnapshot, commitSnapshot } from '../db/state.js'
+import db from '../db/database.js'
 const dashboards = new Hono()
-
 dashboards.get('/', (c) => {
-  const d = q.getDashboard('default')
-  if (!d) {
-    q.upsertDashboard({ id: 'default', name: '我的导航', columns: 12, rowHeight: 80 })
-    const fresh = q.getDashboard('default')
-    const widgets = q.getWidgetInstances('default')
-    return c.json({ ...fresh, widgets })
-  }
-  const widgets = q.getWidgetInstances('default')
-  return c.json({ ...d, widgets })
+  const d = readSnapshot()
+  c.header('ETag', `"${d.revision}"`)
+  return c.json(d)
 })
-
-dashboards.put('/:id', authMiddleware, async (c) => {
+dashboards.get('/:id/backup', authMiddleware, (c) => {
+  const rows = db
+    .prepare('SELECT backup_key,payload,created_at FROM migration_backups WHERE backup_key=?')
+    .all(`layout-v1:${c.req.param('id')}`)
+  return c.json({ backups: rows })
+})
+dashboards.put('/:id/state', authMiddleware, async (c) => {
+  const raw = c.req.header('If-Match')
+  if (!raw)
+    return c.json({ error: { code: 'PRECONDITION_REQUIRED', message: '需要 If-Match 版本' } }, 428)
+  assert(
+    /^(?:\d+|"\d+")$/.test(raw) && Number.isSafeInteger(Number(raw.replaceAll('"', ''))),
+    'If-Match 无效',
+  )
   const body = await c.req.json()
-  const name = typeof body.name === 'string' ? body.name : '我的导航'
-  const title = typeof body.title === 'string' ? body.title : 'Nav - 个人导航页'
-  const columns = typeof body.columns === 'number' ? body.columns : 12
-  const rowHeight = typeof body.rowHeight === 'number' ? body.rowHeight : 80
-  const background = body.background ? JSON.stringify(body.background) : '{}'
-  q.upsertDashboard({ id: c.req.param('id')!, name, title, columns, rowHeight, background })
-  return c.json({ success: true })
+  assert(record(body), '请求必须为 JSON 对象')
+  const { snapshot, operationId } = body
+  assert(
+    snapshot?.id === c.req.param('id') && /^[\w-]{1,80}$/.test(snapshot.id),
+    '仪表盘 ID 不一致',
+  )
+  assert(typeof operationId === 'string' && /^[\w-]{16,100}$/.test(operationId), '操作 ID 无效')
+  const d = commitSnapshot(snapshot, Number(raw.replaceAll('"', '')), operationId)
+  c.header('ETag', `"${d.revision}"`)
+  return c.json(d)
 })
-
+dashboards.put('/:id', authMiddleware, (c) =>
+  c.json({ error: { code: 'UPGRADE_REQUIRED', message: '请刷新页面使用版本化状态接口' } }, 426),
+)
 export default dashboards
