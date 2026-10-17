@@ -14,6 +14,8 @@ import widgetRoutes from './routes/widgets.js'
 import installedWidgetRoutes from './routes/installedWidgets.js'
 import uploadRoutes, { files } from './routes/upload.js'
 import systemRoutes from './routes/system.js'
+import chatRoutes from './routes/chat.js'
+import versionRoutes from './routes/version.js'
 
 export function createApp() {
   const app = new Hono()
@@ -60,7 +62,9 @@ export function createApp() {
   app.route('/api', widgetRoutes)
   app.route('/api/installed-widgets', installedWidgetRoutes)
   app.route('/api/upload', uploadRoutes)
+  app.route('/api/system', versionRoutes)
   app.route('/api/system', systemRoutes)
+  app.route('/api/chat', chatRoutes)
   app.route('/uploads', files)
   app.all('/api/*', (c) =>
     c.json({ error: { code: 'NOT_FOUND', message: 'API 不存在或请求方法不正确' } }, 404),

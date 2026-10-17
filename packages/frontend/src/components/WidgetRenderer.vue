@@ -22,6 +22,8 @@ const builtinComponents: Record<string, any> = {
   weather: defineAsyncComponent(() => import('../widgets/WeatherWidget.vue')),
   bookmark: defineAsyncComponent(() => import('../widgets/BookmarkWidget.vue')),
   monitor: defineAsyncComponent(() => import('../widgets/MonitorWidget.vue')),
+  chat: defineAsyncComponent(() => import('../widgets/ChatWidget.vue')),
+  docker: defineAsyncComponent(() => import('../widgets/DockerWidget.vue')),
 }
 
 const store = useWidgetStore()
@@ -47,10 +49,12 @@ const component = computed(() =>
       v-if="component"
       :is="component"
       :config="widget.config"
+      :instance-id="widget.id"
       :editing="editing"
       :editable="editable"
       @update:config="$emit('update:config', $event)"
     />
+    <p v-else class="widget-loading">此组件暂不可用，配置和位置已保留。</p>
     <template #fallback>
       <div class="widget-loading">加载中...</div>
     </template>

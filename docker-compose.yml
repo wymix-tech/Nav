@@ -19,12 +19,15 @@ services:
       - NAV_UPLOAD_DIR=/data/uploads
       - NAV_CORS_ORIGIN=${NAV_CORS_ORIGIN:-}
       - NAV_AI_BASE_URL=${NAV_AI_BASE_URL:-https://api.openai.com/v1}
+      - NAV_AI_ALLOWED_ORIGINS=${NAV_AI_ALLOWED_ORIGINS:-}
+      - NAV_AI_PROVIDER=${NAV_AI_PROVIDER:-}
+      - NAV_RELEASE_SOURCE=${NAV_RELEASE_SOURCE:-cnb}
+      - NAV_CNB_TOKEN=${NAV_CNB_TOKEN:-}
       - NAV_AI_API_KEY=${NAV_AI_API_KEY:-}
       - NAV_AI_MODELS=${NAV_AI_MODELS:-gpt-4o-mini}
       - NAV_AI_SYSTEM_PROMPT=${NAV_AI_SYSTEM_PROMPT:-}
     volumes:
       - nav-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]

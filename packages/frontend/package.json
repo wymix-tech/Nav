@@ -11,6 +11,8 @@
   "dependencies": {
     "@nav/shared": "workspace:*",
     "dexie": "^4.0.0",
+    "dompurify": "^3.3.0",
+    "marked": "^18.0.4",
     "pinia": "^3.0.0",
     "vue": "^3.5.0"
   },

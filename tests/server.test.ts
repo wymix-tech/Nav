@@ -174,3 +174,19 @@ test('CPU usage is measured from deltas instead of boot-time totals', async () =
   cpuUsage(cpu(100, 100))
   assert.equal(cpuUsage(cpu(150, 150)), 50)
 })
+test('restored Docker stays authenticated even with public stats and version metadata is available', async () => {
+  const previous = process.env.NAV_PUBLIC_MONITOR
+  process.env.NAV_PUBLIC_MONITOR = 'true'
+  try {
+    assert.equal((await app.request('/api/system/docker')).status, 401)
+  } finally {
+    if (previous === undefined) delete process.env.NAV_PUBLIC_MONITOR
+    else process.env.NAV_PUBLIC_MONITOR = previous
+  }
+  const response = await app.request('/api/system/docker', { headers: auth })
+  assert.equal(response.status, 200)
+  assert.ok(Array.isArray((await response.json()).containers))
+  const version = await app.request('/api/system/version')
+  assert.equal(version.status, 200)
+  assert.match((await version.json()).version, /^v?\d+\.\d+\.\d+/)
+})

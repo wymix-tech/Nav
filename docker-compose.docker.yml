@@ -1,0 +1,7 @@
+# Enable Docker monitoring explicitly with the socket's actual group ID.
+services:
+  nav:
+    group_add:
+      - "${NAV_DOCKER_GID:?Set NAV_DOCKER_GID to the Docker socket group ID}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

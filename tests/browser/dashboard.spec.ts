@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test'
 import { createDashboard } from '../../packages/shared/src/index'
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
 let token = ''
+const pageErrors = new WeakMap<object, string[]>()
+test.afterEach(async ({ page }) => {
+  expect(pageErrors.get(page) ?? []).toEqual([])
+})
 test.beforeAll(async ({ request }) => {
   const r = await request.post(backend + '/api/auth/login', {
     data: { password: process.env.NAV_TEST_PASSWORD ?? 'browser-test-password' },
@@ -10,6 +14,9 @@ test.beforeAll(async ({ request }) => {
   token = (await r.json()).token
 })
 test.beforeEach(async ({ page, request }) => {
+  const errors: string[] = []
+  pageErrors.set(page, errors)
+  page.on('pageerror', (error) => errors.push(error.message))
   const current = await (await request.get(backend + '/api/dashboards')).json()
   const d = { ...createDashboard(), instanceId: current.instanceId }
   d.widgets = ['clock', 'search', 'bookmark', 'weather', 'monitor'].map((widgetId, i) => {
@@ -39,7 +46,9 @@ test.beforeEach(async ({ page, request }) => {
     data: { snapshot: d, operationId: crypto.randomUUID() },
   })
   expect(response.ok()).toBeTruthy()
-  await page.addInitScript((token) => localStorage.setItem('nav_token', token), token)
+  await page.addInitScript((token) => {
+    if (window === window.top) localStorage.setItem('nav_token', token)
+  }, token)
   await page.route('https://wttr.in/**', (route) =>
     route.fulfill({
       json: {
@@ -275,4 +284,153 @@ test('a plugin survives reload and cannot access its host or unapproved network'
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
   await page.reload()
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
+})
+
+async function replaceDashboard(page: any, request: any, change: (d: any) => void) {
+  const d = await (await request.get(backend + '/api/dashboards')).json()
+  change(d)
+  const r = await request.put(backend + '/api/dashboards/default/state', {
+    headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
+    data: { snapshot: d, operationId: crypto.randomUUID() },
+  })
+  expect(r.ok()).toBeTruthy()
+  await page.reload()
+}
+test('legacy canvas adapts without writes, cancels gestures and saves one complete geometry on pointerup', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await replaceDashboard(page, request, (d) => {
+    d.layoutMode = 'canvas'
+    d.viewport = { panX: 20, panY: 40, zoom: 1, homeX: 0, homeY: 0 }
+    d.viewportWidth = 1920
+    d.viewportHeight = 1080
+    d.widgets = d.widgets.slice(0, 2)
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: 140 + i * 440, y: 140, w: 360, h: 260, originalW: 320, originalH: 240 }
+    })
+  })
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  let writes = 0
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') writes++
+  })
+  for (const [width, height] of [
+    [1366, 768],
+    [2560, 1440],
+    [1080, 1920],
+    [600, 900],
+    [1920, 1080],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.waitForTimeout(100)
+    await expect(page.locator('.canvas-grid')).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBeTruthy()
+  }
+  expect(writes).toBe(0)
+  expect((await (await request.get(backend + '/api/dashboards')).json()).widgets).toEqual(
+    before.widgets,
+  )
+  await edit(page)
+  const handle = page.locator('.canvas-drag-handle').first()
+  await expect(handle).toBeVisible()
+  let box = (await handle.boundingBox())!
+  await page.mouse.move(box.x + 10, box.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 100, box.y + 50, { steps: 8 })
+  expect(writes).toBe(0)
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  expect(writes).toBe(0)
+  box = (await handle.boundingBox())!
+  await page.mouse.move(box.x + 10, box.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 100, box.y + 50, { steps: 8 })
+  expect(writes).toBe(0)
+  await page.mouse.up()
+  await expect.poll(() => writes).toBe(1)
+  await expect(page.getByRole('status')).toContainText('已同步')
+  const saved = await (await request.get(backend + '/api/dashboards')).json()
+  expect(saved.widgets[0].canvas.x).not.toBe(before.widgets[0].canvas.x)
+  expect(saved.widgets[0].canvas.originalW).toBe(320)
+  expect(saved.viewport).toEqual(before.viewport)
+  await page.reload()
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+})
+test('restored chat streams a single reply, sanitizes markdown, isolates history and renders Docker monitoring', async ({
+  page,
+  request,
+}) => {
+  await page.route('**/api/chat/models', (r) => r.fulfill({ json: { models: ['test-model'] } }))
+  await page.route('**/api/chat/defaults', (r) => r.fulfill({ json: { systemPrompt: '' } }))
+  await page.route('**/api/chat/stream', async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${token}`)
+    await route.fulfill({
+      contentType: 'text/event-stream',
+      body:
+        'data: ' +
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                content:
+                  '**安全回复**<img src=x onerror="window.chatInjected=1"><script>window.chatInjected=1</script>',
+              },
+            },
+          ],
+        }) +
+        '\n\ndata: [DONE]\n\n',
+    })
+  })
+  await page.route('**/api/system/docker*', (r) =>
+    r.fulfill({
+      json: {
+        available: true,
+        containers: [
+          {
+            id: 'abcdef123456',
+            name: 'nav-test',
+            image: 'nav:test',
+            state: 'running',
+            status: 'Up',
+            cpuPercent: 3,
+            memUsage: '30MiB / 1GiB',
+            memPercent: 3,
+            netIO: '1kB / 2kB',
+            blockIO: '0B / 0B',
+            pids: 2,
+          },
+        ],
+      },
+    }),
+  )
+  await replaceDashboard(page, request, (d) => {
+    d.widgets = d.widgets.slice(0, 3)
+    d.widgets.forEach((w: any, i: number) => {
+      w.widgetId = i < 2 ? 'chat' : 'docker'
+      w.config = i < 2 ? { model: 'test-model' } : { containerName: 'nav-test' }
+      w.layouts.lg = { x: i * 4, y: 0, w: 4, h: 6 }
+    })
+  })
+  const chats = page.locator('.chat-widget')
+  await expect(chats).toHaveCount(2)
+  await chats.first().getByPlaceholder('输入消息...').fill('hello')
+  await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('hello')
+  await chats.first().getByTitle('发送', { exact: true }).click()
+  await expect(chats.first().locator('.message.assistant')).toHaveCount(1)
+  await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  expect(await page.evaluate(() => (window as any).chatInjected)).toBeUndefined()
+  await expect(chats.first().locator('.msg-content img,.msg-content script')).toHaveCount(0)
+  await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
+  await page.reload()
+  await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await page.locator('.floating-panel').hover()
+  await page.getByRole('button', { name: '退出登录', exact: true }).click()
+  await expect(chats.first().getByPlaceholder('输入消息...')).toBeDisabled()
 })

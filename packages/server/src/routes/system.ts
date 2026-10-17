@@ -1,8 +1,21 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth.js'
+import { dockerSnapshot } from '../dockerMonitor.js'
 import { allowedDisks, systemSnapshot } from '../systemSampler.js'
 const system = new Hono()
-system.use('*', (c, next) =>
+system.get('/docker', authMiddleware, async (c) => {
+  const sample = await dockerSnapshot()
+  const name = c.req.query('name')
+  if (name && name.length > 200)
+    return c.json({ error: { code: 'INVALID_NAME', message: '容器名过长' } }, 400)
+  return c.json({
+    ...sample,
+    containers: name
+      ? sample.containers.filter((x) => x.name.includes(name) || x.id.startsWith(name))
+      : sample.containers,
+  })
+})
+system.use('/stats', (c, next) =>
   process.env.NAV_PUBLIC_MONITOR === 'true' ? next() : authMiddleware(c, next),
 )
 system.get('/stats', (c) => {

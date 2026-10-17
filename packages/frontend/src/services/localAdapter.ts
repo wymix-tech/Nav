@@ -12,10 +12,20 @@ export class LocalAdapter implements StorageAdapter {
   async getDashboard(): Promise<Dashboard> {
     const row = await db.dashboards.get('default')
     const raw = row ? JSON.parse(row.data) : createDashboard()
-    if (raw.layoutVersion !== 2)
-      await db.backups.put({ key: 'layout-v1:standalone', data: JSON.stringify(raw) })
+    const needsMigration =
+      raw.layoutVersion !== 2 ||
+      raw.widgets?.some(
+        (w: any) => w.source === 'builtin' && w.widgetId === 'chat' && w.config?.apiKey,
+      )
+    const backupKey =
+      raw.layoutVersion !== 2 ? 'layout-v1:standalone' : 'chat-credentials-v1:standalone'
+    if (needsMigration)
+      await db.transaction('rw', db.backups, async () => {
+        if (!(await db.backups.get(backupKey)))
+          await db.backups.add({ key: backupKey, data: JSON.stringify(raw) })
+      })
     const d = migrateDashboard(raw)
-    if (!row || raw.layoutVersion !== 2) await this.saveDashboard(d)
+    if (!row || needsMigration) await this.saveDashboard(d)
     return d
   }
   async saveDashboard(dashboard: Dashboard): Promise<void> {

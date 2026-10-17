@@ -11,6 +11,8 @@ export const constraints: Record<
   weather: { minWidth: 240, minHeight: 150, w: 4, h: 3 },
   bookmark: { minWidth: 200, minHeight: 140, w: 4, h: 3 },
   monitor: { minWidth: 260, minHeight: 180, w: 4, h: 3 },
+  docker: { minWidth: 280, minHeight: 240, w: 4, h: 4 },
+  chat: { minWidth: 320, minHeight: 360, w: 6, h: 6 },
 }
 const integer = (n: number, fallback: number) => (Number.isFinite(n) ? Math.floor(n) : fallback)
 export function normalizeLayout(l: WidgetLayout, cols: number): WidgetLayout {
@@ -111,6 +113,26 @@ export function migrateDashboard(input: Dashboard): Dashboard {
     )
     for (const w of d.widgets) w.layouts = { ...w.layouts, lg: normalized[w.id] }
   }
+  d.layoutMode ??= 'grid'
+  d.viewport ??= { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
+  d.viewportWidth ??= 1920
+  d.viewportHeight ??= 1080
+  if (d.layoutMode === 'canvas') {
+    const unit = (d.viewportWidth - 48 + GAP) / (d.baseColumns ?? d.columns)
+    for (const w of d.widgets) {
+      const l = w.layouts.lg
+      w.canvas ??= {
+        x: l.x * unit,
+        y: l.y * (d.rowHeight + GAP),
+        w: Math.max(80, l.w * unit - GAP),
+        h: l.h * (d.rowHeight + GAP) - GAP,
+      }
+    }
+  }
+  // Old versions persisted provider credentials in public widget config.
+  // Callers retain the original payload in an authenticated backup before migration.
+  for (const w of d.widgets)
+    if (w.source === 'builtin' && w.widgetId === 'chat') delete w.config.apiKey
   return d
 }
 export function createDashboard(): Dashboard {

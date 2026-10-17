@@ -2,6 +2,8 @@
 
 本分支从 `cde7ff6` 开始修复，部署前请备份数据。原始 main 含安全漏洞，不能作为生产回滚目标。
 
+旧画布 / AI 聊天 / Docker 监控用户请先阅读 [main 合并兼容修复](merge-repair-2026-10-17.md)。已被旧合并版本清空的坐标需要从部署前备份提取。
+
 ## 部署前
 
 1. 使用 Node.js 22 或更高版本与项目声明的 pnpm 9。执行 `pnpm install --frozen-lockfile`、`pnpm check`。

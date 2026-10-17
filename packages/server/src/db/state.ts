@@ -27,18 +27,52 @@ export function readSnapshot(id = 'default'): Dashboard {
     )
     row = db.prepare('SELECT * FROM dashboards WHERE id=?').get(id)
   }
-  if (row.state_json) return { ...JSON.parse(row.state_json), revision: row.revision, instanceId }
+  if (row.state_json) {
+    const original = JSON.parse(row.state_json)
+    if (
+      original.widgets?.some(
+        (w: any) => w.source === 'builtin' && w.widgetId === 'chat' && w.config?.apiKey,
+      )
+    )
+      db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
+        `chat-credentials-v1:${id}`,
+        row.state_json,
+      )
+    // A previously merged client may have written state_json without the legacy fields.
+    // Recover what still exists in the compatibility columns before using grid fallbacks.
+    if (original.layoutMode === undefined && row.layout_mode === 'canvas') {
+      const widgetRows = db
+        .prepare('SELECT * FROM widget_instances WHERE dashboard_id=? ORDER BY created_at,id')
+        .all(id) as any[]
+      db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
+        `legacy-main-v1:${id}`,
+        JSON.stringify({
+          snapshot: original,
+          databaseRows: { dashboard: row, widgets: widgetRows },
+        }),
+      )
+      original.layoutMode = 'canvas'
+      original.viewport ??= row.viewport ? JSON.parse(row.viewport) : undefined
+      original.viewportWidth ??= row.viewport_width ?? 1920
+      original.viewportHeight ??= row.viewport_height ?? 1080
+      for (const widget of original.widgets ?? []) {
+        const legacy = widgetRows.find((w) => w.id === widget.id)
+        if (!widget.canvas && legacy?.canvas) widget.canvas = JSON.parse(legacy.canvas)
+      }
+    }
+    return { ...migrateDashboard(original), revision: row.revision, instanceId }
+  }
   const defaults = createDashboard()
-  const widgets = (
-    db
-      .prepare('SELECT * FROM widget_instances WHERE dashboard_id=? ORDER BY created_at,id')
-      .all(id) as any[]
-  ).map((w) => ({
+  const widgetRows = db
+    .prepare('SELECT * FROM widget_instances WHERE dashboard_id=? ORDER BY created_at,id')
+    .all(id) as any[]
+  const widgets = widgetRows.map((w) => ({
     id: w.id,
     widgetId: w.widget_id,
     source: w.source,
     config: JSON.parse(w.config ?? '{}'),
     layouts: JSON.parse(w.layouts ?? '{}'),
+    ...(w.canvas ? { canvas: JSON.parse(w.canvas) } : {}),
   }))
   const original = {
     ...defaults,
@@ -47,6 +81,10 @@ export function readSnapshot(id = 'default'): Dashboard {
     title: row.title ?? defaults.title,
     columns: row.columns,
     rowHeight: row.row_height,
+    layoutMode: row.layout_mode ?? 'grid',
+    viewport: row.viewport ? JSON.parse(row.viewport) : undefined,
+    viewportWidth: row.viewport_width ?? 1920,
+    viewportHeight: row.viewport_height ?? 1080,
     background: { ...defaults.background, ...JSON.parse(row.background ?? '{}') },
     widgets,
     layoutVersion: undefined,
@@ -54,6 +92,11 @@ export function readSnapshot(id = 'default'): Dashboard {
   db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
     `layout-v1:${id}`,
     JSON.stringify(original),
+  )
+  // Separate key preserves an exact copy even when an earlier migration created an incomplete backup.
+  db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
+    `legacy-main-v1:${id}`,
+    JSON.stringify({ ...original, databaseRows: { dashboard: row, widgets: widgetRows } }),
   )
   return { ...migrateDashboard(original), revision: row.revision, instanceId }
 }
@@ -86,7 +129,7 @@ export function commitSnapshot(
         throw new StateError(409, '请先安装组件引用的插件')
     }
     db.prepare(
-      'UPDATE dashboards SET name=?,title=?,columns=?,row_height=?,background=?,state_json=?,revision=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',
+      'UPDATE dashboards SET name=?,title=?,columns=?,row_height=?,background=?,state_json=?,revision=?,layout_mode=?,viewport=?,viewport_width=?,viewport_height=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',
     ).run(
       updated.name,
       updated.title,
@@ -95,11 +138,15 @@ export function commitSnapshot(
       JSON.stringify(updated.background),
       JSON.stringify(updated),
       updated.revision,
+      updated.layoutMode ?? 'grid',
+      JSON.stringify(updated.viewport ?? null),
+      updated.viewportWidth ?? 1920,
+      updated.viewportHeight ?? 1080,
       updated.id,
     )
     db.prepare('DELETE FROM widget_instances WHERE dashboard_id=?').run(updated.id)
     const insert = db.prepare(
-      'INSERT INTO widget_instances(id,dashboard_id,widget_id,source,config,layouts) VALUES(?,?,?,?,?,?)',
+      'INSERT INTO widget_instances(id,dashboard_id,widget_id,source,config,layouts,canvas) VALUES(?,?,?,?,?,?,?)',
     )
     for (const w of updated.widgets)
       insert.run(
@@ -109,6 +156,7 @@ export function commitSnapshot(
         w.source,
         JSON.stringify(w.config),
         JSON.stringify(w.layouts),
+        w.canvas ? JSON.stringify(w.canvas) : null,
       )
     db.prepare(
       'INSERT INTO committed_operations(operation_id,dashboard_id,request_hash,response) VALUES(?,?,?,?)',

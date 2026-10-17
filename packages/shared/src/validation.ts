@@ -70,6 +70,25 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
       (Number.isInteger(d.baseColumns) && d.baseColumns >= 1 && d.baseColumns <= 24),
     '基准列数无效',
   )
+  assert(d.layoutMode === undefined || ['grid', 'canvas'].includes(d.layoutMode), '布局模式无效')
+  for (const dimension of ['viewportWidth', 'viewportHeight'])
+    assert(
+      d[dimension] === undefined ||
+        (Number.isFinite(d[dimension]) && d[dimension] >= 1 && d[dimension] <= 16384),
+      '视口尺寸无效',
+    )
+  if (d.viewport !== undefined) {
+    assert(record(d.viewport), '视口必须是对象')
+    for (const key of ['panX', 'panY', 'homeX', 'homeY'])
+      assert(
+        Number.isFinite(d.viewport[key]) && Math.abs(d.viewport[key]) <= 1000000,
+        '视口坐标无效',
+      )
+    assert(
+      Number.isFinite(d.viewport.zoom) && d.viewport.zoom >= 0.1 && d.viewport.zoom <= 3,
+      '视口缩放无效',
+    )
+  }
   assert(Array.isArray(d.widgets) && d.widgets.length <= 100, '组件最多 100 个')
   const ids = new Set<string>()
   for (const w of d.widgets) {
@@ -103,6 +122,19 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
             '书签仅支持 http/https 地址',
           )
       }
+    if (w.canvas !== undefined) {
+      assert(record(w.canvas), '画布布局必须是对象')
+      for (const key of ['x', 'y'])
+        assert(Number.isFinite(w.canvas[key]) && Math.abs(w.canvas[key]) <= 1000000, '画布坐标无效')
+      for (const key of ['w', 'h', 'originalW', 'originalH'])
+        assert(
+          (key.startsWith('original') && w.canvas[key] === undefined) ||
+            (Number.isFinite(w.canvas[key]) && w.canvas[key] >= 1 && w.canvas[key] <= 16384),
+          '画布尺寸无效',
+        )
+    }
+    if (w.source === 'builtin' && w.widgetId === 'chat')
+      assert(!w.config.apiKey, 'API Key 请配置到服务端环境变量，不可保存到公开仪表盘')
     assert(record(w.layouts), '缺少组件布局')
     validateLayout(w.layouts.lg, d.baseColumns ?? d.columns)
   }

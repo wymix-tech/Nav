@@ -171,3 +171,37 @@ test('two tabs cannot silently replace each other’s unsent drafts', async () =
     await b.dispose()
   }
 })
+test('standalone canvas migration preserves geometry and backs up credentials before removing public keys', async () => {
+  const l = { x: 0, y: 0, w: 4, h: 3 },
+    canvas = { x: 320, y: -160, w: 600, h: 480, originalW: 320, originalH: 240 }
+  const old: any = {
+    ...createDashboard(),
+    layoutMode: 'canvas',
+    viewport: { panX: 100, panY: 80, zoom: 0.8, homeX: 20, homeY: 30 },
+    viewportWidth: 1920,
+    viewportHeight: 1080,
+    widgets: [
+      {
+        id: 'chat-legacy',
+        widgetId: 'chat',
+        source: 'builtin',
+        config: { apiKey: 'synthetic-legacy-key' },
+        layouts: { lg: l, md: l, sm: l, xs: l },
+        canvas,
+      },
+    ],
+  }
+  delete old.layoutVersion
+  await db.dashboards.put({ id: 'default', data: JSON.stringify(old), updatedAt: 'legacy' })
+  const adapter = new LocalAdapter(),
+    d = await adapter.getDashboard()
+  assert.deepEqual(d.widgets[0].canvas, canvas)
+  assert.deepEqual(d.viewport, old.viewport)
+  assert.equal(d.widgets[0].config.apiKey, undefined)
+  const backup = JSON.parse((await db.backups.get('layout-v1:standalone'))!.data)
+  assert.deepEqual(backup, old)
+  d.title = 'new title'
+  await adapter.saveDashboard(d)
+  assert.deepEqual((await adapter.getDashboard()).widgets[0].canvas, canvas)
+  assert.deepEqual(JSON.parse((await db.backups.get('layout-v1:standalone'))!.data), old)
+})

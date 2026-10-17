@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
+import CanvasGrid from './components/CanvasGrid.vue'
+import AboutDialog from './components/AboutDialog.vue'
 import LoginDialog from './components/LoginDialog.vue'
 import WidgetLibrary from './components/WidgetLibrary.vue'
 import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
@@ -24,6 +26,7 @@ function updateAvailable(e: Event) {
   updateApp.value = (e as CustomEvent).detail
 }
 const backendAvailable = ref(isBackendAvailable())
+const showAbout = ref(false)
 const showLogin = ref(false)
 const showInstall = ref(false)
 const showLibrary = ref(false)
@@ -184,6 +187,7 @@ function toggleLibrary() {
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
       @clear-all="handleClearAll"
+      @show-about="showAbout = true"
     />
 
     <div v-if="dashboardStore.error" class="save-status error" role="alert">
@@ -237,12 +241,27 @@ function toggleLibrary() {
       :class="{ 'library-open': editing && showLibrary }"
       :style="{
         maxWidth:
+          dashboardStore.dashboard?.layoutMode === 'canvas' ||
           dashboardStore.dashboard?.layoutSettings?.contentWidthMode === 'fluid'
             ? 'none'
             : (dashboardStore.dashboard?.layoutSettings?.maxContentWidth ?? 1600) + 'px',
       }"
     >
       <p v-if="dashboardStore.loading">加载中...</p>
+      <CanvasGrid
+        v-else-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
+        :widgets="dashboardStore.dashboard.widgets"
+        :editing="editing"
+        :editable="!backendAvailable || authStore.isAuthenticated"
+        :viewport="dashboardStore.dashboard.viewport"
+        :viewport-width="dashboardStore.dashboard.viewportWidth"
+        :viewport-height="dashboardStore.dashboard.viewportHeight"
+        @update-canvas="dashboardStore.updateCanvas"
+        @update-viewport="dashboardStore.updateViewport"
+        @remove-widget="dashboardStore.removeWidget"
+        @update-config="dashboardStore.updateWidgetConfig"
+        @interaction="(active) => (isDragging = active)"
+      />
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
         :widgets="dashboardStore.dashboard.widgets"
@@ -269,6 +288,7 @@ function toggleLibrary() {
       @toggle-library="toggleLibrary"
     />
 
+    <AboutDialog v-if="showAbout" @close="showAbout = false" />
     <LoginDialog v-if="showLogin" @close="showLogin = false" @success="handleLoginSuccess" />
 
     <InstallWidgetDialog v-if="showInstall" @close="showInstall = false" />

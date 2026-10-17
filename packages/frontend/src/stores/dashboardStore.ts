@@ -4,6 +4,8 @@ import {
   validateDashboard,
   profileKey,
   type Dashboard,
+  type CanvasLayout,
+  type DashboardViewport,
   type WidgetInstance,
   type LayoutMap,
   type SyncState,
@@ -143,6 +145,17 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
     })
   }
+  function updateCanvas(id: string, canvas: CanvasLayout) {
+    return mutate((d) => {
+      const w = d.widgets.find((w) => w.id === id)
+      if (w) w.canvas = clone(canvas)
+    })
+  }
+  function updateViewport(viewport: DashboardViewport) {
+    return mutate((d) => {
+      d.viewport = clone(viewport)
+    })
+  }
   function resetProfile(cols: number) {
     return mutate((d) => {
       delete d.layoutProfiles?.[profileKey(cols)]
@@ -230,6 +243,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     updateWidgetConfig,
     updateWidgetLayouts,
     updateLayouts,
+    updateCanvas,
+    updateViewport,
     resetProfile,
     setBase,
     undo,

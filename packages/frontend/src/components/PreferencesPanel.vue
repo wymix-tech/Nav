@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import ModalShell from './ModalShell.vue'
 import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
-import { type BackgroundImage } from '@nav/shared'
+import { migrateDashboard, type LayoutMode, type BackgroundImage } from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
+const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'grid')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color',
@@ -88,7 +89,8 @@ async function save() {
     interval: slideshowInterval.value,
     index: 0,
   }
-  if (await dashboardStore.commit(next)) emit('close')
+  next.layoutMode = layoutMode.value
+  if (await dashboardStore.commit(migrateDashboard(next))) emit('close')
 }
 
 function cancel() {
@@ -110,6 +112,13 @@ function cancel() {
         <input v-model="title" type="text" class="prefs-input" placeholder="Nav - 个人导航页" />
       </div>
 
+      <div class="prefs-section">
+        <label class="prefs-label" for="layout-mode">布局模式</label>
+        <select id="layout-mode" v-model="layoutMode">
+          <option value="grid">网格布局</option>
+          <option value="canvas">无限画布</option>
+        </select>
+      </div>
       <!-- 网格列数 -->
       <div class="prefs-section">
         <label class="prefs-label">列数策略</label

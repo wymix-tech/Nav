@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWidgetStore } from '../stores/widgetStore'
 import { useDashboardStore } from '../stores/dashboardStore'
-import { constraints, findPlacement } from '@nav/shared'
+import { constraints, findPlacement, migrateDashboard } from '@nav/shared'
 
 const widgetStore = useWidgetStore()
 const dashboardStore = useDashboardStore()
@@ -25,13 +25,21 @@ function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
     const placed = Object.fromEntries(dashboard.widgets.map((w) => [w.id, w.layouts.lg]))
     const layout = findPlacement(placed, Math.min(size.w, cols), size.h, cols)
     const id = crypto.randomUUID()
-    dashboardStore.addWidget({
+    const instance = {
       id,
       widgetId,
       source,
       config: {},
       layouts: { lg: layout, md: layout, sm: layout, xs: layout },
-    })
+    }
+    if (dashboard.layoutMode === 'canvas') {
+      const d = migrateDashboard({ ...dashboard, widgets: [...dashboard.widgets, instance] })
+      const added = d.widgets[d.widgets.length - 1]
+      const existing = dashboard.widgets.flatMap((w) => (w.canvas ? [w.canvas] : []))
+      if (existing.length && added.canvas)
+        added.canvas.y = Math.max(...existing.map((c) => c.y + c.h)) + 20
+      void dashboardStore.addWidget(added)
+    } else void dashboardStore.addWidget(instance)
   } catch (e) {
     dashboardStore.error = (e as Error).message
   }
@@ -43,6 +51,8 @@ const builtinWidgets = [
   { id: 'weather', name: '天气', icon: '🌤️' },
   { id: 'bookmark', name: '书签', icon: '📑' },
   { id: 'monitor', name: '监控', icon: '📊' },
+  { id: 'docker', name: 'Docker 监控', icon: '🐳' },
+  { id: 'chat', name: 'AI 助手', icon: '✦' },
 ]
 async function uninstall(id: string) {
   try {

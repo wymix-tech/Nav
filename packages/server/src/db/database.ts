@@ -51,6 +51,10 @@ db.exec(`
 for (const [name, sql] of [
   ['title', "TEXT DEFAULT 'Nav - 个人导航页'"],
   ['background', "TEXT DEFAULT '{}'"],
+  ['layout_mode', "TEXT DEFAULT 'grid'"],
+  ['viewport', 'TEXT'],
+  ['viewport_width', 'INTEGER DEFAULT 1920'],
+  ['viewport_height', 'INTEGER DEFAULT 1080'],
   ['state_json', 'TEXT'],
   ['revision', 'INTEGER NOT NULL DEFAULT 0'],
 ] as const) {
@@ -58,6 +62,12 @@ for (const [name, sql] of [
   if (!columns.some((c) => c.name === name))
     db.exec(`ALTER TABLE dashboards ADD COLUMN ${name} ${sql}`)
 }
+if (
+  !(db.prepare('PRAGMA table_info(widget_instances)').all() as { name: string }[]).some(
+    (c) => c.name === 'canvas',
+  )
+)
+  db.exec('ALTER TABLE widget_instances ADD COLUMN canvas TEXT')
 db.exec(`CREATE TABLE IF NOT EXISTS migration_backups(backup_key TEXT PRIMARY KEY,payload TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS committed_operations(operation_id TEXT PRIMARY KEY,dashboard_id TEXT NOT NULL,request_hash TEXT NOT NULL,response TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS catalog_metadata(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL DEFAULT 0);

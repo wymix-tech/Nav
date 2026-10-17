@@ -16,6 +16,7 @@ const emit = defineEmits<{
   'show-preferences': []
   'toggle-library': []
   'clear-all': []
+  'show-about': []
 }>()
 
 const expanded = ref(false)
@@ -40,7 +41,7 @@ const expanded = ref(false)
 
     <!-- 展开内容 -->
     <div class="panel-content">
-      <div class="panel-brand">Nav</div>
+      <button class="panel-brand" @click="emit('show-about')" aria-label="关于 Nav">Nav</button>
       <div class="panel-actions">
         <template v-if="auth.isAuthenticated">
           <button class="panel-btn primary" @click="emit('toggle-edit')">

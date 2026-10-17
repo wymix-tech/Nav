@@ -5,11 +5,29 @@ export interface WidgetLayout {
   h: number
 }
 
+export interface CanvasLayout {
+  x: number
+  y: number
+  w: number
+  h: number
+  originalW?: number
+  originalH?: number
+}
+export type LayoutMode = 'grid' | 'canvas'
+export interface DashboardViewport {
+  panX: number
+  panY: number
+  zoom: number
+  homeX: number
+  homeY: number
+}
+
 export interface WidgetInstance {
   id: string
   widgetId: string
   source: 'builtin' | 'installed'
   config: Record<string, any>
+  canvas?: CanvasLayout
   layouts: {
     lg: WidgetLayout
     md: WidgetLayout
@@ -40,6 +58,10 @@ export interface Dashboard {
   columns: number
   rowHeight: number
   background: DashboardBackground
+  layoutMode?: LayoutMode
+  viewport?: DashboardViewport
+  viewportWidth?: number
+  viewportHeight?: number
   baseColumns?: number
   instanceId?: string
   revision?: number

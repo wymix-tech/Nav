@@ -11,8 +11,14 @@ dashboards.get('/', (c) => {
 })
 dashboards.get('/:id/backup', authMiddleware, (c) => {
   const rows = db
-    .prepare('SELECT backup_key,payload,created_at FROM migration_backups WHERE backup_key=?')
-    .all(`layout-v1:${c.req.param('id')}`)
+    .prepare(
+      'SELECT backup_key,payload,created_at FROM migration_backups WHERE backup_key IN (?,?,?)',
+    )
+    .all(
+      `layout-v1:${c.req.param('id')}`,
+      `legacy-main-v1:${c.req.param('id')}`,
+      `chat-credentials-v1:${c.req.param('id')}`,
+    )
   return c.json({ backups: rows })
 })
 dashboards.put('/:id/state', authMiddleware, async (c) => {
