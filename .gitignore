@@ -14,3 +14,8 @@ uploads/
 nav.log
 nav.pid
 packages/server/public/
+
+# 本地 AI 助手会话/运行时文件（含密钥，禁止提交）
+.claude/ide/
+.claude/settings.local.json
+.DS_Store
