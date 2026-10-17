@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModalShell from './ModalShell.vue'
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 
@@ -22,13 +23,13 @@ async function handleLogin() {
     emit('success')
     emit('close')
   } else {
-    error.value = '密码错误'
+    error.value = auth.error || '登录失败'
   }
 }
 </script>
 
 <template>
-  <div class="dialog-overlay" @click.self="emit('close')">
+  <ModalShell label="登录" @close="emit('close')">
     <div class="dialog">
       <h2>登录</h2>
       <form @submit.prevent="handleLogin">
@@ -48,7 +49,7 @@ async function handleLogin() {
         </div>
       </form>
     </div>
-  </div>
+  </ModalShell>
 </template>
 
 <style scoped>

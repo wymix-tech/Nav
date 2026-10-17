@@ -1,3 +1,5 @@
+> 本文件包含历史开发记录。当前命令、布局、存储与插件协议以 README.md、CLAUDE.md 和 docs/upgrade-and-rollback.md 为准。
+
 # CODEBUDDY.md This file provides guidance to CodeBuddy when working with code in this repository.
 
 ## 常用命令

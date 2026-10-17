@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { getWeather } from '../services/weatherService'
 
 const props = defineProps<{
   config: Record<string, any>
@@ -24,6 +25,10 @@ interface WeatherData {
 }
 
 const weather = ref<WeatherData | null>(null)
+const updatedAt = ref(0)
+let controller: AbortController | undefined,
+  requestId = 0,
+  timer: ReturnType<typeof setInterval>
 const error = ref('')
 const loading = ref(false)
 const showConfig = ref(false)
@@ -46,18 +51,28 @@ const weatherCode = computed(() => {
 })
 
 async function fetchWeather() {
+  controller?.abort()
+  controller = new AbortController()
+  const id = ++requestId
   const c = props.config.city ?? 'Beijing'
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch(`https://wttr.in/${encodeURIComponent(c)}?format=j1&lang=zh`)
-    if (!res.ok) throw new Error(`请求失败 (${res.status})`)
-    const data = await res.json()
+    const result = await getWeather(c, controller.signal)
+    if (id !== requestId) return
+    const data = result.data
+    updatedAt.value = result.time
     const current = data?.current_condition?.[0]
     if (!current) throw new Error('天气数据格式异常')
     weather.value = {
-      temp: unit.value === 'imperial' ? Math.round(Number(current.temp_F)) : Math.round(Number(current.temp_C)),
-      feelsLike: unit.value === 'imperial' ? Math.round(Number(current.FeelsLikeF)) : Math.round(Number(current.FeelsLikeC)),
+      temp:
+        unit.value === 'imperial'
+          ? Math.round(Number(current.temp_F))
+          : Math.round(Number(current.temp_C)),
+      feelsLike:
+        unit.value === 'imperial'
+          ? Math.round(Number(current.FeelsLikeF))
+          : Math.round(Number(current.FeelsLikeC)),
       description: current.weatherDesc[0].value,
       humidity: current.humidity,
       windSpeed: unit.value === 'imperial' ? current.windspeedMiles : current.windspeedKmph,
@@ -67,10 +82,9 @@ async function fetchWeather() {
       cloudCover: current.cloudcover,
     }
   } catch (e: any) {
-    error.value = e.message ?? '获取天气失败'
-    weather.value = null
+    if (id === requestId && e.name !== 'AbortError') error.value = e.message ?? '获取天气失败'
   } finally {
-    loading.value = false
+    if (id === requestId) loading.value = false
   }
 }
 
@@ -79,12 +93,34 @@ function saveConfig() {
   showConfig.value = false
 }
 
-onMounted(fetchWeather)
-watch(() => [props.config.city, props.config.unit], fetchWeather)
+function refreshVisible() {
+  if (!document.hidden && Date.now() - updatedAt.value >= 600000) void fetchWeather()
+}
+onMounted(() => {
+  void fetchWeather()
+  timer = setInterval(refreshVisible, 60000)
+  document.addEventListener('visibilitychange', refreshVisible)
+})
+onBeforeUnmount(() => {
+  controller?.abort()
+  clearInterval(timer)
+  document.removeEventListener('visibilitychange', refreshVisible)
+})
+watch(
+  () => [props.config.city, props.config.unit],
+  () => {
+    city.value = props.config.city ?? 'Beijing'
+    unit.value = props.config.unit ?? 'metric'
+    void fetchWeather()
+  },
+)
 </script>
 
 <template>
   <div class="weather-widget">
+    <small v-if="updatedAt" class="weather-update" :title="new Date(updatedAt).toLocaleString()">{{
+      error ? '更新失败，显示上次数据' : '最近更新 ' + new Date(updatedAt).toLocaleTimeString()
+    }}</small>
 
     <!-- 配置表单 -->
     <template v-if="showConfig">
@@ -103,7 +139,7 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
     </template>
 
     <!-- 错误（优先于配置入口显示） -->
-    <template v-else-if="error">
+    <template v-else-if="error && !weather">
       <div class="err">
         <span class="err-msg">{{ error }}</span>
         <span v-if="editable" class="err-retry" @click="fetchWeather">重试</span>
@@ -122,55 +158,97 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
     <template v-else-if="weather">
       <div class="wc" :class="'t-' + weatherCode">
         <!-- 编辑模式下显示配置入口 -->
-        <button v-if="editable && !editing" class="wc-cfg" @click.stop="showConfig = true" title="配置">⚙</button>
+        <button v-if="editable" class="wc-cfg" @click.stop="showConfig = true" title="配置">
+          ⚙
+        </button>
 
         <!-- 装饰性背景图标 -->
         <div class="deco-icon">
           <!-- 晴天太阳装饰 -->
-          <svg v-if="weatherCode === 'sunny'" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            v-if="weatherCode === 'sunny'"
+            viewBox="0 0 200 200"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <defs>
-              <radialGradient :id="'sunGlow-'+uid" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#FFF7E0" stop-opacity="0.5"/>
-                <stop offset="60%" stop-color="#FFE082" stop-opacity="0.2"/>
-                <stop offset="100%" stop-color="#FFD54F" stop-opacity="0"/>
+              <radialGradient :id="'sunGlow-' + uid" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FFF7E0" stop-opacity="0.5" />
+                <stop offset="60%" stop-color="#FFE082" stop-opacity="0.2" />
+                <stop offset="100%" stop-color="#FFD54F" stop-opacity="0" />
               </radialGradient>
             </defs>
-            <circle cx="140" cy="50" r="55" :fill="'url(#sunGlow-'+uid+')'"/>
-            <circle cx="150" cy="45" r="18" fill="rgba(255,245,220,0.35)"/>
+            <circle cx="140" cy="50" r="55" :fill="'url(#sunGlow-' + uid + ')'" />
+            <circle cx="150" cy="45" r="18" fill="rgba(255,245,220,0.35)" />
           </svg>
 
           <!-- 多云装饰 -->
-          <svg v-else-if="weatherCode === 'partly-cloudy'" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="145" cy="75" rx="48" ry="26" fill="rgba(255,255,255,0.12)"/>
-            <ellipse cx="115" cy="68" rx="34" ry="20" fill="rgba(255,255,255,0.08)"/>
-            <circle cx="85" cy="78" rx="24" fill="rgba(255,255,255,0.12)"/>
-            <circle cx="135" cy="40" r="22" fill="rgba(255,245,180,0.15)"/>
+          <svg
+            v-else-if="weatherCode === 'partly-cloudy'"
+            viewBox="0 0 200 200"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse cx="145" cy="75" rx="48" ry="26" fill="rgba(255,255,255,0.12)" />
+            <ellipse cx="115" cy="68" rx="34" ry="20" fill="rgba(255,255,255,0.08)" />
+            <circle cx="85" cy="78" rx="24" fill="rgba(255,255,255,0.12)" />
+            <circle cx="135" cy="40" r="22" fill="rgba(255,245,180,0.15)" />
           </svg>
 
           <!-- 阴天云装饰 -->
-          <svg v-else-if="weatherCode === 'cloudy'" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="130" cy="80" rx="52" ry="28" fill="rgba(255,255,255,0.1)"/>
-            <ellipse cx="95" cy="72" rx="36" ry="22" fill="rgba(255,255,255,0.07)"/>
-            <circle cx="65" cy="84" rx="26" fill="rgba(255,255,255,0.1)"/>
+          <svg
+            v-else-if="weatherCode === 'cloudy'"
+            viewBox="0 0 200 200"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse cx="130" cy="80" rx="52" ry="28" fill="rgba(255,255,255,0.1)" />
+            <ellipse cx="95" cy="72" rx="36" ry="22" fill="rgba(255,255,255,0.07)" />
+            <circle cx="65" cy="84" rx="26" fill="rgba(255,255,255,0.1)" />
           </svg>
 
           <!-- 雨天装饰 -->
-          <svg v-else-if="weatherCode === 'rainy'" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="120" cy="58" rx="44" ry="24" fill="rgba(176,190,197,0.15)"/>
-            <circle cx="78" cy="64" rx="22" fill="rgba(144,164,174,0.12)"/>
-            <line x1="90" y1="92" x2="82" y2="118" stroke="rgba(100,181,246,0.15)" stroke-width="4" stroke-linecap="round"/>
-            <line x1="118" y1="92" x2="110" y2="118" stroke="rgba(100,181,246,0.15)" stroke-width="4" stroke-linecap="round"/>
-            <line x1="146" y1="92" x2="138" y2="118" stroke="rgba(100,181,246,0.15)" stroke-width="4" stroke-linecap="round"/>
+          <svg
+            v-else-if="weatherCode === 'rainy'"
+            viewBox="0 0 200 200"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse cx="120" cy="58" rx="44" ry="24" fill="rgba(176,190,197,0.15)" />
+            <circle cx="78" cy="64" rx="22" fill="rgba(144,164,174,0.12)" />
+            <line
+              x1="90"
+              y1="92"
+              x2="82"
+              y2="118"
+              stroke="rgba(100,181,246,0.15)"
+              stroke-width="4"
+              stroke-linecap="round"
+            />
+            <line
+              x1="118"
+              y1="92"
+              x2="110"
+              y2="118"
+              stroke="rgba(100,181,246,0.15)"
+              stroke-width="4"
+              stroke-linecap="round"
+            />
+            <line
+              x1="146"
+              y1="92"
+              x2="138"
+              y2="118"
+              stroke="rgba(100,181,246,0.15)"
+              stroke-width="4"
+              stroke-linecap="round"
+            />
           </svg>
 
           <!-- 雪天装饰 -->
           <svg v-else viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="120" cy="56" rx="44" ry="24" fill="rgba(176,190,197,0.13)"/>
-            <circle cx="76" cy="62" rx="22" fill="rgba(144,164,174,0.1)"/>
-            <circle cx="88" cy="98" r="5" fill="rgba(227,242,253,0.18)"/>
-            <circle cx="118" cy="112" r="5" fill="rgba(227,242,253,0.16)"/>
-            <circle cx="148" cy="96" r="5" fill="rgba(227,242,253,0.14)"/>
-            <circle cx="103" cy="128" r="4" fill="rgba(227,242,253,0.12)"/>
+            <ellipse cx="120" cy="56" rx="44" ry="24" fill="rgba(176,190,197,0.13)" />
+            <circle cx="76" cy="62" rx="22" fill="rgba(144,164,174,0.1)" />
+            <circle cx="88" cy="98" r="5" fill="rgba(227,242,253,0.18)" />
+            <circle cx="118" cy="112" r="5" fill="rgba(227,242,253,0.16)" />
+            <circle cx="148" cy="96" r="5" fill="rgba(227,242,253,0.14)" />
+            <circle cx="103" cy="128" r="4" fill="rgba(227,242,253,0.12)" />
           </svg>
         </div>
 
@@ -193,50 +271,57 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
             <div class="icon-wrap">
               <svg v-if="weatherCode === 'sunny'" class="wi" viewBox="0 0 100 100">
                 <defs>
-                  <radialGradient :id="'sunCore-'+uid" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#FFF59D"/>
-                    <stop offset="100%" stop-color="#FFD54F"/>
+                  <radialGradient :id="'sunCore-' + uid" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#FFF59D" />
+                    <stop offset="100%" stop-color="#FFD54F" />
                   </radialGradient>
                 </defs>
-                <circle cx="50" cy="46" r="18" :fill="'url(#sunCore-'+uid+')'" opacity="0.95"/>
+                <circle cx="50" cy="46" r="18" :fill="'url(#sunCore-' + uid + ')'" opacity="0.95" />
                 <g stroke="#FFE082" stroke-width="3" stroke-linecap="round" opacity="0.8">
-                  <line x1="50" y1="10" x2="50" y2="18"/><line x1="50" y1="74" x2="50" y2="82"/>
-                  <line x1="14" y1="46" x2="22" y2="46"/><line x1="78" y1="46" x2="86" y2="46"/>
-                  <line x1="23.4" y1="19.4" x2="29.1" y2="25.1"/><line x1="70.9" y1="66.9" x2="76.6" y2="72.6"/>
-                  <line x1="23.4" y1="72.6" x2="29.1" y2="66.9"/><line x1="70.9" y1="25.1" x2="76.6" y2="19.4"/>
+                  <line x1="50" y1="10" x2="50" y2="18" />
+                  <line x1="50" y1="74" x2="50" y2="82" />
+                  <line x1="14" y1="46" x2="22" y2="46" />
+                  <line x1="78" y1="46" x2="86" y2="46" />
+                  <line x1="23.4" y1="19.4" x2="29.1" y2="25.1" />
+                  <line x1="70.9" y1="66.9" x2="76.6" y2="72.6" />
+                  <line x1="23.4" y1="72.6" x2="29.1" y2="66.9" />
+                  <line x1="70.9" y1="25.1" x2="76.6" y2="19.4" />
                 </g>
               </svg>
 
               <svg v-else-if="weatherCode === 'partly-cloudy'" class="wi" viewBox="0 0 100 100">
-                <circle cx="38" cy="38" r="14" fill="#FFE082" opacity="0.9"/>
-                <ellipse cx="54" cy="62" rx="30" ry="17" fill="rgba(255,255,255,0.92)"/>
-                <ellipse cx="40" cy="58" rx="20" ry="13" fill="rgba(245,245,245,0.85)"/>
-                <circle cx="28" cy="63" r="13" fill="rgba(255,255,255,0.9)"/>
+                <circle cx="38" cy="38" r="14" fill="#FFE082" opacity="0.9" />
+                <ellipse cx="54" cy="62" rx="30" ry="17" fill="rgba(255,255,255,0.92)" />
+                <ellipse cx="40" cy="58" rx="20" ry="13" fill="rgba(245,245,245,0.85)" />
+                <circle cx="28" cy="63" r="13" fill="rgba(255,255,255,0.9)" />
               </svg>
 
               <svg v-else-if="weatherCode === 'cloudy'" class="wi" viewBox="0 0 100 100">
-                <ellipse cx="54" cy="58" rx="32" ry="18" fill="rgba(207,216,220,0.85)"/>
-                <ellipse cx="38" cy="54" rx="22" ry="14" fill="rgba(176,190,197,0.8)"/>
-                <circle cx="26" cy="60" r="15" fill="rgba(207,216,220,0.85)"/>
+                <ellipse cx="54" cy="58" rx="32" ry="18" fill="rgba(207,216,220,0.85)" />
+                <ellipse cx="38" cy="54" rx="22" ry="14" fill="rgba(176,190,197,0.8)" />
+                <circle cx="26" cy="60" r="15" fill="rgba(207,216,220,0.85)" />
               </svg>
 
               <svg v-else-if="weatherCode === 'rainy'" class="wi" viewBox="0 0 100 100">
-                <ellipse cx="50" cy="40" rx="30" ry="16" fill="rgba(144,164,174,0.85)"/>
-                <ellipse cx="34" cy="36" rx="20" ry="12" fill="rgba(176,190,197,0.8)"/>
-                <circle cx="24" cy="42" rx="14" fill="rgba(144,164,174,0.85)"/>
+                <ellipse cx="50" cy="40" rx="30" ry="16" fill="rgba(144,164,174,0.85)" />
+                <ellipse cx="34" cy="36" rx="20" ry="12" fill="rgba(176,190,197,0.8)" />
+                <circle cx="24" cy="42" rx="14" fill="rgba(144,164,174,0.85)" />
                 <g stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" opacity="0.75">
-                  <line x1="32" y1="60" x2="27" y2="74"/><line x1="50" y1="60" x2="45" y2="74"/>
-                  <line x1="68" y1="60" x2="63" y2="74"/>
+                  <line x1="32" y1="60" x2="27" y2="74" />
+                  <line x1="50" y1="60" x2="45" y2="74" />
+                  <line x1="68" y1="60" x2="63" y2="74" />
                 </g>
               </svg>
 
               <svg v-else class="wi" viewBox="0 0 100 100">
-                <ellipse cx="50" cy="38" rx="30" ry="16" fill="rgba(176,190,197,0.82)"/>
-                <circle cx="24" cy="40" rx="14" fill="rgba(144,164,174,0.8)"/>
+                <ellipse cx="50" cy="38" rx="30" ry="16" fill="rgba(176,190,197,0.82)" />
+                <circle cx="24" cy="40" rx="14" fill="rgba(144,164,174,0.8)" />
                 <g fill="rgba(227,242,253,0.8)">
-                  <circle cx="34" cy="62" r="2.8"/><circle cx="50" cy="70" r="2.8"/>
-                  <circle cx="66" cy="62" r="2.8"/><circle cx="42" cy="78" r="2.3"/>
-                  <circle cx="58" cy="80" r="2.3"/>
+                  <circle cx="34" cy="62" r="2.8" />
+                  <circle cx="50" cy="70" r="2.8" />
+                  <circle cx="66" cy="62" r="2.8" />
+                  <circle cx="42" cy="78" r="2.3" />
+                  <circle cx="58" cy="80" r="2.3" />
                 </g>
               </svg>
             </div>
@@ -244,12 +329,34 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
 
           <!-- 详情网格 -->
           <div class="details">
-            <div class="di"><span class="dv">{{ weather.humidity }}<em>%</em></span><span class="dk">湿度</span></div>
-            <div class="di"><span class="dv">{{ weather.windSpeed }}<em>{{ unit === 'imperial' ? 'mph' : 'km/h' }}</em></span><span class="dk">风速</span></div>
-            <div class="di"><span class="dv">{{ weather.windDir }}</span><span class="dk">风向</span></div>
-            <div class="di"><span class="dv">{{ weather.pressure }}<em>hPa</em></span><span class="dk">气压</span></div>
-            <div class="di"><span class="dv uv" :class="'uv-' + Math.min(3, Math.ceil(Number(weather.uvIndex)/4))">{{ weather.uvIndex }}</span><span class="dk">紫外线</span></div>
-            <div class="di"><span class="dv">{{ weather.cloudCover }}<em>%</em></span><span class="dk">云量</span></div>
+            <div class="di">
+              <span class="dv">{{ weather.humidity }}<em>%</em></span
+              ><span class="dk">湿度</span>
+            </div>
+            <div class="di">
+              <span class="dv"
+                >{{ weather.windSpeed }}<em>{{ unit === 'imperial' ? 'mph' : 'km/h' }}</em></span
+              ><span class="dk">风速</span>
+            </div>
+            <div class="di">
+              <span class="dv">{{ weather.windDir }}</span
+              ><span class="dk">风向</span>
+            </div>
+            <div class="di">
+              <span class="dv">{{ weather.pressure }}<em>hPa</em></span
+              ><span class="dk">气压</span>
+            </div>
+            <div class="di">
+              <span
+                class="dv uv"
+                :class="'uv-' + Math.min(3, Math.ceil(Number(weather.uvIndex) / 4))"
+                >{{ weather.uvIndex }}</span
+              ><span class="dk">紫外线</span>
+            </div>
+            <div class="di">
+              <span class="dv">{{ weather.cloudCover }}<em>%</em></span
+              ><span class="dk">云量</span>
+            </div>
           </div>
         </div>
       </div>
@@ -266,7 +373,10 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
 </template>
 
 <style scoped>
-.weather-widget { height: 100%; width: 100%; }
+.weather-widget {
+  height: 100%;
+  width: 100%;
+}
 
 /* ======== 卡片容器 ======== */
 .wc {
@@ -280,19 +390,49 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   color: #fff;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  background: linear-gradient(145deg, rgba(59,130,246,0.6), rgba(96,165,250,0.5), rgba(147,197,253,0.4), rgba(191,219,254,0.3));
+  background: linear-gradient(
+    145deg,
+    rgba(59, 130, 246, 0.6),
+    rgba(96, 165, 250, 0.5),
+    rgba(147, 197, 253, 0.4),
+    rgba(191, 219, 254, 0.3)
+  );
 }
 .wc.t-partly-cloudy {
-  background: linear-gradient(145deg, rgba(75,106,138,0.6), rgba(107,138,173,0.5), rgba(150,173,191,0.4), rgba(197,210,222,0.3));
+  background: linear-gradient(
+    145deg,
+    rgba(75, 106, 138, 0.6),
+    rgba(107, 138, 173, 0.5),
+    rgba(150, 173, 191, 0.4),
+    rgba(197, 210, 222, 0.3)
+  );
 }
 .wc.t-cloudy {
-  background: linear-gradient(145deg, rgba(71,85,105,0.6), rgba(100,116,139,0.5), rgba(148,163,184,0.4), rgba(203,213,225,0.3));
+  background: linear-gradient(
+    145deg,
+    rgba(71, 85, 105, 0.6),
+    rgba(100, 116, 139, 0.5),
+    rgba(148, 163, 184, 0.4),
+    rgba(203, 213, 225, 0.3)
+  );
 }
 .wc.t-rainy {
-  background: linear-gradient(145deg, rgba(51,65,85,0.65), rgba(71,85,105,0.55), rgba(100,116,139,0.45), rgba(148,163,184,0.35));
+  background: linear-gradient(
+    145deg,
+    rgba(51, 65, 85, 0.65),
+    rgba(71, 85, 105, 0.55),
+    rgba(100, 116, 139, 0.45),
+    rgba(148, 163, 184, 0.35)
+  );
 }
 .wc.t-snowy {
-  background: linear-gradient(145deg, rgba(99,102,241,0.58), rgba(129,140,248,0.48), rgba(165,180,252,0.38), rgba(199,210,254,0.28));
+  background: linear-gradient(
+    145deg,
+    rgba(99, 102, 241, 0.58),
+    rgba(129, 140, 248, 0.48),
+    rgba(165, 180, 252, 0.38),
+    rgba(199, 210, 254, 0.28)
+  );
 }
 
 /* 编辑模式下的配置按钮 */
@@ -307,13 +447,15 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  background: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.7);
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -323,7 +465,7 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
 }
 
 .wc-cfg:hover {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
 
@@ -362,25 +504,66 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   justify-content: space-between;
   margin-bottom: auto;
 }
-.left-col { display: flex; flex-direction: column; gap: 2px; }
+.left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-.city-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-.city { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.city-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.city {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
 .aqi-badge {
   font-size: 10.5px;
   padding: 1px 7px;
   border-radius: 20px;
-  background: rgba(255,255,255,.22);
-  text-shadow: 0 1px 2px rgba(0,0,0,.1);
+  background: rgba(255, 255, 255, 0.22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.temp-row { display: inline-flex; align-items: baseline; line-height: 1; }
-.temp-num { font-size: 52px; font-weight: 200; letter-spacing: -2.5px; text-shadow: 0 2px 12px rgba(0,0,0,.12); }
-.temp-deg { font-size: 18px; font-weight: 300; margin-left: 2px; opacity: 0.85; text-shadow: 0 1px 4px rgba(0,0,0,.1); }
-.sub-row { font-size: 12.5px; opacity: 0.78; text-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.temp-row {
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+}
+.temp-num {
+  font-size: 52px;
+  font-weight: 200;
+  letter-spacing: -2.5px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+.temp-deg {
+  font-size: 18px;
+  font-weight: 300;
+  margin-left: 2px;
+  opacity: 0.85;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+.sub-row {
+  font-size: 12.5px;
+  opacity: 0.78;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
-.icon-wrap { flex-shrink: 0; margin-right: -2px; margin-bottom: -4px; }
-.wi { width: 64px; height: 64px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.12)); }
+.icon-wrap {
+  flex-shrink: 0;
+  margin-right: -2px;
+  margin-bottom: -4px;
+}
+.wi {
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
+}
 
 /* ---- 详情网格 ---- */
 .details {
@@ -389,37 +572,182 @@ watch(() => [props.config.city, props.config.unit], fetchWeather)
   gap: 6px 4px;
   padding-top: 6px;
 }
-.di { display: flex; flex-direction: column; gap: 1px; }
-.dv { font-size: 14px; font-weight: 600; letter-spacing: -0.3px; text-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.dv em { font-style: normal; font-size: 10px; font-weight: 500; opacity: 0.65; margin-left: 1px; }
-.dk { font-size: 9.5px; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.05em; }
-.dv.uv-1 { color: #bbf7d0; }
-.dv.uv-2 { color: #fef08a; }
-.dv.uv-3 { color: #fdba74; }
+.di {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dv {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.dv em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.65;
+  margin-left: 1px;
+}
+.dk {
+  font-size: 9.5px;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dv.uv-1 {
+  color: #bbf7d0;
+}
+.dv.uv-2 {
+  color: #fef08a;
+}
+.dv.uv-3 {
+  color: #fdba74;
+}
 
 /* ---- 配置表单 ---- */
-.cfg { display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center; padding: 8px; box-sizing: border-box; }
-.cfg-lbl { font-size: 12px; color: rgba(255,255,255,0.6); }
-.cfg-inp { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.08); color: #eee; font-size: 13px; outline: none; }
-.cfg-inp:focus { border-color: rgba(96,165,250,.5); box-shadow: 0 0 0 3px rgba(96,165,250,.15); }
-.cfg-btns { display: flex; gap: 8px; margin-top: 4px; }
-.cfg-btn { flex: 1; padding: 8px; border-radius: 10px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; }
-.cfg-btn.no { background: rgba(255,255,255,.1); color: rgba(255,255,255,0.7); }
-.cfg-btn.ok { background: rgba(96,165,250,0.8); color: #fff; }
+.cfg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.cfg-lbl {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.cfg-inp {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  font-size: 13px;
+  outline: none;
+}
+.cfg-inp:focus {
+  border-color: rgba(96, 165, 250, 0.5);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+.cfg-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cfg-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cfg-btn.no {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+.cfg-btn.ok {
+  background: rgba(96, 165, 250, 0.8);
+  color: #fff;
+}
 
 /* ---- 配置入口 ---- */
-.prompt { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; cursor: pointer; opacity: .5; }
-.prompt:hover { opacity: .9; }
-.prompt-icon { font-size: 20px; }
-.prompt-txt { font-size: 13px; color: rgba(255,255,255,0.6); }
+.prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+.prompt:hover {
+  opacity: 0.9;
+}
+.prompt-icon {
+  font-size: 20px;
+}
+.prompt-txt {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
 
 /* ---- 错误 ---- */
-.err { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; }
-.err-msg { color: #fca5a5; font-size: 13px; text-align: center; padding: 0 12px; }
-.err-retry { font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer; text-decoration: underline; }
+.err {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+}
+.err-msg {
+  color: #fca5a5;
+  font-size: 13px;
+  text-align: center;
+  padding: 0 12px;
+}
+.err-retry {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 /* ---- 加载 ---- */
-.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: rgba(255,255,255,0.6); font-size: 13px; }
-.spin { width: 26px; height: 26px; border: 2px solid rgba(255,255,255,.15); border-top-color: rgba(255,255,255,0.7); border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+.spin {
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
+
+<style scoped>
+.weather-widget {
+  position: relative;
+}
+.weather-update {
+  position: absolute;
+  bottom: 3px;
+  right: 8px;
+  z-index: 2;
+  font-size: 10px;
+  opacity: 0.7;
+}
+@container (max-width:340px) {
+  .wi {
+    width: 40px;
+    height: 40px;
+  }
+  .cfg {
+    padding: 6px;
+  }
+  .temp-val {
+    font-size: 36px;
+  }
+}
 </style>

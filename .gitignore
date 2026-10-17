@@ -11,11 +11,14 @@ uploads/
 .pnpm-store
 *.tsbuildinfo
 
-nav.log
+test-results/
+playwright-report/
 nav.pid
+nav.log
 packages/server/public/
 
 # 本地 AI 助手会话/运行时文件（含密钥，禁止提交）
 .claude/ide/
 .claude/settings.local.json
+.claude/
 .DS_Store

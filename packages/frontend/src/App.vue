@@ -7,33 +7,34 @@ import WidgetLibrary from './components/WidgetLibrary.vue'
 import InstallWidgetDialog from './components/InstallWidgetDialog.vue'
 import PreferencesPanel from './components/PreferencesPanel.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
-import AboutDialog from './components/AboutDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
 import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
-import CanvasControls from './components/CanvasControls.vue'
-import { useScreenOrientation } from './composables/useScreenOrientation'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
 const authStore = useAuthStore()
 const editing = ref(false)
-const backendAvailable = ref(false)
+watch(editing, (active) =>
+  window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active })),
+)
+const updateApp = ref<null | (() => void)>(null)
+function updateAvailable(e: Event) {
+  updateApp.value = (e as CustomEvent).detail
+}
+const backendAvailable = ref(isBackendAvailable())
 const showLogin = ref(false)
 const showInstall = ref(false)
 const showLibrary = ref(false)
 const isDragging = ref(false)
 const showPreferences = ref(false)
 const showClearConfirm = ref(false)
-const showAbout = ref(false)
 const slideshowIndex = ref(0)
 let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
-// 屏幕方向检测（matchMedia 基于设备物理方向，桌面端窗口缩放不会误触发）
-const { isPortrait } = useScreenOrientation()
-
 onMounted(async () => {
+  window.addEventListener('nav-update-available', updateAvailable)
   await Promise.all([dashboardStore.load(), widgetStore.load()])
   try {
     await authStore.verify()
@@ -48,8 +49,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('nav-update-available', updateAvailable)
   document.removeEventListener('dragstart', handleDragStart)
   document.removeEventListener('dragend', handleDragEnd)
+  if (slideshowTimer) clearInterval(slideshowTimer)
 })
 
 function handleDragStart() {
@@ -57,13 +60,19 @@ function handleDragStart() {
 }
 
 function handleDragEnd() {
-  setTimeout(() => { isDragging.value = false }, 300)
+  setTimeout(() => {
+    isDragging.value = false
+  }, 300)
 }
 
 // 自定义网页标题
-watch(() => dashboardStore.dashboard?.title, (newTitle) => {
-  document.title = newTitle || 'INFI.NAV - 个人导航页'
-}, { immediate: true })
+watch(
+  () => dashboardStore.dashboard?.title,
+  (newTitle) => {
+    document.title = newTitle || 'Nav - 个人导航页'
+  },
+  { immediate: true },
+)
 
 // 判断颜色是否为浅色
 function isLightColor(color: string): boolean {
@@ -109,18 +118,38 @@ const bgStyle = computed(() => {
 })
 
 // 轮播定时器
-watch(() => dashboardStore.dashboard?.background, (bg) => {
-  if (slideshowTimer) clearInterval(slideshowTimer)
-  slideshowTimer = null
+watch(
+  () => dashboardStore.dashboard?.background,
+  (bg) => {
+    if (slideshowTimer) clearInterval(slideshowTimer)
+    slideshowTimer = null
 
-  if (bg?.mode === 'slideshow' && bg.images && bg.images.length > 1) {
-    slideshowTimer = setInterval(() => {
-      slideshowIndex.value = (slideshowIndex.value + 1) % bg.images.length
-    }, (bg.interval ?? 30) * 1000)
-  }
-}, { immediate: true })
+    if (bg?.mode === 'slideshow' && bg.images && bg.images.length > 1) {
+      slideshowTimer = setInterval(
+        () => {
+          slideshowIndex.value = (slideshowIndex.value + 1) % bg.images.length
+        },
+        (bg.interval ?? 30) * 1000,
+      )
+    }
+  },
+  { immediate: true },
+)
 
+watch(
+  () => authStore.isAuthenticated,
+  (allowed) => {
+    if (backendAvailable.value && !allowed) {
+      editing.value = false
+      showLibrary.value = false
+    }
+  },
+)
+watch(isLightBg, (light) => document.documentElement.classList.toggle('light-theme', light), {
+  immediate: true,
+})
 function toggleEdit() {
+  if (backendAvailable.value && !authStore.isAuthenticated) return
   editing.value = !editing.value
   showLibrary.value = editing.value
 }
@@ -131,7 +160,9 @@ function confirmClearAll() {
   dashboardStore.clearAllWidgets()
   showClearConfirm.value = false
 }
-function handleLogin() { showLogin.value = true }
+function handleLogin() {
+  showLogin.value = true
+}
 async function handleLoginSuccess() {
   resetAdapter()
   await Promise.all([dashboardStore.load(), widgetStore.load()])
@@ -140,7 +171,6 @@ async function handleLoginSuccess() {
 function toggleLibrary() {
   showLibrary.value = !showLibrary.value
 }
-
 </script>
 
 <template>
@@ -154,10 +184,64 @@ function toggleLibrary() {
       @show-preferences="showPreferences = true"
       @toggle-library="toggleLibrary"
       @clear-all="handleClearAll"
-      @show-about="showAbout = true"
     />
 
-    <main class="main" :class="{ 'canvas-mode': dashboardStore.dashboard?.layoutMode === 'canvas' && !isPortrait }">
+    <div v-if="dashboardStore.error" class="save-status error" role="alert">
+      {{ dashboardStore.error }} <button @click="dashboardStore.load">重新加载</button
+      ><button @click="dashboardStore.exportData">导出备份</button>
+    </div>
+    <div
+      v-if="editing || dashboardStore.syncState.pendingChanges || dashboardStore.syncState.error"
+      class="save-status"
+      role="status"
+    >
+      <span>{{
+        {
+          'local-only': '已保存到本机',
+          'pending-sync': '已保存到本机，等待同步',
+          syncing: '正在同步',
+          synced: '已同步',
+          conflict: '检测到其他设备修改，请选择处理方式',
+          'auth-required': '需要登录才能同步',
+          error: '已保存到本机，同步失败，请重试',
+        }[dashboardStore.syncState.status || 'synced']
+      }}</span>
+      <button
+        v-if="editing"
+        :disabled="!dashboardStore.history.length"
+        @click="dashboardStore.undo"
+      >
+        撤销
+      </button>
+      <button v-if="editing" :disabled="!dashboardStore.future.length" @click="dashboardStore.redo">
+        重做
+      </button>
+      <button @click="dashboardStore.retry">重试同步</button
+      ><button @click="dashboardStore.exportData">导出备份</button>
+      <template v-if="dashboardStore.syncState.status === 'conflict'"
+        ><button @click="dashboardStore.resolveConflict(false)">采用远端</button
+        ><button @click="dashboardStore.resolveConflict(true)">重新提交本地草稿</button></template
+      >
+    </div>
+    <div v-if="updateApp" class="save-status">
+      新版本已就绪
+      <button
+        :disabled="editing || !!dashboardStore.syncState.pendingChanges || !!dashboardStore.error"
+        @click="updateApp()"
+      >
+        更新并刷新
+      </button>
+    </div>
+    <main
+      class="main"
+      :class="{ 'library-open': editing && showLibrary }"
+      :style="{
+        maxWidth:
+          dashboardStore.dashboard?.layoutSettings?.contentWidthMode === 'fluid'
+            ? 'none'
+            : (dashboardStore.dashboard?.layoutSettings?.maxContentWidth ?? 1600) + 'px',
+      }"
+    >
       <p v-if="dashboardStore.loading">加载中...</p>
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
@@ -165,19 +249,18 @@ function toggleLibrary() {
         :editing="editing"
         :editable="!backendAvailable || authStore.isAuthenticated"
         :columns="dashboardStore.dashboard.columns"
+        :base-columns="dashboardStore.dashboard.baseColumns"
         :row-height="dashboardStore.dashboard.rowHeight"
-        :layout-mode="dashboardStore.dashboard.layoutMode"
+        :profiles="dashboardStore.dashboard.layoutProfiles"
+        :settings="dashboardStore.dashboard.layoutSettings"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
-        @update-layout="(id, layouts) => dashboardStore.updateWidgetLayouts(id, layouts)"
-        @update-canvas="(id, c) => dashboardStore.updateWidgetCanvas(id, c)"
+        @interaction="(active) => (isDragging = active)"
+        @update-layouts="dashboardStore.updateLayouts"
+        @reset-profile="dashboardStore.resetProfile"
+        @set-base="dashboardStore.setBase"
       />
     </main>
-
-    <CanvasControls
-      v-if="dashboardStore.dashboard?.layoutMode === 'canvas' && !isPortrait"
-      :widgets="dashboardStore.dashboard?.widgets ?? []"
-    />
 
     <WidgetLibrary
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
@@ -186,21 +269,11 @@ function toggleLibrary() {
       @toggle-library="toggleLibrary"
     />
 
-    <LoginDialog
-      v-if="showLogin"
-      @close="showLogin = false"
-      @success="handleLoginSuccess"
-    />
+    <LoginDialog v-if="showLogin" @close="showLogin = false" @success="handleLoginSuccess" />
 
-    <InstallWidgetDialog
-      v-if="showInstall"
-      @close="showInstall = false"
-    />
+    <InstallWidgetDialog v-if="showInstall" @close="showInstall = false" />
 
-    <PreferencesPanel
-      v-if="showPreferences"
-      @close="showPreferences = false"
-    />
+    <PreferencesPanel v-if="showPreferences" @close="showPreferences = false" />
 
     <ConfirmDialog
       v-if="showClearConfirm"
@@ -210,11 +283,6 @@ function toggleLibrary() {
       danger
       @confirm="confirmClearAll"
       @cancel="showClearConfirm = false"
-    />
-
-    <AboutDialog
-      v-if="showAbout"
-      @close="showAbout = false"
     />
   </div>
 </template>
@@ -226,14 +294,30 @@ function toggleLibrary() {
 }
 
 .main {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
+  margin-inline: auto;
 }
 
-.main.canvas-mode {
-  padding: 0;
+.save-status {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 24px;
+  background: var(--bg-secondary);
+  font-size: 13px;
 }
-
+.save-status.error {
+  color: var(--danger);
+}
+@media (min-width: 1100px) {
+  .main.library-open {
+    margin-left: 284px;
+    margin-right: 24px;
+    width: calc(100% - 308px);
+  }
+}
 @media (max-width: 768px) {
   .main {
     padding: 12px;

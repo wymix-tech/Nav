@@ -25,7 +25,7 @@ const showEngines = ref(false)
 function search() {
   if (!query.value.trim()) return
   const engine = engines[currentEngine.value] ?? engines.google
-  window.open(engine.url + encodeURIComponent(query.value), '_blank')
+  window.open(engine.url + encodeURIComponent(query.value), '_blank', 'noopener,noreferrer')
 }
 
 function switchEngine(name: string) {
@@ -46,9 +46,9 @@ function switchEngine(name: string) {
         title="切换搜索引擎"
       >
         <svg viewBox="0 0 6 16" width="6" height="16" fill="currentColor">
-          <circle cx="3" cy="3" r="1.5"/>
-          <circle cx="3" cy="8" r="1.5"/>
-          <circle cx="3" cy="13" r="1.5"/>
+          <circle cx="3" cy="3" r="1.5" />
+          <circle cx="3" cy="8" r="1.5" />
+          <circle cx="3" cy="13" r="1.5" />
         </svg>
       </button>
 
@@ -61,9 +61,18 @@ function switchEngine(name: string) {
       />
 
       <button type="submit" class="search-btn" :disabled="editing" title="搜索">
-        <svg viewBox="3 3 17 17" width="36" height="36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="6.5"/>
-          <path d="m19.5 19.5-4.5-4.5"/>
+        <svg
+          viewBox="3 3 17 17"
+          width="36"
+          height="36"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="m19.5 19.5-4.5-4.5" />
         </svg>
       </button>
     </form>
@@ -101,7 +110,9 @@ function switchEngine(name: string) {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   padding: 4px 4px 4px 4px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
 }
 
 .search-bar:focus-within {
@@ -211,10 +222,14 @@ function switchEngine(name: string) {
 
 /* 滑入动画 */
 .slide-enter-active {
-  transition: opacity 0.2s, max-height 0.25s;
+  transition:
+    opacity 0.2s,
+    max-height 0.25s;
 }
 .slide-leave-active {
-  transition: opacity 0.15s, max-height 0.2s;
+  transition:
+    opacity 0.15s,
+    max-height 0.2s;
 }
 .slide-enter-from,
 .slide-leave-to {

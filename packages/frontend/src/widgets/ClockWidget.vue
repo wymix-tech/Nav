@@ -65,7 +65,7 @@ onUnmounted(() => {
 
 .time-main {
   font-family: var(--font-display);
-  font-size: 56px;
+  font-size: clamp(32px, 15cqi, 64px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -1px;

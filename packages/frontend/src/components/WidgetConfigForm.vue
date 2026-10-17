@@ -14,8 +14,10 @@ const formData = ref<Record<string, any>>({ ...props.modelValue })
 
 watch(
   () => props.modelValue,
-  (val) => { formData.value = { ...val } },
-  { deep: true }
+  (val) => {
+    formData.value = { ...val }
+  },
+  { deep: true },
 )
 
 const fields = computed(() => {

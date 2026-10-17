@@ -4,21 +4,6 @@
 
 set -e
 
-export PATH="/Users/wymix/.hermes/node/bin:$PATH"
-
-# 生产环境必须设置的变量
-if [ -z "$NAV_JWT_SECRET" ]; then
-  echo "错误: NAV_JWT_SECRET 环境变量未设置"
-  echo "请运行: export NAV_JWT_SECRET=your-secret-key"
-  exit 1
-fi
-
-if [ -z "$NAV_PASSWORD" ]; then
-  echo "错误: NAV_PASSWORD 环境变量未设置"
-  echo "请运行: export NAV_PASSWORD=your-password"
-  exit 1
-fi
-
 export NODE_ENV=production
 export PORT="${PORT:-4000}"
 
@@ -26,6 +11,7 @@ PID_FILE="nav.pid"
 LOG_FILE="nav.log"
 
 build() {
+  pnpm --filter @nav/shared build
   echo "构建前端..."
   cd packages/frontend && pnpm build && cd ../..
   echo "复制前端产物到后端..."
@@ -37,6 +23,10 @@ build() {
 }
 
 start() {
+  if [ -z "$NAV_JWT_SECRET" ] || { [ -z "$NAV_PASSWORD" ] && [ -z "$NAV_PASSWORD_HASH" ]; }; then
+    echo "请配置 NAV_JWT_SECRET 和 NAV_PASSWORD_HASH（或 NAV_PASSWORD）"
+    return 1
+  fi
   if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo "服务已在运行 (PID: $(cat "$PID_FILE"))"
     return

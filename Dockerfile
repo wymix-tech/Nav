@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # 接收外部构建参数
 ARG APP_VERSION
@@ -26,15 +26,14 @@ COPY turbo.json ./
 # 构建：先构建 shared 包的类型声明，再构建 server，最后构建前端
 RUN pnpm --filter @nav/shared build
 RUN pnpm --filter @nav/server build
-# 跳过 vue-tsc 类型检查直接构建前端（Docker 内无需重复检查）
-RUN cd packages/frontend && npx vite build
+RUN pnpm --filter @nav/frontend build
 
 # 将 server 的生产依赖提取到独立目录
 RUN pnpm --filter @nav/server deploy --prod /deploy
 
 
 # Stage 2: 生产运行时
-FROM node:20-alpine
+FROM node:22-alpine
 
 # 需要在此 stage 也声明 ARG 才能从 stage 1 传递过来
 ARG APP_VERSION
@@ -55,7 +54,8 @@ COPY __APP_VERSION__ ./
 RUN if [ -n "$APP_VERSION" ]; then echo "$APP_VERSION" > ./__APP_VERSION__; fi
 
 # 创建上传目录
-RUN mkdir -p /data/uploads
+RUN mkdir -p /data/uploads && chown -R node:node /data /app
+USER node
 
 ENV NODE_ENV=production
 ENV PORT=4000

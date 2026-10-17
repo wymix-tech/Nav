@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import ModalShell from './ModalShell.vue'
 import type { WidgetInstance } from '@nav/shared'
 import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
@@ -30,23 +31,6 @@ const widgetSchema = computed(() => {
   return manifest.value?.schema ?? null
 })
 
-// 画布模式下内容自适应缩放
-const contentScaled = computed(() => {
-  const c = props.widget.canvas
-  if (!c?.originalW || !c?.originalH) return false
-  const sx = c.w / c.originalW
-  const sy = c.h / c.originalH
-  return Math.min(sx, sy) < 1
-})
-
-const contentScaleValue = computed(() => {
-  const c = props.widget.canvas
-  if (!c?.originalW || !c?.originalH) return 1
-  const sx = c.w / c.originalW
-  const sy = c.h / c.originalH
-  return Math.min(sx, sy)
-})
-
 function handleConfigUpdate(config: Record<string, any>) {
   emit('update-config', config)
 }
@@ -60,10 +44,12 @@ function handleConfigUpdate(config: Record<string, any>) {
         class="toolbar-btn config-btn"
         title="配置"
         @click="showConfig = true"
-      >⚙</button>
+      >
+        ⚙
+      </button>
       <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
     </div>
-    <div class="widget-content" :class="{ scaled: contentScaled }" :style="contentScaled ? { transform: `scale(${contentScaleValue})`, transformOrigin: 'top left' } : {}">
+    <div class="widget-content">
       <WidgetRenderer
         :widget="widget"
         :manifest="manifest"
@@ -74,7 +60,7 @@ function handleConfigUpdate(config: Record<string, any>) {
     </div>
 
     <!-- 配置弹窗 -->
-    <div v-if="showConfig" class="config-overlay" @click.self="showConfig = false">
+    <ModalShell v-if="showConfig" label="组件配置" @close="showConfig = false">
       <div class="config-dialog">
         <h3>组件配置</h3>
         <WidgetConfigForm
@@ -87,15 +73,14 @@ function handleConfigUpdate(config: Record<string, any>) {
           <button @click="showConfig = false">关闭</button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   </div>
 </template>
 
 <style scoped>
 .widget-wrapper {
   height: 100%;
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 50%, transparent 80%);
-  mix-blend-mode: plus-lighter;
+  background: transparent;
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
@@ -105,12 +90,12 @@ function handleConfigUpdate(config: Record<string, any>) {
 }
 
 .editing.widget-wrapper:hover {
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 50%, transparent 80%);
+  background: rgba(255, 255, 255, 0.03);
   border-color: rgba(96, 165, 250, 0.15);
 }
 
 .widget-wrapper.editing {
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 50%, transparent 80%);
+  background: rgba(255, 255, 255, 0.01);
   border: 1px solid rgba(96, 165, 250, 0.08);
 }
 
@@ -142,7 +127,8 @@ function handleConfigUpdate(config: Record<string, any>) {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.widget-wrapper:hover .toolbar-btn {
+.widget-wrapper:hover .toolbar-btn,
+.widget-wrapper:focus-within .toolbar-btn {
   opacity: 1;
   transform: scale(1);
 }
@@ -161,15 +147,9 @@ function handleConfigUpdate(config: Record<string, any>) {
 
 .widget-content {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow: auto;
   border-radius: inherit;
-}
-
-.widget-content.scaled {
-  flex: none;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
 }
 
 @media (max-width: 480px) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { subscribeMonitor } from '../services/monitorService'
 
 const props = defineProps<{
   config: Record<string, any>
@@ -14,7 +15,13 @@ const emit = defineEmits<{
 interface SystemStats {
   cpu: { usage: number; cores: number; model: string; temp: number | null }
   memory: { total: number; used: number; percent: number }
-  gpu: { name: string; usage: number; temp: number | null; memUsed: number; memTotal: number } | null
+  gpu: {
+    name: string
+    usage: number
+    temp: number | null
+    memUsed: number
+    memTotal: number
+  } | null
   disks: { path: string; total: number; used: number; percent: number }[]
   uptime: string
   hostname: string
@@ -28,7 +35,7 @@ const loading = ref(false)
 const showConfig = ref(false)
 
 const diskPaths = ref<string[]>(props.config.diskPaths ?? ['/'])
-const refreshInterval = ref(props.config.interval ?? 5)
+const refreshInterval = ref(5)
 const newDiskPath = ref('')
 const displayName = ref(props.config.displayName ?? '')
 const editingName = ref(false)
@@ -42,7 +49,7 @@ const showDisk = ref(props.config.showDisk ?? true)
 const showHeader = ref(props.config.showHeader ?? true)
 const showLoadavg = ref(props.config.showLoadavg ?? true)
 
-let timer: ReturnType<typeof setInterval> | null = null
+let unsubscribe: (() => void) | null = null
 
 function getColor(pct: number): string {
   if (pct >= 90) return '#ef4444'
@@ -57,20 +64,8 @@ function getTempColor(temp: number | null): string {
   return '#22c55e'
 }
 
-async function fetchStats() {
-  loading.value = true
-  error.value = ''
-  try {
-    const paths = diskPaths.value.length > 0 ? diskPaths.value.join(',') : '/'
-    const res = await fetch(`/api/system/stats?disks=${encodeURIComponent(paths)}`)
-    if (!res.ok) throw new Error(`请求失败 (${res.status})`)
-    stats.value = await res.json()
-  } catch (e: any) {
-    error.value = e.message ?? '获取系统信息失败'
-    stats.value = null
-  } finally {
-    loading.value = false
-  }
+function fetchStats() {
+  startPolling()
 }
 
 function addDiskPath() {
@@ -115,43 +110,61 @@ function saveName() {
 
 function startPolling() {
   stopPolling()
-  fetchStats()
-  timer = setInterval(fetchStats, refreshInterval.value * 1000)
+  loading.value = !stats.value
+  unsubscribe = subscribeMonitor(diskPaths.value, (data, message) => {
+    if (data) stats.value = data
+    error.value = message
+    loading.value = false
+  })
 }
-
 function stopPolling() {
-  if (timer) clearInterval(timer)
-  timer = null
+  unsubscribe?.()
+  unsubscribe = null
 }
 
 onMounted(startPolling)
 onBeforeUnmount(stopPolling)
 
 // 编辑模式下暂停轮询
-watch(() => props.editing, (val) => {
-  if (val) stopPolling()
-  else startPolling()
-})
+watch(
+  () => props.editing,
+  (val) => {
+    if (val) stopPolling()
+    else startPolling()
+  },
+)
 </script>
 
 <template>
   <div class="monitor-widget">
-
     <!-- 配置表单 -->
     <template v-if="showConfig">
       <div class="cfg">
         <div class="cfg-row">
-          <label class="cfg-lbl">刷新间隔（秒）</label>
-          <input v-model.number="refreshInterval" type="number" min="2" max="60" class="cfg-inp cfg-inp-sm" />
+          <label class="cfg-lbl">共享采样间隔（固定 5 秒）</label>
+          <input
+            v-model.number="refreshInterval"
+            type="number"
+            min="5"
+            max="5"
+            disabled
+            class="cfg-inp cfg-inp-sm"
+          />
         </div>
         <div class="cfg-lbl">显示项目</div>
         <div class="toggle-list">
-          <label class="toggle"><input type="checkbox" v-model="showHeader" /><span>主机信息</span></label>
+          <label class="toggle"
+            ><input type="checkbox" v-model="showHeader" /><span>主机信息</span></label
+          >
           <label class="toggle"><input type="checkbox" v-model="showCPU" /><span>CPU</span></label>
           <label class="toggle"><input type="checkbox" v-model="showMem" /><span>内存</span></label>
           <label class="toggle"><input type="checkbox" v-model="showGPU" /><span>GPU</span></label>
-          <label class="toggle"><input type="checkbox" v-model="showDisk" /><span>磁盘</span></label>
-          <label class="toggle"><input type="checkbox" v-model="showLoadavg" /><span>负载</span></label>
+          <label class="toggle"
+            ><input type="checkbox" v-model="showDisk" /><span>磁盘</span></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" v-model="showLoadavg" /><span>负载</span></label
+          >
         </div>
         <div class="cfg-lbl">监控磁盘路径</div>
         <div class="disk-list">
@@ -161,7 +174,13 @@ watch(() => props.editing, (val) => {
           </div>
         </div>
         <div class="disk-add">
-          <input v-model="newDiskPath" type="text" placeholder="/path/to/disk" class="cfg-inp" @keyup.enter="addDiskPath" />
+          <input
+            v-model="newDiskPath"
+            type="text"
+            placeholder="/path/to/disk"
+            class="cfg-inp"
+            @keyup.enter="addDiskPath"
+          />
           <button class="cfg-btn ok" @click="addDiskPath">添加</button>
         </div>
         <div class="cfg-btns">
@@ -191,7 +210,9 @@ watch(() => props.editing, (val) => {
     <template v-else-if="stats">
       <div class="panel">
         <!-- 配置按钮 -->
-        <button v-if="editable && !editing" class="cfg-toggle" @click.stop="showConfig = true" title="配置">⚙</button>
+        <button v-if="editable" class="cfg-toggle" @click.stop="showConfig = true" title="配置">
+          ⚙
+        </button>
 
         <!-- 头部：主机名 + 运行时间 -->
         <div v-if="showHeader" class="head">
@@ -210,7 +231,8 @@ watch(() => props.editing, (val) => {
               class="hostname"
               :class="{ editable: editable }"
               @click="editable ? startEditName() : undefined"
-            >{{ displayName || stats.hostname }}</span>
+              >{{ displayName || stats.hostname }}</span
+            >
           </div>
           <span class="uptime">{{ stats.uptime }}</span>
         </div>
@@ -219,12 +241,21 @@ watch(() => props.editing, (val) => {
         <div v-if="showCPU" class="metric">
           <div class="metric-head">
             <span class="metric-label">CPU</span>
-            <span class="metric-value" :style="{ color: getColor(stats.cpu.usage) }">{{ stats.cpu.usage }}%</span>
+            <span class="metric-value" :style="{ color: getColor(stats.cpu.usage) }"
+              >{{ stats.cpu.usage }}%</span
+            >
           </div>
-          <div class="bar"><div class="bar-fill" :style="{ width: stats.cpu.usage + '%', background: getColor(stats.cpu.usage) }"></div></div>
+          <div class="bar">
+            <div
+              class="bar-fill"
+              :style="{ width: stats.cpu.usage + '%', background: getColor(stats.cpu.usage) }"
+            ></div>
+          </div>
           <div class="metric-sub">
             <span>{{ stats.cpu.cores }} 核</span>
-            <span v-if="stats.cpu.temp !== null" :style="{ color: getTempColor(stats.cpu.temp) }">{{ stats.cpu.temp }}°C</span>
+            <span v-if="stats.cpu.temp !== null" :style="{ color: getTempColor(stats.cpu.temp) }"
+              >{{ stats.cpu.temp }}°C</span
+            >
             <span v-if="showLoadavg">负载 {{ stats.loadavg.join(' / ') }}</span>
           </div>
         </div>
@@ -233,9 +264,19 @@ watch(() => props.editing, (val) => {
         <div v-if="showMem" class="metric">
           <div class="metric-head">
             <span class="metric-label">内存</span>
-            <span class="metric-value" :style="{ color: getColor(stats.memory.percent) }">{{ stats.memory.percent }}%</span>
+            <span class="metric-value" :style="{ color: getColor(stats.memory.percent) }"
+              >{{ stats.memory.percent }}%</span
+            >
           </div>
-          <div class="bar"><div class="bar-fill" :style="{ width: stats.memory.percent + '%', background: getColor(stats.memory.percent) }"></div></div>
+          <div class="bar">
+            <div
+              class="bar-fill"
+              :style="{
+                width: stats.memory.percent + '%',
+                background: getColor(stats.memory.percent),
+              }"
+            ></div>
+          </div>
           <div class="metric-sub">
             <span>{{ stats.memory.used }} / {{ stats.memory.total }} GB</span>
           </div>
@@ -246,12 +287,21 @@ watch(() => props.editing, (val) => {
           <div class="metric">
             <div class="metric-head">
               <span class="metric-label">GPU</span>
-              <span class="metric-value" :style="{ color: getColor(stats.gpu.usage) }">{{ stats.gpu.usage }}%</span>
+              <span class="metric-value" :style="{ color: getColor(stats.gpu.usage) }"
+                >{{ stats.gpu.usage }}%</span
+              >
             </div>
-            <div class="bar"><div class="bar-fill" :style="{ width: stats.gpu.usage + '%', background: getColor(stats.gpu.usage) }"></div></div>
+            <div class="bar">
+              <div
+                class="bar-fill"
+                :style="{ width: stats.gpu.usage + '%', background: getColor(stats.gpu.usage) }"
+              ></div>
+            </div>
             <div class="metric-sub">
               <span>{{ stats.gpu.name }}</span>
-              <span v-if="stats.gpu.temp !== null" :style="{ color: getTempColor(stats.gpu.temp) }">{{ stats.gpu.temp }}°C</span>
+              <span v-if="stats.gpu.temp !== null" :style="{ color: getTempColor(stats.gpu.temp) }"
+                >{{ stats.gpu.temp }}°C</span
+              >
               <span>{{ stats.gpu.memUsed }} / {{ stats.gpu.memTotal }} MB</span>
             </div>
           </div>
@@ -262,13 +312,20 @@ watch(() => props.editing, (val) => {
           <div v-for="disk in stats.disks" :key="disk.path" class="metric">
             <div class="metric-head">
               <span class="metric-label disk-path" :title="disk.path">{{ disk.path }}</span>
-              <span class="metric-value" :style="{ color: getColor(disk.percent) }">{{ disk.percent }}%</span>
+              <span class="metric-value" :style="{ color: getColor(disk.percent) }"
+                >{{ disk.percent }}%</span
+              >
             </div>
-          <div class="bar"><div class="bar-fill" :style="{ width: disk.percent + '%', background: getColor(disk.percent) }"></div></div>
-          <div class="metric-sub">
-            <span>{{ disk.used }} / {{ disk.total }} GB</span>
+            <div class="bar">
+              <div
+                class="bar-fill"
+                :style="{ width: disk.percent + '%', background: getColor(disk.percent) }"
+              ></div>
+            </div>
+            <div class="metric-sub">
+              <span>{{ disk.used }} / {{ disk.total }} GB</span>
+            </div>
           </div>
-        </div>
         </template>
 
         <!-- 平台信息 -->
@@ -289,7 +346,10 @@ watch(() => props.editing, (val) => {
 </template>
 
 <style scoped>
-.monitor-widget { height: 100%; width: 100%; }
+.monitor-widget {
+  height: 100%;
+  width: 100%;
+}
 
 /* ======== 面板 ======== */
 .panel {
@@ -308,19 +368,43 @@ watch(() => props.editing, (val) => {
   justify-content: space-between;
   align-items: center;
 }
-.hostname { font-size: 12px; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
-.hostname.editable { cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.15); }
-.hostname.editable:hover { color: var(--accent); border-bottom-color: var(--accent); }
-.hostname-input {
-  font-size: 12px; font-weight: 600; font-family: var(--font-mono);
-  color: var(--text-primary); background: rgba(128,128,128,0.1);
-  border: 1px solid var(--accent); border-radius: 4px;
-  padding: 1px 4px; outline: none; width: 120px;
+.hostname {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
 }
-.uptime { font-size: 10px; color: var(--text-muted); }
+.hostname.editable {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+}
+.hostname.editable:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.hostname-input {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 4px;
+  outline: none;
+  width: 120px;
+}
+.uptime {
+  font-size: 10px;
+  color: var(--text-muted);
+}
 
 /* ---- 指标行 ---- */
-.metric { display: flex; flex-direction: column; gap: 3px; }
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
 .metric-head {
   display: flex;
@@ -371,7 +455,9 @@ watch(() => props.editing, (val) => {
 .bar-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.6s ease, background 0.3s;
+  transition:
+    width 0.6s ease,
+    background 0.3s;
 }
 
 /* ---- 配置 ---- */
@@ -395,8 +481,13 @@ watch(() => props.editing, (val) => {
   transition: opacity 0.2s;
 }
 
-.panel:hover .cfg-toggle { opacity: 1; }
-.cfg-toggle:hover { background: rgba(128, 128, 128, 0.15); color: var(--text-primary); }
+.panel:hover .cfg-toggle {
+  opacity: 1;
+}
+.cfg-toggle:hover {
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--text-primary);
+}
 
 /* ---- 配置表单 ---- */
 .cfg {
@@ -410,8 +501,16 @@ watch(() => props.editing, (val) => {
   overflow-y: auto;
 }
 
-.cfg-row { display: flex; align-items: center; gap: 8px; }
-.cfg-lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cfg-lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
 .cfg-inp {
   padding: 6px 10px;
   border-radius: 8px;
@@ -423,10 +522,19 @@ watch(() => props.editing, (val) => {
   outline: none;
   pointer-events: all;
 }
-.cfg-inp:focus { border-color: rgba(96, 165, 250, 0.4); }
-.cfg-inp-sm { width: 60px; text-align: center; }
+.cfg-inp:focus {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+.cfg-inp-sm {
+  width: 60px;
+  text-align: center;
+}
 
-.disk-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.disk-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .disk-tag {
   display: flex;
   align-items: center;
@@ -452,10 +560,18 @@ watch(() => props.editing, (val) => {
   padding: 0;
   border-radius: 3px;
 }
-.disk-rm:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+.disk-rm:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
 
-.disk-add { display: flex; gap: 6px; }
-.disk-add .cfg-inp { flex: 1; }
+.disk-add {
+  display: flex;
+  gap: 6px;
+}
+.disk-add .cfg-inp {
+  flex: 1;
+}
 
 .toggle-list {
   display: grid;
@@ -472,14 +588,18 @@ watch(() => props.editing, (val) => {
   cursor: pointer;
 }
 
-.toggle input[type="checkbox"] {
+.toggle input[type='checkbox'] {
   width: 14px;
   height: 14px;
   accent-color: var(--accent);
   cursor: pointer;
 }
 
-.cfg-btns { display: flex; gap: 6px; margin-top: 4px; }
+.cfg-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
 .cfg-btn {
   flex: 1;
   padding: 6px;
@@ -489,25 +609,89 @@ watch(() => props.editing, (val) => {
   font-weight: 500;
   cursor: pointer;
 }
-.cfg-btn.no { background: rgba(128, 128, 128, 0.08); color: var(--text-muted); }
-.cfg-btn.ok { background: rgba(96, 165, 250, 0.8); color: #fff; }
+.cfg-btn.no {
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-muted);
+}
+.cfg-btn.ok {
+  background: rgba(96, 165, 250, 0.8);
+  color: #fff;
+}
 
 /* ---- 配置入口 ---- */
-.prompt { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; cursor: pointer; opacity: .5; }
-.prompt:hover { opacity: .9; }
-.prompt-icon { font-size: 20px; }
-.prompt-txt { font-size: 13px; color: var(--text-muted); }
+.prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+.prompt:hover {
+  opacity: 0.9;
+}
+.prompt-icon {
+  font-size: 20px;
+}
+.prompt-txt {
+  font-size: 13px;
+  color: var(--text-muted);
+}
 
 /* ---- 错误 ---- */
-.err { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; }
-.err-msg { color: var(--danger); font-size: 12px; text-align: center; }
-.err-retry { font-size: 11px; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.err {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+}
+.err-msg {
+  color: var(--danger);
+  font-size: 12px;
+  text-align: center;
+}
+.err-retry {
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 /* ---- 加载 ---- */
-.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: var(--text-muted); font-size: 12px; }
-.spin { width: 22px; height: 22px; border: 2px solid rgba(128, 128, 128, 0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.spin {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(128, 128, 128, 0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* ---- 脚注 ---- */
-.foot { margin-top: auto; font-size: 9px; color: var(--text-muted); text-align: right; opacity: 0.5; }
+.foot {
+  margin-top: auto;
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.5;
+}
 </style>

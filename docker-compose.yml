@@ -10,7 +10,11 @@ services:
       - NODE_ENV=production
       - PORT=4000
       - NAV_JWT_SECRET=${NAV_JWT_SECRET}
-      - NAV_PASSWORD=${NAV_PASSWORD}
+      - NAV_PASSWORD=${NAV_PASSWORD:-}
+      - NAV_PASSWORD_HASH=${NAV_PASSWORD_HASH:-}
+      - NAV_TRUSTED_PROXIES=${NAV_TRUSTED_PROXIES:-}
+      - NAV_PUBLIC_MONITOR=${NAV_PUBLIC_MONITOR:-false}
+      - NAV_MONITOR_DISKS=${NAV_MONITOR_DISKS:-/}
       - NAV_DB_PATH=/data/nav.db
       - NAV_UPLOAD_DIR=/data/uploads
       - NAV_CORS_ORIGIN=${NAV_CORS_ORIGIN:-}

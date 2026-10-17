@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { validUrl } from '@nav/shared'
 
 const props = defineProps<{
   config: Record<string, any>
@@ -26,7 +27,9 @@ const showConfig = ref(false)
 const editingGroups = ref<BookmarkGroup[]>([])
 
 const groups = computed<BookmarkGroup[]>(() => props.config.groups ?? [])
-const isEmpty = computed(() => groups.value.length === 0 || groups.value.every((g) => g.bookmarks.length === 0))
+const isEmpty = computed(
+  () => groups.value.length === 0 || groups.value.every((g) => g.bookmarks.length === 0),
+)
 
 function getFavicon(url: string): string {
   try {
@@ -66,7 +69,7 @@ function saveConfig() {
     .filter((g) => g.name.trim() || g.bookmarks.length > 0)
     .map((g) => ({
       name: g.name.trim() || '未命名',
-      bookmarks: g.bookmarks.filter((b) => b.title.trim() && b.url.trim()),
+      bookmarks: g.bookmarks.filter((b) => b.title.trim() && validUrl(b.url.trim())),
     }))
   emit('update:config', { ...props.config, groups: validGroups })
   showConfig.value = false
@@ -125,7 +128,8 @@ function saveConfig() {
             <a
               v-for="bm in group.bookmarks"
               :key="bm.url"
-              :href="editing ? undefined : bm.url"
+              :href="editing || !validUrl(bm.url) ? undefined : bm.url"
+              rel="noopener noreferrer"
               :target="editing ? undefined : '_blank'"
               class="bookmark-item"
               :class="{ 'no-link': editing }"
@@ -136,7 +140,7 @@ function saveConfig() {
                 class="bookmark-icon"
                 @error="($event.target as HTMLImageElement).style.display = 'none'"
               />
-              <span class="bookmark-title">{{ bm.title }}</span>
+              <span class="bookmark-title" :title="bm.title">{{ bm.title }}</span>
             </a>
           </div>
         </div>
@@ -311,7 +315,9 @@ function saveConfig() {
   font-family: var(--font-body);
   font-size: 12px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .config-input:focus {

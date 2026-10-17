@@ -5,16 +5,6 @@ export interface WidgetLayout {
   h: number
 }
 
-export interface CanvasLayout {
-  x: number
-  y: number
-  w: number
-  h: number
-  /** 原始尺寸（首次创建时记录），用于内部内容自适应缩放 */
-  originalW?: number
-  originalH?: number
-}
-
 export interface WidgetInstance {
   id: string
   widgetId: string
@@ -26,17 +16,6 @@ export interface WidgetInstance {
     sm: WidgetLayout
     xs: WidgetLayout
   }
-  canvas?: CanvasLayout
-}
-
-export type LayoutMode = 'grid' | 'canvas'
-
-export interface DashboardViewport {
-  panX: number
-  panY: number
-  zoom: number
-  homeX: number
-  homeY: number
 }
 
 export interface BackgroundImage {
@@ -61,8 +40,16 @@ export interface Dashboard {
   columns: number
   rowHeight: number
   background: DashboardBackground
-  layoutMode: LayoutMode
-  viewport: DashboardViewport
-  viewportWidth: number
-  viewportHeight: number
+  baseColumns?: number
+  instanceId?: string
+  revision?: number
+  layoutVersion?: 2
+  layoutSettings?: LayoutSettings
+  layoutProfiles?: Record<string, Record<string, WidgetLayout>>
+}
+
+export interface LayoutSettings {
+  columnMode: 'auto' | 'custom'
+  contentWidthMode: 'centered' | 'fluid'
+  maxContentWidth: number
 }
