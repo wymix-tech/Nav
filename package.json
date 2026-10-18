@@ -18,6 +18,9 @@
     "format:check": "prettier --check packages tests *.ts *.mjs *.json",
     "test:browser": "playwright test",
     "db:preflight": "node packages/server/dist/maintenance.js preflight",
+    "canvas-v2-preflight": "node packages/server/dist/maintenance.js canvas-v2-preflight",
+    "canvas-v2-dry-run": "node packages/server/dist/maintenance.js canvas-v2-dry-run",
+    "canvas-v2-migrate": "node packages/server/dist/maintenance.js canvas-v2-migrate",
     "db:backup": "node packages/server/dist/maintenance.js backup"
   },
   "devDependencies": {

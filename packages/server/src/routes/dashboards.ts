@@ -5,7 +5,7 @@ import { readSnapshot, commitSnapshot } from '../db/state.js'
 import db from '../db/database.js'
 const dashboards = new Hono()
 dashboards.use('*', async (c, next) => {
-  c.header('X-Nav-State-Schema', '2')
+  c.header('X-Nav-State-Schema', '3')
   await next()
 })
 dashboards.get('/', (c) => {
@@ -24,7 +24,8 @@ dashboards.get('/:id/backup', authMiddleware, (c) => {
       r.backup_key === `layout-v1:${id}` ||
       r.backup_key === `legacy-main-v1:${id}` ||
       r.backup_key === `chat-credentials-v1:${id}` ||
-      r.backup_key.startsWith(`canvas-camera-v1:${id}:`),
+      r.backup_key.startsWith(`canvas-camera-v1:${id}:`) ||
+      r.backup_key.startsWith(`canvas-scene-v2:${id}:`),
   )
   return c.json({ backups: rows })
 })
@@ -38,9 +39,9 @@ dashboards.put('/:id/state', authMiddleware, async (c) => {
   )
   const body = await c.req.json()
   assert(record(body), '请求必须为 JSON 对象')
-  if (body.schemaVersion !== 2 || body.snapshot?.documentVersion !== 2)
+  if (body.schemaVersion !== 3 || body.snapshot?.documentVersion !== 3)
     return c.json(
-      { error: { code: 'UPGRADE_REQUIRED', message: '请更新客户端使用文档版本 2' } },
+      { error: { code: 'UPGRADE_REQUIRED', message: '请更新客户端使用文档版本 3' } },
       426,
     )
   const { snapshot, operationId } = body

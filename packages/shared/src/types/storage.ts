@@ -42,6 +42,7 @@ export interface StorageAdapter {
 }
 
 export interface RecoveryPreview {
+  remoteFresh?: boolean
   localTitle: string
   remoteTitle: string
   differences: string[]

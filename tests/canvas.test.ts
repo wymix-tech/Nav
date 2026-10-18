@@ -95,9 +95,10 @@ test('legacy camera preserves the old screen projection and document migration p
     viewportHeight: 1080,
   }
   delete raw.documentVersion
+  delete raw.canvasScene
   delete raw.canvasSettings
   const d = migrateCanvasDocument(raw)
-  assert.equal(d.documentVersion, 2)
+  assert.equal(d.documentVersion, 3)
   assert.deepEqual(d.canvasSettings!.defaultCamera, { centerX: 940, centerY: 510, zoom: 1 })
   assert.deepEqual(migrateCanvasDocument(d), d)
   assert.deepEqual(d.viewport, raw.viewport)
@@ -113,6 +114,6 @@ test('camera validation rejects nonfinite values and compatibility fields cannot
   const mirrored = withLegacyMirror(d)
   validateDashboard(mirrored)
   assert.deepEqual(mirrored.canvasSettings, d.canvasSettings)
-  const invalid: any = { ...d, documentVersion: 3 }
+  const invalid: any = { ...d, documentVersion: 4 }
   assert.throws(() => validateDashboard(invalid))
 })

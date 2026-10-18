@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   validateDashboard,
+  validateCanvasTransition,
+  applyCanvasCommand as executeCanvasCommand,
+  canonical,
+  groupFor,
+  type CanvasCommand,
   profileKey,
   type Dashboard,
   type CanvasLayout,
@@ -45,6 +50,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     error.value = ''
     try {
       dashboard.value = await (await getStorageAdapter()).getDashboard()
+      history.value = []
+      future.value = []
       unsaved = false
       window.dispatchEvent(new CustomEvent('nav-unsaved-changed', { detail: false }))
       await refreshStatus()
@@ -88,6 +95,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
     try {
       validateDashboard(next)
+      if (dashboard.value) validateCanvasTransition(dashboard.value, next)
+      if (dashboard.value && canonical(dashboard.value) === canonical(next)) return true
     } catch (e) {
       error.value = e instanceof Error ? e.message : '配置无效'
       return false
@@ -110,22 +119,27 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (dashboard.value) return persist(clone(dashboard.value))
     return false
   }
+  function applyCanvasCommand(command: CanvasCommand) {
+    if (!dashboard.value) return Promise.resolve(false)
+    try {
+      return commit(executeCanvasCommand(dashboard.value, command))
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '操作失败'
+      return Promise.resolve(false)
+    }
+  }
   function addWidget(w: WidgetInstance) {
-    return mutate((d) => {
-      d.widgets.push(w)
-    })
+    return applyCanvasCommand({ type: 'add-widget', widget: w })
   }
   function removeWidget(id: string) {
-    return mutate((d) => {
-      d.widgets = d.widgets.filter((w) => w.id !== id)
-      for (const map of Object.values(d.layoutProfiles ?? {})) delete map[id]
-    })
+    if (dashboard.value && groupFor(dashboard.value, id)) {
+      error.value = '请先解组再单独删除组件'
+      return Promise.resolve(false)
+    }
+    return applyCanvasCommand({ type: 'delete', refs: [{ kind: 'widget', id }] })
   }
   function clearAllWidgets() {
-    return mutate((d) => {
-      d.widgets = []
-      d.layoutProfiles = {}
-    })
+    return applyCanvasCommand({ type: 'clear' })
   }
   function updateWidgetConfig(id: string, config: Record<string, any>) {
     return mutate((d) => {
@@ -151,10 +165,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     })
   }
   function updateCanvas(id: string, canvas: CanvasLayout) {
-    return mutate((d) => {
-      const w = d.widgets.find((w) => w.id === id)
-      if (w) w.canvas = clone(canvas)
-    })
+    return applyCanvasCommand({ type: 'geometry', widgets: { [id]: canvas } })
   }
   function setDefaultCamera(camera: CanvasCamera) {
     if (!validCamera(camera)) return Promise.resolve(false)
@@ -179,16 +190,24 @@ export const useDashboardStore = defineStore('dashboard', () => {
     })
   }
   async function undo() {
-    if (!history.value.length || !dashboard.value) return
-    const target = history.value.pop()!
-    future.value.push(clone(dashboard.value))
-    await commit({ ...target, revision: dashboard.value.revision }, false)
+    if (!history.value.length || !dashboard.value || !editable()) return
+    const before = dashboard.value,
+      target = history.value.at(-1)!
+    await commit({ ...target, revision: before.revision }, false)
+    if (dashboard.value !== before) {
+      history.value.pop()
+      future.value.push(clone(before))
+    }
   }
   async function redo() {
-    if (!future.value.length || !dashboard.value) return
-    const target = future.value.pop()!
-    history.value.push(clone(dashboard.value))
-    await commit({ ...target, revision: dashboard.value.revision }, false)
+    if (!future.value.length || !dashboard.value || !editable()) return
+    const before = dashboard.value,
+      target = future.value.at(-1)!
+    await commit({ ...target, revision: before.revision }, false)
+    if (dashboard.value !== before) {
+      future.value.pop()
+      history.value.push(clone(before))
+    }
   }
   async function retry() {
     if (unsaved && dashboard.value) await persist(clone(dashboard.value))
@@ -199,10 +218,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
   async function resolveConflict(local: boolean) {
     const a = await getStorageAdapter()
     if (a.resolveConflict) {
-      await a.resolveConflict(local)
-      history.value = []
-      future.value = []
-      await load()
+      try {
+        await a.resolveConflict(local)
+        history.value = []
+        future.value = []
+        await load()
+      } catch (e) {
+        error.value = e instanceof Error ? e.message : '恢复失败'
+        await refreshStatus()
+      }
     }
   }
   async function exportData() {
@@ -244,6 +268,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     load,
     save,
     commit,
+    applyCanvasCommand,
     addWidget,
     removeWidget,
     clearAllWidgets,

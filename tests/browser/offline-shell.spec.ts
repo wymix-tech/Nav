@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createDashboard } from '../../packages/shared/src/index'
+import { createDashboard, initialScene } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'allow' })
 test('production shell restores an offline canvas draft and independent camera, then synchronizes', async ({
   page,
@@ -31,7 +31,11 @@ test('production shell restores an offline canvas draft and independent camera, 
     (
       await request.put(backend + '/api/dashboards/default/state', {
         headers: { Authorization: `Bearer ${token}`, 'If-Match': String(current.revision) },
-        data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+        data: {
+          schemaVersion: 3,
+          snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+          operationId: crypto.randomUUID(),
+        },
       })
     ).ok(),
   ).toBeTruthy()

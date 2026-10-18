@@ -10,6 +10,7 @@ const props = defineProps<{
   widget: WidgetInstance
   editing: boolean
   editable: boolean
+  canDelete?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +48,14 @@ function handleConfigUpdate(config: Record<string, any>) {
       >
         ⚙
       </button>
-      <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
+      <button
+        :disabled="canDelete === false"
+        :title="canDelete === false ? '布局锁定或属于分组，请先解锁／解组' : '删除'"
+        class="toolbar-btn remove-btn"
+        @click="emit('remove')"
+      >
+        ✕
+      </button>
     </div>
     <div class="widget-content">
       <WidgetRenderer

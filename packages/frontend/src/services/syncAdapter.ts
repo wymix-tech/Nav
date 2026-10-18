@@ -2,6 +2,9 @@ import {
   migrateDashboard,
   migrateCanvasDocument,
   validateDashboard,
+  validateCanvasTransition,
+  canonical,
+  canvasSceneDifferences,
   validateInstalled,
   type Dashboard,
   type InstalledWidget,
@@ -27,20 +30,25 @@ export class SyncAdapter implements StorageAdapter {
   private heartbeat: ReturnType<typeof setInterval>
   private channel =
     typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('nav-storage') : null
+  private cleanups: (() => void)[] = []
+  private listen(type: string, listener: EventListener) {
+    window.addEventListener(type, listener)
+    this.cleanups.push(() => window.removeEventListener(type, listener))
+  }
   constructor() {
-    window.addEventListener('nav-unsaved-changed', (e) => {
+    this.listen('nav-unsaved-changed', (e) => {
       this.unsaved = !!(e as CustomEvent).detail
     })
-    window.addEventListener('nav-editing-changed', (e) => {
+    this.listen('nav-editing-changed', (e) => {
       this.editing = !!(e as CustomEvent).detail
     })
-    window.addEventListener('online', () => {
+    this.listen('online', () => {
       void this.flush()
     })
-    window.addEventListener('nav-auth-changed', () => {
+    this.listen('nav-auth-changed', () => {
       void this.flush()
     })
-    window.addEventListener('visibilitychange', () => {
+    this.listen('visibilitychange', () => {
       if (!document.hidden) void this.refresh()
     })
     this.heartbeat = setInterval(() => {
@@ -53,6 +61,8 @@ export class SyncAdapter implements StorageAdapter {
   }
   async dispose() {
     this.disposed = true
+    this.cleanups.forEach((dispose) => dispose())
+    this.cleanups = []
     clearInterval(this.heartbeat)
     if (this.retryTimer) clearTimeout(this.retryTimer)
     await this.sending?.catch(() => {})
@@ -78,7 +88,18 @@ export class SyncAdapter implements StorageAdapter {
     await db.transaction('rw', db.sync, db.backups, async () => {
       const r = await db.sync.get(this.key)
       if (!r) return
-      if (r.snapshot.documentVersion !== 2) {
+      if (
+        (r.snapshot.documentVersion ?? 0) > 3 ||
+        r.pending.some((op) => (op.snapshot.documentVersion ?? 0) > 3)
+      ) {
+        const key = `future-document:${this.key}:${r.generation ?? 0}`
+        if (!(await db.backups.get(key))) await db.backups.add({ key, data: JSON.stringify(r) })
+        r.upgradeRequired = true
+        r.error = '未来文档版本，请更新客户端；原草稿已保留'
+        await db.sync.put(r)
+        return
+      }
+      if (r.snapshot.documentVersion !== 3) {
         const backupKey = `canvas-cache-v1:${this.key}:${r.generation ?? 0}`
         if (!(await db.backups.get(backupKey)))
           await db.backups.add({ key: backupKey, data: JSON.stringify(r) })
@@ -86,7 +107,7 @@ export class SyncAdapter implements StorageAdapter {
         if (!(await db.backups.get(seedKey)))
           await db.backups.add({ key: seedKey, data: JSON.stringify(r.snapshot) })
       }
-      if (!r.pending.some((op) => op.snapshot.documentVersion !== 2)) return
+      if (!r.pending.some((op) => op.snapshot.documentVersion !== 3)) return
       const key = `canvas-queue-v1:${this.key}:${r.generation ?? 0}`
       if (!(await db.backups.get(key))) await db.backups.add({ key, data: JSON.stringify(r) })
       r.upgradeRequired = true
@@ -99,20 +120,20 @@ export class SyncAdapter implements StorageAdapter {
     try {
       const remote = migrateDashboard(
         await apiJson<Dashboard>('/dashboards', {}, (h) => {
-          this.schemaReady = h.get('X-Nav-State-Schema') === '2'
+          this.schemaReady = h.get('X-Nav-State-Schema') === '3'
         }),
       )
       return await db.transaction('rw', db.sync, db.backups, async () => {
         const row = await db.sync.get(this.key)
         if (
-          remote.documentVersion !== 2 &&
+          remote.documentVersion !== 3 &&
           !(await db.backups.get(`canvas-seed:${remote.instanceId}:${remote.id}`))
         )
           await db.backups.put({
             key: `canvas-seed:${remote.instanceId}:${remote.id}`,
             data: JSON.stringify(remote),
           })
-        if (row && row.pending.some((op) => op.snapshot.documentVersion !== 2)) {
+        if (row && row.pending.some((op) => op.snapshot.documentVersion !== 3)) {
           if (!row.upgradeRequired)
             await db.backups.put({
               key: `canvas-queue-v1:${this.key}:${row.generation ?? 0}`,
@@ -179,7 +200,11 @@ export class SyncAdapter implements StorageAdapter {
     let upgradeBlocked = false
     await db.transaction('rw', db.sync, db.backups, async () => {
       const row = await db.sync.get(this.key)
-      if (row && row.pending.some((op) => op.snapshot.documentVersion !== 2)) {
+      if (row && row.pending.some((op) => op.snapshot.documentVersion !== 3)) {
+        await db.backups.put({
+          key: `upgrade-edit:${this.key}:${crypto.randomUUID()}`,
+          data: JSON.stringify(d),
+        })
         await db.backups.put({ key: `upgrade-edit:${this.key}`, data: JSON.stringify(d) })
         upgradeBlocked = true
         return
@@ -215,11 +240,11 @@ export class SyncAdapter implements StorageAdapter {
     if (!navigator.onLine) return
     if (!this.schemaReady) {
       await apiJson('/dashboards', {}, (h) => {
-        this.schemaReady = h.get('X-Nav-State-Schema') === '2'
+        this.schemaReady = h.get('X-Nav-State-Schema') === '3'
       }).catch(() => {})
       if (!this.schemaReady) {
         await db.sync.update(this.key, {
-          error: '服务端尚未支持文档版本 2，请更新服务端；本地草稿已保留',
+          error: '服务端尚未支持文档版本 3，请更新服务端；本地草稿已保留',
           upgradeRequired: true,
         })
         return
@@ -227,7 +252,11 @@ export class SyncAdapter implements StorageAdapter {
     }
     await db.transaction('rw', db.sync, async () => {
       const r = await db.sync.get(this.key)
-      if (r?.upgradeRequired && !r.pending.some((op) => op.snapshot.documentVersion !== 2)) {
+      if (
+        r?.upgradeRequired &&
+        r.snapshot.documentVersion === 3 &&
+        !r.pending.some((op) => op.snapshot.documentVersion !== 3)
+      ) {
         r.upgradeRequired = false
         r.error = undefined
         await db.sync.put(r)
@@ -242,7 +271,7 @@ export class SyncAdapter implements StorageAdapter {
             !r?.pending.length ||
             r.conflict ||
             r.upgradeRequired ||
-            r.pending.some((op) => op.snapshot.documentVersion !== 2) ||
+            r.pending.some((op) => op.snapshot.documentVersion !== 3) ||
             (r.lease && r.lease.until > Date.now() && r.lease.owner !== this.owner)
           )
             return null
@@ -261,7 +290,7 @@ export class SyncAdapter implements StorageAdapter {
         const ack = await apiJson<Dashboard>(`/dashboards/${row.snapshot.id}/state`, {
           method: 'PUT',
           headers: { 'If-Match': `"${row.revision}"` },
-          body: JSON.stringify({ schemaVersion: 2, operationId: op.id, snapshot: op.snapshot }),
+          body: JSON.stringify({ schemaVersion: 3, operationId: op.id, snapshot: op.snapshot }),
         })
         await db.transaction('rw', db.sync, async () => {
           const r = await db.sync.get(this.key)
@@ -319,8 +348,24 @@ export class SyncAdapter implements StorageAdapter {
     }
   }
   async getRecoveryPreview(): Promise<RecoveryPreview | null> {
-    const r = await db.sync.get(this.key)
+    let r = await db.sync.get(this.key)
     if (!r?.conflict) return null
+    let remoteFresh = false
+    try {
+      const fresh = migrateDashboard(await apiJson<Dashboard>('/dashboards'))
+      validateDashboard(fresh)
+      await db.transaction('rw', db.sync, async () => {
+        const latest = await db.sync.get(this.key)
+        if (!latest?.conflict || (latest.generation ?? 0) !== (r!.generation ?? 0))
+          throw new Error('另一标签页已处理草稿，请重新加载')
+        latest.conflict = fresh
+        await db.sync.put(latest)
+        r = latest
+      })
+      remoteFresh = true
+    } catch {
+      /* Cached preview remains available offline; resolution requires a fresh read. */
+    }
     const local = migrateCanvasDocument(migrateDashboard(r.snapshot)),
       remote = migrateCanvasDocument(migrateDashboard(r.conflict))
     const differences: string[] = []
@@ -340,10 +385,11 @@ export class SyncAdapter implements StorageAdapter {
       'background',
       'canvasSettings',
     ] as const)
-      if (JSON.stringify(local[field]) !== JSON.stringify(remote[field]))
+      if (canonical(local[field]) !== canonical(remote[field]))
         differences.push(
           `${field}: 本地 ${JSON.stringify(local[field])}；远端 ${JSON.stringify(remote[field])}`,
         )
+    differences.push(...canvasSceneDifferences(local.canvasScene!, remote.canvasScene!))
     const ids = new Set([...local.widgets.map((w) => w.id), ...remote.widgets.map((w) => w.id)])
     for (const id of ids) {
       const a = local.widgets.find((w) => w.id === id),
@@ -351,14 +397,29 @@ export class SyncAdapter implements StorageAdapter {
       if (!a || !b) differences.push(`${id}: ${a ? '仅本地存在' : '仅远端存在'}`)
       else
         for (const field of ['widgetId', 'source', 'config', 'canvas', 'layouts'] as const)
-          if (JSON.stringify(a[field]) !== JSON.stringify(b[field]))
+          if (canonical(a[field]) !== canonical(b[field]))
             differences.push(
               `${id}.${field}: 本地 ${JSON.stringify(a[field])}；远端 ${JSON.stringify(b[field])}`,
             )
     }
-    return { localTitle: local.title, remoteTitle: remote.title, differences }
+    return { localTitle: local.title, remoteTitle: remote.title, differences, remoteFresh }
   }
   async resolveConflict(useLocal: boolean) {
+    const before = await db.sync.get(this.key)
+    if (!before?.conflict) return
+    const fresh = migrateDashboard(await apiJson<Dashboard>('/dashboards'))
+    validateDashboard(fresh)
+    if (fresh.documentVersion !== 3) throw new Error('请先完成服务端文档迁移，再恢复草稿')
+    if (canonical(fresh) !== canonical(migrateDashboard(before.conflict))) {
+      await db.transaction('rw', db.sync, async () => {
+        const latest = await db.sync.get(this.key)
+        if (latest && (latest.generation ?? 0) === (before.generation ?? 0)) {
+          latest.conflict = fresh
+          await db.sync.put(latest)
+        }
+      })
+      throw new Error('远端已变化，请重新核对恢复预览')
+    }
     await db.transaction('rw', db.sync, db.backups, async () => {
       const r = await db.sync.get(this.key)
       if (!r?.conflict) return
@@ -371,6 +432,7 @@ export class SyncAdapter implements StorageAdapter {
       r.revision = r.conflict.revision ?? 0
       if (useLocal) {
         r.snapshot = migrateCanvasDocument(migrateDashboard(r.snapshot))
+        validateCanvasTransition(migrateCanvasDocument(migrateDashboard(r.conflict)), r.snapshot)
         r.snapshot.instanceId = r.conflict.instanceId
         r.pending = [{ id: crypto.randomUUID(), snapshot: clone(r.snapshot) }]
       } else {

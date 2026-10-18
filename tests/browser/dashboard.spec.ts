@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import { createDashboard } from '../../packages/shared/src/index'
+import { createDashboard, initialScene } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
 let token = ''
@@ -44,7 +44,11 @@ test.beforeEach(async ({ page, request }) => {
   })
   const response = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${current.revision}"` },
-    data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(response.ok()).toBeTruthy()
   await page.addInitScript((token) => {
@@ -279,7 +283,11 @@ test('a plugin survives reload and cannot access its host or unapproved network'
     (
       await request.put(backend + '/api/dashboards/default/state', {
         headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${d.revision}"` },
-        data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+        data: {
+          schemaVersion: 3,
+          snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+          operationId: crypto.randomUUID(),
+        },
       })
     ).ok(),
   ).toBeTruthy()
@@ -328,7 +336,11 @@ async function replaceDashboard(page: any, request: any, change: (d: any) => voi
   change(d)
   const r = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
-    data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(r.ok()).toBeTruthy()
   await page.reload()
@@ -469,6 +481,7 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await page.reload()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
   await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
   await replaceDashboard(page, request, (d: any) => {
     d.layoutMode = 'canvas'
     d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 250, zoom: 0.7 } }
@@ -479,6 +492,7 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
   await page.getByRole('button', { name: '适应全部', exact: true }).click()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
   await chats.first().getByPlaceholder('输入消息...').pressSequentially('draft kept')
   await page.getByRole('button', { name: '列表视图', exact: true }).click()
   await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
@@ -494,8 +508,8 @@ async function canvasCamera(page: any) {
     const el = root.querySelector('.canvas-content') as HTMLElement,
       m = new DOMMatrix(getComputedStyle(el).transform)
     return {
-      centerX: (root.clientWidth / 2 - m.e) / m.a,
-      centerY: (root.clientHeight / 2 - m.f) / m.a,
+      centerX: (root.getBoundingClientRect().width / 2 - m.e) / m.a,
+      centerY: (root.getBoundingClientRect().height / 2 - m.f) / m.a,
       zoom: m.a,
     }
   })
@@ -873,7 +887,11 @@ test('remote widget additions and deletions preserve an in-progress canvas pan',
     else d.widgets = d.widgets.filter((w: any) => w.id !== 'remote-clock')
     const response = await request.put(backend + '/api/dashboards/default/state', {
       headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
-      data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+      data: {
+        schemaVersion: 3,
+        snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+        operationId: crypto.randomUUID(),
+      },
     })
     expect(response.ok()).toBeTruthy()
     await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))

@@ -5,6 +5,7 @@ import {
   migrateCanvasDocument,
   withLegacyMirror,
   validateDashboard,
+  validateCanvasTransition,
   type Dashboard,
 } from '@nav/shared'
 import db, { instanceId } from './database.js'
@@ -96,6 +97,7 @@ export function readSnapshot(id = 'default'): Dashboard {
     widgets,
     layoutVersion: undefined,
     documentVersion: undefined,
+    canvasScene: undefined,
     canvasSettings: undefined,
   }
   db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
@@ -131,7 +133,7 @@ export function commitSnapshot(
   operationId: string,
 ): Dashboard {
   validateDashboard(snapshot)
-  if (snapshot.documentVersion !== 2) throw new StateError(426, '请更新客户端使用文档版本 2')
+  if (snapshot.documentVersion !== 3) throw new StateError(426, '请更新客户端使用文档版本 3')
   if (snapshot.instanceId !== instanceId)
     throw new StateError(412, '服务实例已改变，请先重新获取并确认草稿')
   const hash = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
@@ -146,7 +148,14 @@ export function commitSnapshot(
     }
     const current = readSnapshot(snapshot.id)
     if (current.revision !== expected) throw new StateError(412, '其他设备已更新，请处理冲突')
-    if (current.documentVersion !== 2) throw new StateError(426, '请先执行 canvas-migrate 数据迁移')
+    if (current.documentVersion !== 3)
+      throw new StateError(426, '请先执行 canvas-v2-migrate 数据迁移')
+    for (const row of db.prepare('SELECT state_json FROM dashboards').all() as {
+      state_json: string | null
+    }[])
+      if (!row.state_json || JSON.parse(row.state_json).documentVersion !== 3)
+        throw new StateError(426, '全部文档迁移成功前暂停写入，请执行 canvas-v2-migrate')
+    validateCanvasTransition(current, snapshot)
     const updated = withLegacyMirror({ ...snapshot, revision: expected + 1 })
     for (const w of updated.widgets) {
       if (
@@ -196,7 +205,7 @@ export function migrateCanvasDatabase(apply = false) {
   return rows.map((row) => {
     const widgets = db.prepare('SELECT * FROM widget_instances WHERE dashboard_id=?').all(row.id)
     const raw = row.state_json ? JSON.parse(row.state_json) : null
-    if (raw?.documentVersion === 2) {
+    if (raw?.documentVersion === 3) {
       validateDashboard(raw)
       for (const w of raw.widgets)
         if (
@@ -220,7 +229,7 @@ export function migrateCanvasDatabase(apply = false) {
           throw new Error(`missing-plugin:${w.widgetId}`)
       if (apply) {
         db.prepare('INSERT OR IGNORE INTO migration_backups(backup_key,payload) VALUES(?,?)').run(
-          `canvas-camera-v1:${row.id}:${row.revision}`,
+          `canvas-scene-v2:${row.id}:${row.revision}`,
           original,
         )
         db.prepare(

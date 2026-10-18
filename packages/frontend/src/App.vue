@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
+import CanvasGridOrganization from './components/canvas/CanvasGridOrganization.vue'
 import CanvasGrid from './components/CanvasGrid.vue'
 import AboutDialog from './components/AboutDialog.vue'
 import LoginDialog from './components/LoginDialog.vue'
@@ -258,12 +259,22 @@ function toggleLibrary() {
         </p>
         <ul>
           <li
-            v-for="(difference, index) in dashboardStore.recoveryPreview.differences"
+            v-for="(difference, index) in dashboardStore.recoveryPreview.differences.slice(0, 100)"
             :key="index"
           >
             {{ difference }}
           </li>
         </ul>
+        <p v-if="dashboardStore.recoveryPreview.differences.length > 100">
+          还有
+          {{
+            dashboardStore.recoveryPreview.differences.length - 100
+          }}
+          项变化；导出备份可查看完整双方快照。
+        </p>
+        <p v-if="dashboardStore.recoveryPreview.remoteFresh === false">
+          当前为缓存预览；联网获取最新远端后才能恢复。
+        </p>
       </details>
       <template v-if="dashboardStore.recoveryPreview"
         ><button @click="dashboardStore.resolveConflict(false)">采用远端</button
@@ -312,6 +323,7 @@ function toggleLibrary() {
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
         :widgets="dashboardStore.dashboard.widgets"
+        :dashboard="dashboardStore.dashboard"
         :editing="editing"
         :editable="!backendAvailable || authStore.isAuthenticated"
         :columns="dashboardStore.dashboard.columns"
@@ -324,6 +336,11 @@ function toggleLibrary() {
         @update-layouts="dashboardStore.updateLayouts"
         @reset-profile="dashboardStore.resetProfile"
         @set-base="dashboardStore.setBase"
+      />
+      <CanvasGridOrganization
+        v-if="dashboardStore.dashboard && dashboardStore.dashboard.layoutMode !== 'canvas'"
+        :dashboard="dashboardStore.dashboard"
+        :editable="editing && (!backendAvailable || authStore.isAuthenticated)"
       />
     </main>
 

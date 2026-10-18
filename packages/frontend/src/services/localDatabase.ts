@@ -1,3 +1,4 @@
+import type { NamedView } from '../canvas/namedViewService'
 import Dexie, { type Table } from 'dexie'
 import type { Dashboard, CanvasViewPreference } from '@nav/shared'
 export interface DashboardRow {
@@ -28,6 +29,7 @@ export interface SyncRow {
   upgradeRequired?: boolean
 }
 class NavDatabase extends Dexie {
+  namedViews!: Table<NamedView, [string, string]>
   viewPreferences!: Table<CanvasViewPreference, string>
   dashboards!: Table<DashboardRow, string>
   installedWidgets!: Table<InstalledRow, string>
@@ -43,6 +45,7 @@ class NavDatabase extends Dexie {
       sync: 'key',
     })
     this.version(3).stores({ viewPreferences: 'key' })
+    this.version(4).stores({ namedViews: '[spaceKey+id],spaceKey,&[spaceKey+nameKey]' })
     this.on('versionchange', () => {
       this.close()
       window.dispatchEvent(new Event('nav-reload-required'))

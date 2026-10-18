@@ -12,6 +12,7 @@ export default defineConfig({
       process.env.NAV_TEST_URL ??
       (process.env.NAV_TEST_DIST === 'true' ? 'http://127.0.0.1:4000' : 'http://127.0.0.1:3000'),
     headless: true,
+    trace: 'retain-on-failure',
   },
   projects: (process.env.NAV_TEST_BROWSERS ?? 'chromium').split(',').map((name) => ({
     name,

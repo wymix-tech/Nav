@@ -1,6 +1,8 @@
 import type { Dashboard, DashboardViewport } from '../types/dashboard.js'
 import type { CanvasCamera, Size } from './types.js'
 import { boundCamera } from './geometry.js'
+import { initialScene } from './scene.js'
+import { validateDashboard } from '../validation.js'
 import { CANVAS } from './constants.js'
 export function legacyCamera(view: DashboardViewport, size: Size, ref: Size): CanvasCamera {
   if (size.width <= 0 || size.height <= 0 || ref.width <= 0 || ref.height <= 0)
@@ -14,10 +16,20 @@ export function legacyCamera(view: DashboardViewport, size: Size, ref: Size): Ca
 }
 // Pure and idempotent. Callers own the backup and transaction boundary.
 export function migrateCanvasDocument(input: Dashboard): Dashboard {
-  if (input.documentVersion !== undefined && input.documentVersion !== 2)
+  if (input.documentVersion !== undefined && ![2, 3].includes(input.documentVersion))
     throw new Error('文档版本需要更新客户端')
   const d: Dashboard = JSON.parse(JSON.stringify(input))
-  if (d.documentVersion === 2) return d
+  if (d.documentVersion === 3) {
+    validateDashboard(d)
+    return d
+  }
+  if (d.documentVersion === 2) {
+    validateDashboard(d)
+    d.documentVersion = 3
+    d.canvasScene = initialScene(d.widgets.map((w) => w.id))
+    validateDashboard(d)
+    return d
+  }
   const width = d.viewportWidth ?? 1920,
     height = d.viewportHeight ?? 1080
   const v = d.viewport ?? { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
@@ -33,7 +45,7 @@ export function migrateCanvasDocument(input: Dashboard): Dashboard {
     ),
   }
   d.documentVersion = 2
-  return d
+  return migrateCanvasDocument(d)
 }
 export function withLegacyMirror(d: Dashboard): Dashboard {
   if (!d.canvasSettings) return d
