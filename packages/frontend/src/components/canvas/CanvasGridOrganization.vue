@@ -29,6 +29,13 @@ async function command(c: CanvasCommand) {
   const ok = await store.applyCanvasCommand(c)
   notice.value = ok ? '操作已完成' : store.error
 }
+let previousScroll: { left: number; top: number } | null = null
+function back() {
+  if (previousScroll) {
+    window.scrollTo(previousScroll)
+    previousScroll = null
+  }
+}
 function locate(r: SelectionRef) {
   if (r.kind !== 'widget') {
     notice.value = '请切换到画布后进行组或区域空间定位'
@@ -39,6 +46,7 @@ function locate(r: SelectionRef) {
     notice.value = '目标已不存在'
     return
   }
+  previousScroll ??= { left: window.scrollX, top: window.scrollY }
   host.scrollIntoView({ block: 'center' })
   host.focus({ preventScroll: true })
   notice.value = `已定位 ${resolveCanvasLabel(props.dashboard, r, names.value)}`
@@ -80,6 +88,7 @@ function locate(r: SelectionRef) {
         :dashboard="dashboard"
         :names="names"
         @locate="locate"
+        @back="back"
         @close="panel = ''"
       />
     </aside>

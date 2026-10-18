@@ -646,3 +646,18 @@ test('already-open writers cannot downgrade future standalone or sync cache rows
     await a.dispose()
   }
 })
+
+test('concurrent dashboard and catalog initialization share one adapter and one broadcast owner', async () => {
+  const { getStorageAdapter } = await import('../packages/frontend/src/services/storageAdapter.ts')
+  const adapters = await Promise.all([
+    getStorageAdapter(),
+    getStorageAdapter(),
+    getStorageAdapter(),
+  ])
+  try {
+    assert.equal(new Set(adapters).size, 1)
+    assert.strictEqual(adapters[0], adapters[2])
+  } finally {
+    await Promise.all([...new Set(adapters)].map((a) => (a as SyncAdapter).dispose()))
+  }
+})
