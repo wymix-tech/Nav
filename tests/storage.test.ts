@@ -38,7 +38,10 @@ const accepted = new Map<string, Dashboard>()
 globalThis.fetch = async (path: any, options: any = {}) => {
   if (!online) throw new TypeError('offline')
   const json = (x: any, status = 200) =>
-    new Response(JSON.stringify(x), { status, headers: { 'Content-Type': 'application/json' } })
+    new Response(JSON.stringify(x), {
+      status,
+      headers: { 'Content-Type': 'application/json', 'X-Nav-State-Schema': '2' },
+    })
   if (options.method === 'PUT') {
     putCount++
     const { snapshot, operationId } = JSON.parse(options.body)
@@ -204,4 +207,136 @@ test('standalone canvas migration preserves geometry and backs up credentials be
   await adapter.saveDashboard(d)
   assert.deepEqual((await adapter.getDashboard()).widgets[0].canvas, canvas)
   assert.deepEqual(JSON.parse((await db.backups.get('layout-v1:standalone'))!.data), old)
+})
+
+test('legacy pending operations are backed up unchanged and require explicit new-operation recovery', async () => {
+  const a = new SyncAdapter()
+  try {
+    await a.getDashboard()
+    const old: any = structuredClone(remote)
+    delete old.documentVersion
+    delete old.canvasSettings
+    old.title = 'legacy offline draft'
+    const pending = [{ id: 'legacy-possibly-committed', snapshot: structuredClone(old) }]
+    await db.sync.put({
+      key: a.key,
+      snapshot: old,
+      revision: 0,
+      generation: 4,
+      pending,
+      lastSyncAt: null,
+    })
+    const returned = await a.getDashboard()
+    assert.equal(returned.documentVersion, 2)
+    localStorage.setItem('nav_token', 'test-session')
+    await a.flush()
+    assert.equal(putCount, 0)
+    assert.equal((await a.getSyncState()).status, 'upgrade-required')
+    assert.deepEqual((await db.sync.get(a.key))!.pending, pending)
+    const backup = JSON.parse((await db.backups.get(`canvas-queue-v1:${a.key}:4`))!.data)
+    assert.deepEqual(backup.pending, pending)
+    await a.resolveConflict(true)
+    assert.equal(remote.title, 'legacy offline draft')
+    assert.equal(remote.documentVersion, 2)
+    assert.equal(accepted.has('legacy-possibly-committed'), false)
+    assert.equal((await a.getSyncState()).pendingChanges, 0)
+  } finally {
+    await a.dispose()
+  }
+})
+test('view preferences are independent, ordered, and excluded from exported document state', async () => {
+  const { writeViewPreference, readViewPreference } =
+    await import('../packages/frontend/src/canvas/viewPreferenceService.ts')
+  const a = new LocalAdapter(),
+    d = await a.getDashboard(),
+    before = await db.dashboards.get(d.id)
+  await Promise.all(
+    Array.from({ length: 100 }, (_, i) =>
+      writeViewPreference({
+        key: 'camera:test',
+        version: 1,
+        camera: { centerX: i, centerY: -i, zoom: 1 },
+        presentation: 'spatial',
+        updatedAt: String(i),
+      }),
+    ),
+  )
+  assert.equal((await readViewPreference('camera:test'))!.camera.centerX, 99)
+  assert.deepEqual(await db.dashboards.get(d.id), before)
+  assert.equal((await db.sync.toArray()).length, 0)
+  assert.equal(JSON.stringify(d).includes('camera:test'), false)
+})
+
+test('failed standalone document upgrade rolls back both backup and data', async () => {
+  const raw: any = createDashboard()
+  delete raw.documentVersion
+  delete raw.canvasSettings
+  raw.widgets = [
+    {
+      id: 'invalid',
+      widgetId: 'clock',
+      source: 'builtin',
+      config: {},
+      layouts: { lg: { x: 0, y: 0, w: 4, h: 3 } },
+      canvas: { x: 0, y: 0, w: -1, h: 50 },
+    },
+  ]
+  const original = JSON.stringify(raw)
+  await db.dashboards.put({ id: 'default', data: original, updatedAt: 'old' })
+  await assert.rejects(() => new LocalAdapter().getDashboard())
+  assert.equal((await db.dashboards.get('default'))!.data, original)
+  assert.equal((await db.backups.toArray()).length, 0)
+})
+test('blocked edits during legacy queue recovery are preserved outside the immutable pending operation', async () => {
+  const a = new SyncAdapter()
+  try {
+    await a.getDashboard()
+    const old: any = structuredClone(remote)
+    delete old.documentVersion
+    delete old.canvasSettings
+    await db.sync.put({
+      key: a.key,
+      snapshot: old,
+      revision: 0,
+      generation: 0,
+      pending: [{ id: 'immutable-old-operation', snapshot: old }],
+      lastSyncAt: null,
+    })
+    const d = await a.getDashboard()
+    d.title = 'additional unsaved edit'
+    await assert.rejects(() => a.saveDashboard(d), /已备份/)
+    assert.equal(JSON.parse((await db.backups.get(`upgrade-edit:${a.key}`))!.data).title, d.title)
+    assert.equal((await db.sync.get(a.key))!.pending[0].snapshot.title, old.title)
+    assert.ok(Array.isArray((await a.getRecoveryPreview())!.differences))
+  } finally {
+    await a.dispose()
+  }
+})
+
+test('a server without schema capability receives no writes and the current protocol draft survives', async () => {
+  const originalFetch = globalThis.fetch,
+    a = new SyncAdapter()
+  try {
+    globalThis.fetch = async (...args: any[]) => {
+      const response = await originalFetch(args[0], args[1])
+      response.headers.delete('X-Nav-State-Schema')
+      return response
+    }
+    const d = await a.getDashboard()
+    d.title = 'new draft awaiting server upgrade'
+    localStorage.setItem('nav_token', 'test-session')
+    await a.saveDashboard(d)
+    await a.flush()
+    const pending = structuredClone((await db.sync.get(a.key))!.pending)
+    assert.equal(putCount, 0)
+    assert.equal((await a.getSyncState()).status, 'upgrade-required')
+    globalThis.fetch = originalFetch
+    await a.flush()
+    assert.equal(remote.title, d.title)
+    assert.equal(accepted.has(pending[0].id), true)
+    assert.equal((await a.getSyncState()).pendingChanges, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+    await a.dispose()
+  }
 })

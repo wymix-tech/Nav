@@ -3,7 +3,15 @@ import Database from 'better-sqlite3'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 const [command, target] = process.argv.slice(2)
-if (!['backup', 'preflight'].includes(command)) {
+if (['canvas-preflight', 'canvas-dry-run', 'canvas-migrate'].includes(command)) {
+  const { migrateCanvasDatabase } = await import('./db/state.js')
+  const { default: stateDb } = await import('./db/database.js')
+  try {
+    console.log(JSON.stringify(migrateCanvasDatabase(command === 'canvas-migrate'), null, 2))
+  } finally {
+    stateDb.close()
+  }
+} else if (!['backup', 'preflight'].includes(command)) {
   console.error('Usage: node dist/maintenance.js preflight | backup /absolute/path/backup.db')
   process.exitCode = 1
 } else {

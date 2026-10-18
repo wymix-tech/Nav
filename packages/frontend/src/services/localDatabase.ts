@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Dashboard } from '@nav/shared'
+import type { Dashboard, CanvasViewPreference } from '@nav/shared'
 export interface DashboardRow {
   id: string
   data: string
@@ -25,8 +25,10 @@ export interface SyncRow {
   lease?: { owner: string; until: number }
   error?: string
   authRequired?: boolean
+  upgradeRequired?: boolean
 }
 class NavDatabase extends Dexie {
+  viewPreferences!: Table<CanvasViewPreference, string>
   dashboards!: Table<DashboardRow, string>
   installedWidgets!: Table<InstalledRow, string>
   backups!: Table<{ key: string; data: string }, string>
@@ -40,6 +42,7 @@ class NavDatabase extends Dexie {
       backups: 'key',
       sync: 'key',
     })
+    this.version(3).stores({ viewPreferences: 'key' })
     this.on('versionchange', () => {
       this.close()
       window.dispatchEvent(new Event('nav-reload-required'))

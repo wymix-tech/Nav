@@ -75,7 +75,7 @@ test('content sniffing rejects SVG disguised as PNG and re-encodes a real raster
 test('snapshot commits are conditional, atomic and idempotent after lost responses', async () => {
   const initial = await (await app.request('/api/dashboards')).json()
   const snapshot = { ...initial, title: 'updated' }
-  const body = JSON.stringify({ snapshot, operationId: 'operation-0123456789' })
+  const body = JSON.stringify({ schemaVersion: 2, snapshot, operationId: 'operation-0123456789' })
   const save = () =>
     app.request('/api/dashboards/default/state', {
       method: 'PUT',
@@ -89,6 +89,7 @@ test('snapshot commits are conditional, atomic and idempotent after lost respons
     method: 'PUT',
     headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': '"0"' },
     body: JSON.stringify({
+      schemaVersion: 2,
       snapshot: { ...snapshot, title: 'stale' },
       operationId: 'different-operation-0123',
     }),
@@ -107,7 +108,7 @@ test('bad snapshots, missing conditions and old blind-write clients are rejected
       await app.request('/api/dashboards/default/state', {
         method: 'PUT',
         headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': '"1"' },
-        body: JSON.stringify({ snapshot, operationId: 'invalid-operation-0123' }),
+        body: JSON.stringify({ schemaVersion: 2, snapshot, operationId: 'invalid-operation-0123' }),
       })
     ).status,
     400,
@@ -162,7 +163,11 @@ test('snapshot requests from a replaced server instance cannot overwrite the new
   const r = await app.request('/api/dashboards/default/state', {
     method: 'PUT',
     headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': String(d.revision) },
-    body: JSON.stringify({ snapshot: d, operationId: 'different-server-operation' }),
+    body: JSON.stringify({
+      schemaVersion: 2,
+      snapshot: d,
+      operationId: 'different-server-operation',
+    }),
   })
   assert.equal(r.status, 412)
 })
@@ -189,4 +194,87 @@ test('restored Docker stays authenticated even with public stats and version met
   const version = await app.request('/api/system/version')
   assert.equal(version.status, 200)
   assert.match((await version.json()).version, /^v?\d+\.\d+\.\d+/)
+})
+
+test('schema capability is explicit and old protocol writes cannot remove canvas settings', async () => {
+  const r = await app.request('/api/dashboards'),
+    d = await r.json()
+  assert.equal(r.headers.get('X-Nav-State-Schema'), '2')
+  const old = structuredClone(d)
+  delete old.documentVersion
+  delete old.canvasSettings
+  const rejected = await app.request('/api/dashboards/default/state', {
+    method: 'PUT',
+    headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': String(d.revision) },
+    body: JSON.stringify({ snapshot: old, operationId: 'old-client-operation-001' }),
+  })
+  assert.equal(rejected.status, 426)
+  assert.deepEqual(
+    (await (await app.request('/api/dashboards')).json()).canvasSettings,
+    d.canvasSettings,
+  )
+})
+test('camera migration dry-run, backup, idempotence and rollback protect the original rows', async () => {
+  const { migrateCanvasDatabase } = await import('../packages/server/src/db/state.ts')
+  const old: any = createDashboard()
+  delete old.documentVersion
+  delete old.canvasSettings
+  old.id = 'migration-fixture'
+  old.layoutMode = 'canvas'
+  old.viewport = { panX: 20, panY: 40, zoom: 0.5, homeX: 0, homeY: 0 }
+  db.prepare('INSERT INTO dashboards(id,name,state_json,revision) VALUES(?,?,?,?)').run(
+    old.id,
+    'fixture',
+    JSON.stringify(old),
+    7,
+  )
+  const before = db.prepare('SELECT * FROM dashboards WHERE id=?').get(old.id)
+  const backups = (db.prepare('SELECT count(*) n FROM migration_backups').get() as any).n
+  migrateCanvasDatabase(false)
+  assert.deepEqual(db.prepare('SELECT * FROM dashboards WHERE id=?').get(old.id), before)
+  assert.equal((db.prepare('SELECT count(*) n FROM migration_backups').get() as any).n, backups)
+  migrateCanvasDatabase(true)
+  migrateCanvasDatabase(true)
+  const row = db.prepare('SELECT * FROM dashboards WHERE id=?').get(old.id) as any
+  assert.equal(row.revision, 8)
+  assert.equal(JSON.parse(row.state_json).documentVersion, 2)
+  const backup = JSON.parse(
+    (
+      db
+        .prepare('SELECT payload FROM migration_backups WHERE backup_key=?')
+        .get('canvas-camera-v1:migration-fixture:7') as any
+    ).payload,
+  )
+  assert.deepEqual(backup.dashboard, before)
+  const bad = {
+    ...old,
+    id: 'invalid-migration',
+    widgets: [
+      {
+        id: 'bad',
+        widgetId: 'clock',
+        source: 'builtin',
+        config: {},
+        layouts: { lg: { x: 0, y: 0, w: 4, h: 3 } },
+        canvas: { x: Infinity, y: 0, w: 0, h: 100 },
+      },
+    ],
+  }
+  db.prepare('INSERT INTO dashboards(id,name,state_json,revision) VALUES(?,?,?,?)').run(
+    bad.id,
+    'invalid',
+    JSON.stringify(bad),
+    0,
+  )
+  assert.throws(() => migrateCanvasDatabase(true))
+  assert.equal(
+    (db.prepare('SELECT revision FROM dashboards WHERE id=?').get(bad.id) as any).revision,
+    0,
+  )
+  assert.equal(
+    db
+      .prepare('SELECT 1 FROM migration_backups WHERE backup_key=?')
+      .get('canvas-camera-v1:invalid-migration:0'),
+    undefined,
+  )
 })

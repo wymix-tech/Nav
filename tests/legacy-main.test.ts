@@ -52,7 +52,8 @@ for (const [i, widgetId] of ['clock', 'chat', 'docker'].entries()) {
 }
 old.close()
 const { default: db } = await import('../packages/server/src/db/database.ts')
-const { readSnapshot, commitSnapshot } = await import('../packages/server/src/db/state.ts')
+const { readSnapshot, commitSnapshot, migrateCanvasDatabase } =
+  await import('../packages/server/src/db/state.ts')
 const { createApp } = await import('../packages/server/src/app.ts')
 const { generateToken } = await import('../packages/server/src/middleware/auth.ts')
 after(async () => {
@@ -84,10 +85,12 @@ test('old main canvas coordinates and viewport are backed up exactly and survive
     backup.widgets.find((w: any) => w.widgetId === 'chat').config.apiKey,
     'synthetic-legacy-credential',
   )
-  const changed = migrateDashboard({ ...d, title: 'Only changed title', layoutMode: 'grid' })
+  migrateCanvasDatabase(true)
+  const migrated = readSnapshot()
+  const changed = migrateDashboard({ ...migrated, title: 'Only changed title', layoutMode: 'grid' })
   validateDashboard(changed)
-  const saved = commitSnapshot(changed, 0, 'legacy-main-save-012345')
-  assert.equal(saved.revision, 1)
+  const saved = commitSnapshot(changed, 1, 'legacy-main-save-012345')
+  assert.equal(saved.revision, 2)
   for (const row of db.prepare('SELECT canvas FROM widget_instances').all() as any[])
     assert.deepEqual(JSON.parse(row.canvas), geometry)
   const again = readSnapshot()
@@ -95,7 +98,7 @@ test('old main canvas coordinates and viewport are backed up exactly and survive
     again.widgets.map((w) => w.canvas),
     d.widgets.map((w) => w.canvas),
   )
-  assert.deepEqual(again.viewport, viewport)
+  assert.deepEqual(again.canvasSettings, migrated.canvasSettings)
   const app = createApp()
   assert.equal((await app.request('/api/dashboards/default/backup')).status, 401)
   const result = await app.request('/api/dashboards/default/backup', {

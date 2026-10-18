@@ -7,7 +7,11 @@ export class ApiError extends Error {
     super(message)
   }
 }
-export async function apiJson<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiJson<T>(
+  path: string,
+  options: RequestInit = {},
+  metadata?: (headers: Headers) => void,
+): Promise<T> {
   const token = localStorage.getItem('nav_token')
   const res = await fetch(`/api${path}`, {
     ...options,
@@ -20,6 +24,7 @@ export async function apiJson<T>(path: string, options: RequestInit = {}): Promi
       ...options.headers,
     },
   })
+  metadata?.(res.headers)
   const isJson = res.headers.get('Content-Type')?.includes('application/json')
   const body = isJson ? await res.json() : null
   if (res.status === 401 && token && path !== '/auth/login')

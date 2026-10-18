@@ -1,6 +1,7 @@
 import {
   createDashboard,
   migrateDashboard,
+  migrateCanvasDocument,
   validateDashboard,
   type Dashboard,
   type InstalledWidget,
@@ -10,24 +11,30 @@ import {
 import { localDatabase as db, clone } from './localDatabase'
 export class LocalAdapter implements StorageAdapter {
   async getDashboard(): Promise<Dashboard> {
-    const row = await db.dashboards.get('default')
-    const raw = row ? JSON.parse(row.data) : createDashboard()
-    const needsMigration =
-      raw.layoutVersion !== 2 ||
-      raw.widgets?.some(
+    return db.transaction('rw', db.dashboards, db.backups, async () => {
+      const row = await db.dashboards.get('default')
+      const raw = row ? JSON.parse(row.data) : createDashboard()
+      const oldCanvas = raw.documentVersion !== 2
+      const legacy = raw.layoutVersion !== 2
+      const credentials = raw.widgets?.some(
         (w: any) => w.source === 'builtin' && w.widgetId === 'chat' && w.config?.apiKey,
       )
-    const backupKey =
-      raw.layoutVersion !== 2 ? 'layout-v1:standalone' : 'chat-credentials-v1:standalone'
-    if (needsMigration)
-      await db.transaction('rw', db.backups, async () => {
-        if (!(await db.backups.get(backupKey)))
-          await db.backups.add({ key: backupKey, data: JSON.stringify(raw) })
-      })
-    const d = migrateDashboard(raw)
-    if (!row || needsMigration) await this.saveDashboard(d)
-    return d
+      if (row && (oldCanvas || legacy || credentials)) {
+        const key = legacy
+          ? 'layout-v1:standalone'
+          : credentials
+            ? 'chat-credentials-v1:standalone'
+            : `canvas-camera-v1:${raw.id}:${raw.revision ?? 0}`
+        if (!(await db.backups.get(key))) await db.backups.add({ key, data: row.data })
+        if (oldCanvas)
+          await db.backups.put({ key: `canvas-seed:standalone:${raw.id}`, data: row.data })
+      }
+      const d = migrateCanvasDocument(migrateDashboard(raw))
+      if (!row || oldCanvas || legacy || credentials) await this.saveDashboard(d)
+      return d
+    })
   }
+
   async saveDashboard(dashboard: Dashboard): Promise<void> {
     validateDashboard(dashboard)
     await db.dashboards.put({
