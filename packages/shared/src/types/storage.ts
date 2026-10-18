@@ -36,4 +36,13 @@ export interface StorageAdapter {
   getSyncState(): Promise<SyncState>
   push(changes: Change[]): Promise<void>
   pull(): Promise<Change[]>
+  cached?(): Promise<Dashboard | null>
+  getRecoveryPreview?(): Promise<RecoveryPreview | null>
+  resolveConflict?(useLocal: boolean): Promise<void>
+}
+
+export interface RecoveryPreview {
+  localTitle: string
+  remoteTitle: string
+  differences: string[]
 }

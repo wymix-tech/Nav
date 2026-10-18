@@ -142,7 +142,7 @@ async function uninstall(id: string) {
             role="button"
             tabindex="0"
             @pointerdown="start($event, w.id, 'builtin')"
-            @keydown.enter="addToDashboard(w.id, 'builtin', true)"
+            @keydown.enter.self="addToDashboard(w.id, 'builtin', true)"
             @click="addToDashboard(w.id, 'builtin')"
           >
             <span class="widget-icon">{{ w.icon }}</span>
@@ -162,7 +162,7 @@ async function uninstall(id: string) {
             role="button"
             tabindex="0"
             @pointerdown="start($event, w.widgetId, 'installed')"
-            @keydown.enter="addToDashboard(w.widgetId, 'installed', true)"
+            @keydown.enter.self="addToDashboard(w.widgetId, 'installed', true)"
             @click="addToDashboard(w.widgetId, 'installed')"
           >
             <span class="widget-icon">{{ w.manifest.icon }}</span>

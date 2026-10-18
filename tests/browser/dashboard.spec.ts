@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type APIRequestContext } from '@playwright/test'
 import { createDashboard } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
@@ -218,21 +218,22 @@ test('logout exits editing and removes drag handles immediately', async ({ page 
   await expect(page.locator('.drag-handle')).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('nav_token'))).toBeNull()
 })
-test('a plugin survives reload and cannot access its host or unapproved network', async ({
-  page,
-  request,
-}) => {
+async function installTestPlugin(
+  request: APIRequestContext,
+  widgetId = 'sandbox-test',
+  displayName = '隔离测试',
+) {
   const commit = 'a'.repeat(40),
     url = `https://cdn.jsdelivr.net/gh/test/widget@${commit}/index.js`
   const widget = {
-    widgetId: 'sandbox-test',
+    widgetId,
     commit,
     cdnUrl: url,
     installedAt: new Date().toISOString(),
     manifest: {
       manifestVersion: 2,
-      name: 'sandbox-test',
-      displayName: '隔离测试',
+      name: widgetId,
+      displayName,
       version: '1',
       entry: 'index.js',
       description: 'test',
@@ -257,6 +258,14 @@ test('a plugin survives reload and cannot access its host or unapproved network'
     data: widget,
   })
   expect(installed.ok()).toBeTruthy()
+  return widget
+}
+test('a plugin survives reload and cannot access its host or unapproved network', async ({
+  page,
+  request,
+}) => {
+  const widget = await installTestPlugin(request),
+    url = widget.cdnUrl
   const d = await (await request.get(backend + '/api/dashboards')).json(),
     l = { x: 8, y: 3, w: 4, h: 3 }
   d.widgets.push({
@@ -800,4 +809,79 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     body: JSON.stringify(sample, null, 2),
     contentType: 'application/json',
   })
+})
+
+test('keyboard uninstall does not bubble into adding a plugin and row Enter still adds', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  const widget = await installTestPlugin(request, 'keyboard-unused', '键盘卸载测试')
+  await page.route(widget.cdnUrl, (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: 'export function mount(root){root.textContent="test"}',
+    }),
+  )
+  await page.reload()
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await edit(page)
+  await page.locator('.floating-panel').hover()
+  await page.locator('.panel-actions button').filter({ hasText: '☰' }).click()
+  const clock = page.locator('.widget-item').filter({ hasText: '时钟' })
+  await clock.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await expect
+    .poll(
+      async () => (await (await request.get(backend + '/api/dashboards')).json()).widgets.length,
+    )
+    .toBe(3)
+  await expect(page.getByRole('status')).toContainText('已同步')
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  const row = page.locator('.widget-item').filter({ hasText: '键盘卸载测试' })
+  await row.getByRole('button', { name: '卸载', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(row).toHaveCount(0)
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  expect(await (await request.get(backend + '/api/dashboards')).json()).toEqual(before)
+  const catalog = await (await request.get(backend + '/api/installed-widgets')).json()
+  expect(catalog.some((w: any) => w.widgetId === widget.widgetId)).toBeFalsy()
+})
+
+test('remote widget additions and deletions preserve an in-progress canvas pan', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  let writes = 0
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') writes++
+  })
+  const box = (await page.locator('.canvas-grid').boundingBox())!
+  const initial = await canvasCamera(page)
+  await page.mouse.move(box.x + 30, box.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 110, box.y + 80, { steps: 3 })
+  await expect.poll(() => canvasCamera(page)).not.toEqual(initial)
+  const panned = await canvasCamera(page)
+  for (const add of [true, false]) {
+    const d = await (await request.get(backend + '/api/dashboards')).json()
+    if (add) d.widgets.push({ ...d.widgets[0], id: 'remote-clock' })
+    else d.widgets = d.widgets.filter((w: any) => w.id !== 'remote-clock')
+    const response = await request.put(backend + '/api/dashboards/default/state', {
+      headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
+      data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+    })
+    expect(response.ok()).toBeTruthy()
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+    await expect(page.locator('.canvas-item')).toHaveCount(add ? 3 : 2)
+    expect(await canvasCamera(page)).toEqual(panned)
+  }
+  await page.mouse.move(box.x + 160, box.y + 110)
+  await page.mouse.up()
+  expect(await canvasCamera(page)).not.toEqual(panned)
+  expect(writes).toBe(0)
 })

@@ -7,6 +7,7 @@ import {
   type InstalledWidget,
   type StorageAdapter,
   type SyncState,
+  type RecoveryPreview,
 } from '@nav/shared'
 import { localDatabase as db, clone, type SyncRow } from './localDatabase'
 import { apiJson, ApiError } from './apiClient'
@@ -317,13 +318,28 @@ export class SyncAdapter implements StorageAdapter {
         }, retry)
     }
   }
-  async getRecoveryPreview() {
+  async getRecoveryPreview(): Promise<RecoveryPreview | null> {
     const r = await db.sync.get(this.key)
     if (!r?.conflict) return null
     const local = migrateCanvasDocument(migrateDashboard(r.snapshot)),
       remote = migrateCanvasDocument(migrateDashboard(r.conflict))
     const differences: string[] = []
-    for (const field of ['title', 'name', 'layoutMode', 'background', 'canvasSettings'] as const)
+    // Revision/instance identity and legacy camera mirrors are not editable content.
+    for (const field of [
+      'id',
+      'title',
+      'name',
+      'documentVersion',
+      'layoutVersion',
+      'columns',
+      'baseColumns',
+      'rowHeight',
+      'layoutMode',
+      'layoutSettings',
+      'layoutProfiles',
+      'background',
+      'canvasSettings',
+    ] as const)
       if (JSON.stringify(local[field]) !== JSON.stringify(remote[field]))
         differences.push(
           `${field}: 本地 ${JSON.stringify(local[field])}；远端 ${JSON.stringify(remote[field])}`,

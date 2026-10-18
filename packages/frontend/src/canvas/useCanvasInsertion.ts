@@ -1,4 +1,5 @@
 import {
+  CANVAS,
   insertRect,
   screenToWorld,
   clientToViewport,
@@ -36,8 +37,8 @@ export function createCanvasWidget(
   const layout = {
     x: 0,
     y: 0,
-    w: Math.min(cols, Math.max(1, Math.ceil(pixels.w / 120))),
-    h: Math.max(1, Math.ceil(pixels.h / 90)),
+    w: Math.min(cols, Math.max(1, Math.ceil(pixels.w / CANVAS.column))),
+    h: Math.max(1, Math.ceil(pixels.h / CANVAS.row)),
   }
   return {
     id: crypto.randomUUID(),

@@ -10,6 +10,7 @@ import {
   type WidgetInstance,
   type LayoutMap,
   type SyncState,
+  type RecoveryPreview,
 } from '@nav/shared'
 import { getStorageAdapter, localMode } from '../services/storageAdapter'
 import { useAuthStore } from './authStore'
@@ -24,16 +25,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   let writes = 0,
     queue = Promise.resolve(),
     unsaved = false
-  const recoveryPreview = ref<{
-    localTitle: string
-    remoteTitle: string
-    differences: string[]
-  } | null>(null)
+  const recoveryPreview = ref<RecoveryPreview | null>(null)
   async function refreshStatus() {
     const adapter = await getStorageAdapter()
     syncState.value = await adapter.getSyncState()
-    recoveryPreview.value =
-      'getRecoveryPreview' in adapter ? await (adapter as any).getRecoveryPreview() : null
+    recoveryPreview.value = (await adapter.getRecoveryPreview?.()) ?? null
   }
   let isEditing = false
   window.addEventListener('nav-editing-changed', (e) => {
@@ -202,8 +198,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
   async function resolveConflict(local: boolean) {
     const a = await getStorageAdapter()
-    if ('resolveConflict' in a) {
-      await (a as any).resolveConflict(local)
+    if (a.resolveConflict) {
+      await a.resolveConflict(local)
       history.value = []
       future.value = []
       await load()
@@ -227,12 +223,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     void (async () => {
       const adapter = await getStorageAdapter()
       await refreshStatus()
-      if (!writes && !unsaved && !isEditing && 'cached' in adapter) {
+      if (!writes && !unsaved && !isEditing && adapter.cached) {
         if ((event as CustomEvent).detail?.external) {
           history.value = []
           future.value = []
         }
-        const cached = await (adapter as any).cached()
+        const cached = await adapter.cached()
         if (cached) dashboard.value = cached
       }
     })().catch(() => {})

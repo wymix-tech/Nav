@@ -31,7 +31,6 @@ const emit = defineEmits<{
   'remove-widget': [id: string]
   'update-config': [id: string, config: Record<string, any>]
   'reset-profile': [cols: number]
-  interaction: [active: boolean]
   'set-base': [layout: LayoutMap, cols: number]
 }>()
 const root = ref<HTMLElement | null>(null),
@@ -138,7 +137,6 @@ function cancel() {
     interaction.target.releasePointerCapture(interaction.pointer)
   interaction = null
   draft.value = null
-  emit('interaction', false)
   if (pendingWidth !== undefined) {
     width.value = pendingWidth
     pendingWidth = undefined
@@ -153,7 +151,6 @@ function start(e: PointerEvent, w: WidgetInstance, mode: 'move' | 'resize') {
   e.stopPropagation()
   const target = e.currentTarget as HTMLElement
   target.setPointerCapture(e.pointerId)
-  emit('interaction', true)
   interaction = {
     id: w.id,
     mode,

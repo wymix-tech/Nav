@@ -1,6 +1,7 @@
 import type { Dashboard, DashboardViewport } from '../types/dashboard.js'
 import type { CanvasCamera, Size } from './types.js'
 import { boundCamera } from './geometry.js'
+import { CANVAS } from './constants.js'
 export function legacyCamera(view: DashboardViewport, size: Size, ref: Size): CanvasCamera {
   if (size.width <= 0 || size.height <= 0 || ref.width <= 0 || ref.height <= 0)
     throw new Error('尚未测量画布')
@@ -39,7 +40,7 @@ export function withLegacyMirror(d: Dashboard): Dashboard {
   const c = d.canvasSettings.defaultCamera,
     width = d.viewportWidth ?? 1920,
     height = d.viewportHeight ?? 1080
-  const limit = (n: number) => Math.max(-1000000, Math.min(1000000, n))
+  const limit = (n: number) => Math.max(-CANVAS.positionLimit, Math.min(CANVAS.positionLimit, n))
   const z = Math.max(0.1, Math.min(3, c.zoom))
   return {
     ...d,

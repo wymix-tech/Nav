@@ -76,6 +76,7 @@ export function useCanvasCamera(
       }
       if (ticket !== serial || (ready.value && nextKey === key)) return
       await flush()
+      if (ticket !== serial) return
       ready.value = false
       key = nextKey
       let saved: CanvasViewPreference | null = sessions.get(key) ?? null

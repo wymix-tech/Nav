@@ -31,7 +31,6 @@ const emit = defineEmits<{
   'add-widget': [widget: WidgetInstance]
   'remove-widget': [id: string]
   'update-config': [id: string, config: Record<string, any>]
-  interaction: [active: boolean]
 }>()
 const root = ref<HTMLElement | null>(null),
   size = ref<Size>({ width: 0, height: 0 })
@@ -56,7 +55,6 @@ const interaction = useCanvasInteraction({
   canEdit: () => canEdit.value,
   widgets: () => props.dashboard.widgets,
   commit: (id, c) => emit('update-canvas', id, c),
-  interaction: (active) => emit('interaction', active),
 })
 const { draft, space } = interaction
 function canvas(w: WidgetInstance) {
@@ -147,8 +145,8 @@ function keyboard(e: KeyboardEvent, w: WidgetInstance) {
   e.stopPropagation()
   const c = { ...widgetCanvas(w) },
     min = resolveWidgetSize(w.widgetId, w.source),
-    dx = e.key === 'ArrowLeft' ? -20 : e.key === 'ArrowRight' ? 20 : 0,
-    dy = e.key === 'ArrowUp' ? -20 : e.key === 'ArrowDown' ? 20 : 0
+    dx = e.key === 'ArrowLeft' ? -CANVAS.snap : e.key === 'ArrowRight' ? CANVAS.snap : 0,
+    dy = e.key === 'ArrowUp' ? -CANVAS.snap : e.key === 'ArrowDown' ? CANVAS.snap : 0
   if (e.shiftKey) {
     c.w = clamp(c.w + dx, min.minWidth, CANVAS.maxSize)
     c.h = clamp(c.h + dy, min.minHeight, CANVAS.maxSize)
@@ -192,10 +190,6 @@ defineExpose({ addWidget })
 let observer: ResizeObserver | undefined,
   frame = 0
 watch(canEdit, () => interaction.cancel())
-watch(
-  () => props.dashboard.widgets.map((w) => w.id).join(','),
-  () => interaction.cancel(),
-)
 watch([() => props.dashboard.id, () => props.dashboard.instanceId], () => interaction.cancel())
 watch(presentation, () => {
   interaction.cancel()

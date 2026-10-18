@@ -4,6 +4,9 @@ import { mkdtemp, writeFile, symlink, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { createDashboard } from '../packages/shared/src/index.ts'
 const dir = await mkdtemp(join(tmpdir(), 'nav-server-test-'))
 process.env.NAV_JWT_SECRET = 'test-only-secret'
@@ -213,6 +216,27 @@ test('schema capability is explicit and old protocol writes cannot remove canvas
     (await (await app.request('/api/dashboards')).json()).canvasSettings,
     d.canvasSettings,
   )
+})
+test('all canvas maintenance commands reject a missing database without creating any files', async () => {
+  const commands = ['canvas-preflight', 'canvas-dry-run', 'canvas-migrate']
+  for (const command of commands) {
+    const path = join(dir, `${command}-missing.db`)
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        fileURLToPath(new URL('../packages/server/src/maintenance.ts', import.meta.url)),
+        command,
+      ],
+      { env: { ...process.env, NAV_DB_PATH: path }, encoding: 'utf8', timeout: 10000 },
+    )
+    assert.equal(result.error, undefined)
+    assert.notEqual(result.status, 0, command)
+    assert.match(result.stderr, /数据库不存在/, command)
+    for (const suffix of ['', '-wal', '-shm'])
+      assert.equal(existsSync(path + suffix), false, `${command}${suffix}`)
+  }
 })
 test('camera migration dry-run, backup, idempotence and rollback protect the original rows', async () => {
   const { migrateCanvasDatabase } = await import('../packages/server/src/db/state.ts')

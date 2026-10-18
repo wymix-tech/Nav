@@ -1,4 +1,4 @@
-import { ref, onUnmounted, type Ref } from 'vue'
+import { ref, watch, onUnmounted, type Ref } from 'vue'
 import {
   CANVAS,
   panByScreen,
@@ -25,7 +25,6 @@ interface Options {
   canEdit: () => boolean
   widgets: () => WidgetInstance[]
   commit: (id: string, c: CanvasLayout) => void
-  interaction: (active: boolean) => void
 }
 export function useCanvasInteraction(o: Options) {
   const draft = ref<{ id: string; canvas: CanvasLayout } | null>(null),
@@ -68,8 +67,14 @@ export function useCanvasInteraction(o: Options) {
     release()
     endWheel(true)
     space.value = false
-    o.interaction(false)
   }
+  watch(
+    () => o.widgets().map((w) => w.id),
+    (ids) => {
+      if (active?.id && ['move', 'resize'].includes(active.mode) && !ids.includes(active.id))
+        cancel()
+    },
+  )
   function point(e: PointerEvent): Point {
     return { x: e.clientX, y: e.clientY }
   }
@@ -125,7 +130,6 @@ export function useCanvasInteraction(o: Options) {
       id: w?.id,
       canvas: w ? { ...widgetCanvas(w) } : undefined,
     }
-    o.interaction(true)
   }
   function preview(e: PointerEvent) {
     if (!active || !pointers.has(e.pointerId)) return
@@ -208,7 +212,6 @@ export function useCanvasInteraction(o: Options) {
       JSON.stringify(result.canvas) !== JSON.stringify(a.canvas)
     )
       o.commit(result.id, result.canvas)
-    o.interaction(false)
   }
   function wheel(e: WheelEvent) {
     if (!o.enabled() || active || (e.target as Element).closest('.canvas-ui,.canvas-item')) return

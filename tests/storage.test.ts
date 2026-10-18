@@ -313,6 +313,43 @@ test('blocked edits during legacy queue recovery are preserved outside the immut
   }
 })
 
+test('recovery previews expose every shared layout setting that resolution can replace', async () => {
+  const a = new SyncAdapter()
+  try {
+    remote.instanceId = 'recovery-preview-server'
+    const d = await a.getDashboard()
+    const changes = {
+      columns: 8,
+      baseColumns: 8,
+      rowHeight: 140,
+      layoutSettings: { columnMode: 'custom', contentWidthMode: 'fluid', maxContentWidth: 1200 },
+      layoutProfiles: { 'cols-8': {} },
+    }
+    for (const [field, value] of Object.entries(changes)) {
+      await db.sync.put({
+        key: a.key,
+        snapshot: { ...d, [field]: value },
+        conflict: d,
+        revision: d.revision ?? 0,
+        generation: 0,
+        pending: [],
+        lastSyncAt: null,
+      })
+      const preview = await a.getRecoveryPreview()
+      assert.equal(preview!.differences.length, 1, field)
+      assert.ok(preview!.differences[0].startsWith(`${field}:`), field)
+    }
+    const local = { ...d, ...changes } as Dashboard
+    await db.sync.update(a.key, { snapshot: local })
+    assert.equal((await a.getRecoveryPreview())!.differences.length, Object.keys(changes).length)
+    online = false
+    await a.resolveConflict(true)
+    assert.deepEqual((await db.sync.get(a.key))!.snapshot, local)
+  } finally {
+    await a.dispose()
+  }
+})
+
 test('a server without schema capability receives no writes and the current protocol draft survives', async () => {
   const originalFetch = globalThis.fetch,
     a = new SyncAdapter()

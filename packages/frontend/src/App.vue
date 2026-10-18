@@ -37,7 +37,6 @@ const showAbout = ref(false)
 const showLogin = ref(false)
 const showInstall = ref(false)
 const showLibrary = ref(false)
-const isDragging = ref(false)
 const showPreferences = ref(false)
 const showClearConfirm = ref(false)
 const slideshowIndex = ref(0)
@@ -56,29 +55,13 @@ onMounted(async () => {
     // 无后端，忽略
   }
   backendAvailable.value = isBackendAvailable()
-
-  // 拖拽时隐藏组件库
-  document.addEventListener('dragstart', handleDragStart)
-  document.addEventListener('dragend', handleDragEnd)
 })
 
 onUnmounted(() => {
   mainObserver?.disconnect()
   window.removeEventListener('nav-update-available', updateAvailable)
-  document.removeEventListener('dragstart', handleDragStart)
-  document.removeEventListener('dragend', handleDragEnd)
   if (slideshowTimer) clearInterval(slideshowTimer)
 })
-
-function handleDragStart() {
-  isDragging.value = true
-}
-
-function handleDragEnd() {
-  setTimeout(() => {
-    isDragging.value = false
-  }, 300)
-}
 
 // 自定义网页标题
 watch(
@@ -325,7 +308,6 @@ function toggleLibrary() {
         @add-widget="dashboardStore.addWidget"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="dashboardStore.updateWidgetConfig"
-        @interaction="(active) => (isDragging = active)"
       />
       <DashboardGrid
         v-else-if="dashboardStore.dashboard"
@@ -339,7 +321,6 @@ function toggleLibrary() {
         :settings="dashboardStore.dashboard.layoutSettings"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="(id, cfg) => dashboardStore.updateWidgetConfig(id, cfg)"
-        @interaction="(active) => (isDragging = active)"
         @update-layouts="dashboardStore.updateLayouts"
         @reset-profile="dashboardStore.resetProfile"
         @set-base="dashboardStore.setBase"
