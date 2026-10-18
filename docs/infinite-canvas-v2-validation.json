@@ -11,12 +11,13 @@
   "implementation": {
     "branch": "feat/infinite-canvas-v2",
     "pr": 3,
-    "latest_source_commit": "3f63410c7f4d9620fed4bd7d6f5903958e769cac",
+    "latest_source_commit": "09e61fd67011c1d04e539208b49ab57980e007e3",
     "documentVersion": 3,
     "schemaVersion": 3,
     "dexieSchema": 4,
     "deployed": false,
-    "productionDataTouched": false
+    "productionDataTouched": false,
+    "followup_scope": "validation documentation and App.vue formatting only"
   },
   "local": {
     "environment": "shared Linux x86_64",
@@ -27,7 +28,7 @@
     "pnpm_check": {
       "typecheck": "passed",
       "eslint": "passed",
-      "unit_route_storage_tests": 79,
+      "unit_route_storage_tests": 80,
       "failed": 0,
       "production_build": "passed"
     },
@@ -38,7 +39,9 @@
       "original_factory_failed": true,
       "shared_task_factory_created_adapters": 1,
       "fixed_factory_passed": true
-    }
+    },
+    "changed_file_formatting": "passed",
+    "git_diff_check": "passed"
   },
   "ci_runs": [
     {
@@ -73,8 +76,54 @@
       "production_and_docker": "skipped after browser failure"
     },
     {
-      "commit": "3f63410c7f4d9620fed4bd7d6f5903958e769cac",
-      "status": "awaiting final head CI"
+      "id": 39137354365,
+      "commit": "d4fefca8c94b1f5301c9849e076c54ffb3716b1b",
+      "conclusion": "success",
+      "unit_route_storage_tests": 79,
+      "development": {
+        "passed": 64,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"]
+      },
+      "production": {
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": "passed"
+    },
+    {
+      "id": 39137566142,
+      "url": "https://github.com/wymix-tech/Nav/actions/runs/39137566142",
+      "commit": "09e61fd67011c1d04e539208b49ab57980e007e3",
+      "conclusion": "success",
+      "node": "22",
+      "pnpm": "9.15.0",
+      "playwright": "1.64.1",
+      "unit_route_storage_tests": 80,
+      "development": {
+        "passed": 64,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"],
+        "skip_reasons": {
+          "production_only_service_worker_cases": 3,
+          "CDP_touch_only_chromium": 2
+        }
+      },
+      "production": {
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": {
+        "status": "passed",
+        "image_sha256": "c544bc3e8f1119d1a89ae390bbb3cc7ee28f0e0db986bd03c4f14d5b9c37c2f9",
+        "deployed": false
+      }
     }
   ],
   "synthetic_sqlite_rehearsal": {
@@ -182,7 +231,7 @@
     {
       "id": "B06",
       "status": "partial",
-      "evidence_or_remaining": "no-op identity, history checks and batch undo/redo browser additions"
+      "evidence_or_remaining": "No-op/storage failure unit tests and three-browser batch undo/redo passed; full exceptional failure matrix still requires review"
     },
     {
       "id": "C01",
@@ -336,13 +385,13 @@
     },
     {
       "id": "H01",
-      "status": "browser_pending",
-      "evidence_or_remaining": "group/order/lock DOM and sandbox runtime cases; first run fixture init failure corrected"
+      "status": "passed_browser_development",
+      "evidence_or_remaining": "All three browser lifecycle cases passed in run 39137566142; chat draft, stable DOM marker and sandbox runtime retained"
     },
     {
       "id": "H02",
-      "status": "partial",
-      "evidence_or_remaining": "existing navigation/list lifecycle tests plus search/named-view DOM marker case"
+      "status": "passed_browser_development",
+      "evidence_or_remaining": "All three browser navigation/list/search/named-view lifecycle cases passed in run 39137566142"
     },
     {
       "id": "H03",
@@ -357,12 +406,12 @@
     {
       "id": "H05",
       "status": "partial",
-      "evidence_or_remaining": "existing production SW regression; latest production CI pending"
+      "evidence_or_remaining": "Production Chromium offline shell passed; physical upgrade and expanded old-client/SW matrix not fully exercised"
     },
     {
       "id": "H06",
       "status": "not_complete",
-      "evidence_or_remaining": "three-browser CI pending; physical devices, reference performance and production replica rehearsal not run"
+      "evidence_or_remaining": "Development three-browser, production Chromium and Docker passed; physical devices, reference performance and production replica rehearsal not run"
     }
   ],
   "not_verified": [
@@ -379,5 +428,5 @@
     "target_p95_ms": 33,
     "target_claimed_met": false
   },
-  "release_status": "draft; implementation review and applicable CI in progress; no merge/deployment/production migration"
+  "release_status": "draft; implementation, available CI and synthetic database rehearsal passed; no merge/deployment/production migration; physical-device, reference-performance and production-replica release gates remain"
 }

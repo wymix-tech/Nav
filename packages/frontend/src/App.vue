@@ -267,9 +267,7 @@ function toggleLibrary() {
         </ul>
         <p v-if="dashboardStore.recoveryPreview.differences.length > 100">
           还有
-          {{
-            dashboardStore.recoveryPreview.differences.length - 100
-          }}
+          {{ dashboardStore.recoveryPreview.differences.length - 100 }}
           项变化；导出备份可查看完整双方快照。
         </p>
         <p v-if="dashboardStore.recoveryPreview.remoteFresh === false">
