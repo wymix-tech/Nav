@@ -21,7 +21,16 @@ watch(
   async () => {
     const n = ++ticket
     subscription?.unsubscribe()
-    const space = await viewSpaceKey(props.dashboard.instanceId, props.dashboard.id, localMode)
+    let space: string
+    try {
+      space = await viewSpaceKey(props.dashboard.instanceId, props.dashboard.id, localMode)
+    } catch {
+      if (n === ticket) {
+        key.value = ''
+        error.value = '空间身份无法保存'
+      }
+      return
+    }
     if (n !== ticket) return
     key.value = space
     subscription = liveQuery(() => listNamedViews(space)).subscribe({
@@ -54,13 +63,17 @@ function beginRename(v: NamedView) {
   rename.value = v.name
 }
 async function jump(v: NamedView) {
-  const latest = await listNamedViews(key.value),
-    row = latest.views.find((r) => r.id === v.id)
-  if (!row) {
-    error.value = '视角已删除或无效'
-    return
+  try {
+    const latest = await listNamedViews(key.value),
+      row = latest.views.find((r) => r.id === v.id)
+    if (!row) {
+      error.value = '视角已删除或无效'
+      return
+    }
+    emit('navigate', row.camera)
+  } catch {
+    error.value = '无法读取本机视角'
   }
-  emit('navigate', row.camera)
 }
 onUnmounted(() => {
   ticket++
@@ -72,7 +85,7 @@ onUnmounted(() => {
     <p>我的视角（此浏览器）</p>
     <form @submit.prevent="action({ type: 'create', name, camera })">
       <input v-model="name" aria-label="视角名称" placeholder="保存当前相机位置" /><button
-        :disabled="key.includes(':unconfirmed:')"
+        :disabled="!key || key.includes(':unconfirmed:')"
       >
         保存当前视角
       </button>

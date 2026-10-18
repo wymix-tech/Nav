@@ -110,6 +110,7 @@ export function snapSelection(
   zoom: number,
   viewport: Rect,
   held: Guide[] = [],
+  mode: 'move' | 'resize' = 'move',
 ): { delta: Point; guides: Guide[] } {
   const expanded = {
     x: viewport.x - 64 / zoom,
@@ -118,7 +119,10 @@ export function snapSelection(
     h: viewport.h + 128 / zoom,
   }
   const refs = references.filter((r) => intersects(r.rect, expanded)),
-    moved = { ...box, x: box.x + raw.x, y: box.y + raw.y },
+    moved =
+      mode === 'resize'
+        ? { ...box, w: box.w + raw.x, h: box.h + raw.y }
+        : { ...box, x: box.x + raw.x, y: box.y + raw.y },
     delta = { ...raw },
     guides: Guide[] = []
   for (const axis of ['x', 'y'] as const) {
@@ -143,7 +147,7 @@ export function snapSelection(
         candidates.push({ adjust, held: keep, guide: { axis, value, from, to, id, type } })
     }
     for (const ref of refs)
-      for (const a of [0, 0.5, 1])
+      for (const a of mode === 'resize' ? [1] : [0, 0.5, 1])
         for (const t of [0, 0.5, 1])
           add(
             ref.rect[axis] + ref.rect[extent] * t,
@@ -160,7 +164,7 @@ export function snapSelection(
           a.id.localeCompare(b.id),
       )
       .slice(0, 24)
-    for (const a of nearest)
+    for (const a of mode === 'resize' ? [] : nearest)
       for (const b of nearest) {
         if (
           a.rect[axis] + a.rect[extent] > moved[axis] ||
@@ -197,7 +201,10 @@ export function snapSelection(
     if (candidates[0]) {
       delta[axis] += candidates[0].adjust
       guides.push(candidates[0].guide)
-    } else delta[axis] = snapCanvas(box[axis] + raw[axis]) - box[axis]
+    } else {
+      const anchor = mode === 'resize' ? box[extent] : box[axis]
+      delta[axis] = snapCanvas(anchor + raw[axis]) - anchor
+    }
   }
   return { delta, guides }
 }

@@ -62,7 +62,9 @@ test.beforeEach(async ({ page, request }) => {
   d.canvasScene = initialScene(d.widgets.map((w) => w.id))
   await put(request, d)
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await page.addInitScript((token) => localStorage.setItem('nav_token', token), token)
+  await page.addInitScript((token) => {
+    if (window === window.top) localStorage.setItem('nav_token', token)
+  }, token)
   await page.goto('/')
   await expect(page.locator('.canvas-item')).toHaveCount(3)
 })
@@ -105,7 +107,7 @@ test('V2 group, order, lock and ungroup preserve hosts and chat draft, one comma
   await page.getByRole('button', { name: '锁定所选', exact: true }).click()
   await expect.poll(async () => (await snapshot(request)).canvasScene!.groups[0].locked).toBe(true)
   const locked = await snapshot(request)
-  await page.getByRole('button', { name: '删除所选及组内组件', exact: true }).click()
+  await expect(page.getByRole('button', { name: '删除所选及组内组件', exact: true })).toBeDisabled()
   expect((await snapshot(request)).revision).toBe(locked.revision)
   await page.getByRole('button', { name: '解锁所选', exact: true }).click()
   await expect.poll(async () => (await snapshot(request)).canvasScene!.groups[0].locked).toBe(false)
@@ -144,6 +146,14 @@ test('V2 common movement and Escape cancel use one atomic geometry commit with s
   await page.keyboard.press('Escape')
   await page.mouse.up()
   expect((await snapshot(request)).widgets).toEqual(moved.widgets)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect
+    .poll(async () => (await snapshot(request)).widgets.map((w) => w.canvas))
+    .toEqual(before.widgets.map((w) => w.canvas))
+  await page.getByRole('button', { name: '重做', exact: true }).click()
+  await expect
+    .poll(async () => (await snapshot(request)).widgets.map((w) => w.canvas))
+    .toEqual(moved.widgets.map((w) => w.canvas))
 })
 test('V2 search and local named view CRUD navigate without document writes and preserve mounted widgets', async ({
   page,
@@ -242,4 +252,40 @@ test('V2 regions remain background annotations and group layer changes preserve 
   expect((await snapshot(request)).widgets).toEqual(original)
   await page.getByRole('button', { name: '进入组件', exact: true }).click()
   await expect(input).toHaveValue('iframe kept')
+})
+
+test('V2 region gesture creates once, moves and deletes only the annotation, and marquee selects content without writing', async ({
+  page,
+  request,
+}) => {
+  await edit(page)
+  const before = await snapshot(request),
+    box = (await page.locator('.canvas-grid').boundingBox())!
+  await page.getByRole('button', { name: '区域工具', exact: true }).click()
+  await page.mouse.move(box.x + 25, box.y + 25)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 205, box.y + 145)
+  await page.mouse.up()
+  await expect.poll(async () => (await snapshot(request)).canvasScene!.regions.length).toBe(1)
+  const created = await snapshot(request)
+  expect(created.revision).toBe(before.revision! + 1)
+  expect(created.widgets).toEqual(before.widgets)
+  const title = page.getByRole('button', { name: '区域 新区域', exact: true }),
+    r = (await title.boundingBox())!
+  await page.mouse.move(r.x + 15, r.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(r.x + 75, r.y + 50)
+  await page.mouse.up()
+  await expect.poll(async () => (await snapshot(request)).revision).toBe(created.revision! + 1)
+  expect((await snapshot(request)).widgets).toEqual(before.widgets)
+  await page.getByRole('button', { name: '图层', exact: true }).click()
+  await page.getByRole('button', { name: '删除区域', exact: true }).click()
+  await expect.poll(async () => (await snapshot(request)).canvasScene!.regions.length).toBe(0)
+  await page.getByRole('button', { name: '关闭面板', exact: true }).click()
+  const current = await snapshot(request)
+  await page.getByRole('button', { name: '选择工具', exact: true }).click()
+  await page.locator('.canvas-grid').focus()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+  await expect(page.locator('.canvas-item.selected')).toHaveCount(3)
+  expect((await snapshot(request)).revision).toBe(current.revision)
 })

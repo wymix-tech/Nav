@@ -183,6 +183,13 @@ export function effectiveLocked(d: Dashboard, r: SelectionRef): boolean {
   const g = s.groups.find((x) => x.id === r.id)
   return !!g && (g.locked || g.memberIds.some((id) => s.widgetMeta[id].locked))
 }
+export function layoutProtected(d: Dashboard, id: string): boolean {
+  const owner = groupFor(d, id)
+  return (
+    effectiveLocked(d, { kind: 'widget', id }) ||
+    (!!owner && effectiveLocked(d, { kind: 'group', id: owner.id }))
+  )
+}
 export function sceneRanks(d: Dashboard): Record<string, number> {
   return Object.fromEntries(
     (d.canvasScene?.layers ?? [])

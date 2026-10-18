@@ -550,3 +550,67 @@ test('V2 recovery compares same-count membership and layer changes and ignores h
     await a.dispose()
   }
 })
+
+test('recovery refreshes its preview, rechecks remote revision before applying and never merges stale locks implicitly', async () => {
+  const a = new SyncAdapter()
+  try {
+    const d = await a.getDashboard()
+    online = false
+    d.title = 'Local draft'
+    await a.saveDashboard(d)
+    remote = { ...remote, title: 'Remote one', revision: 1 }
+    online = true
+    localStorage.setItem('nav_token', 'session')
+    await a.flush()
+    let preview = await a.getRecoveryPreview()
+    assert.equal(preview!.remoteFresh, true)
+    assert.equal(preview!.remoteTitle, 'Remote one')
+    remote = { ...remote, title: 'Remote two', revision: 2 }
+    await assert.rejects(() => a.resolveConflict(true), /远端已变化/)
+    assert.equal((await db.sync.get(a.key))!.snapshot.title, 'Local draft')
+    preview = await a.getRecoveryPreview()
+    assert.equal(preview!.remoteTitle, 'Remote two')
+    await a.resolveConflict(false)
+    assert.equal((await a.cached())!.title, 'Remote two')
+  } finally {
+    await a.dispose()
+  }
+})
+test('V1 pending and future snapshots keep immutable contents, while old-schema and future-server writes stay paused', async () => {
+  const a = new SyncAdapter()
+  try {
+    const d = await a.getDashboard(),
+      old = structuredClone(d)
+    old.documentVersion = 2
+    delete old.canvasScene
+    await db.sync.put({
+      key: a.key,
+      snapshot: old,
+      revision: 0,
+      generation: 3,
+      pending: [{ id: 'possibly-committed-v1', snapshot: old }],
+      lastSyncAt: null,
+    })
+    const candidate = await a.getDashboard()
+    assert.equal(candidate.documentVersion, 3)
+    await a.flush()
+    assert.equal(putCount, 0)
+    assert.deepEqual((await db.sync.get(a.key))!.pending[0].snapshot, old)
+    await assert.rejects(() => a.saveDashboard(old), /版本 3/)
+    const future: any = { ...d, documentVersion: 4 }
+    await db.sync.put({
+      key: a.key,
+      snapshot: future,
+      revision: 0,
+      generation: 4,
+      pending: [{ id: 'future-operation', snapshot: future }],
+      lastSyncAt: null,
+    })
+    await a.flush()
+    assert.equal(putCount, 0)
+    assert.equal((await a.getSyncState()).status, 'upgrade-required')
+    assert.deepEqual((await db.sync.get(a.key))!.snapshot, future)
+  } finally {
+    await a.dispose()
+  }
+})

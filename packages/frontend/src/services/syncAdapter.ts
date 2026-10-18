@@ -2,6 +2,7 @@ import {
   migrateDashboard,
   migrateCanvasDocument,
   validateDashboard,
+  validateCurrentDashboard,
   validateCanvasTransition,
   canonical,
   canvasSceneDifferences,
@@ -123,6 +124,7 @@ export class SyncAdapter implements StorageAdapter {
           this.schemaReady = h.get('X-Nav-State-Schema') === '3'
         }),
       )
+      this.schemaReady = this.schemaReady && remote.documentVersion === 3
       return await db.transaction('rw', db.sync, db.backups, async () => {
         const row = await db.sync.get(this.key)
         if (
@@ -195,7 +197,7 @@ export class SyncAdapter implements StorageAdapter {
     return row ? migrateCanvasDocument(migrateDashboard(clone(row.snapshot))) : null
   }
   async saveDashboard(d: Dashboard): Promise<void> {
-    validateDashboard(d)
+    validateCurrentDashboard(d)
     let committedGeneration = this.observedGeneration
     let upgradeBlocked = false
     await db.transaction('rw', db.sync, db.backups, async () => {
@@ -239,9 +241,10 @@ export class SyncAdapter implements StorageAdapter {
     await this.quarantineLegacy()
     if (!navigator.onLine) return
     if (!this.schemaReady) {
-      await apiJson('/dashboards', {}, (h) => {
+      const capability = await apiJson<Dashboard>('/dashboards', {}, (h) => {
         this.schemaReady = h.get('X-Nav-State-Schema') === '3'
-      }).catch(() => {})
+      }).catch(() => null)
+      this.schemaReady = this.schemaReady && capability?.documentVersion === 3
       if (!this.schemaReady) {
         await db.sync.update(this.key, {
           error: '服务端尚未支持文档版本 3，请更新服务端；本地草稿已保留',

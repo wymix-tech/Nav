@@ -24,6 +24,10 @@ const expanded = ref<string[]>([]),
   renaming = ref(''),
   name = ref('')
 const layers = computed(() => [...(props.dashboard.canvasScene?.layers ?? [])].reverse())
+const ownLocked = (r: SelectionRef) =>
+  r.kind === 'widget'
+    ? props.dashboard.canvasScene?.widgetMeta[r.id]?.locked
+    : props.dashboard.canvasScene?.groups.find((g) => g.id === r.id)?.locked
 const chosen = (r: SelectionRef) => props.selected.some((x) => refKey(x) === refKey(r))
 function rename(r: SelectionRef) {
   renaming.value = refKey(r)
@@ -64,13 +68,12 @@ function finishRename(r: SelectionRef) {
       <p v-if="r.kind === 'group'">
         {{ dashboard.canvasScene?.groups.find((g) => g.id === r.id)?.memberIds.length }} 个成员
       </p>
+      <p v-if="r.kind === 'group' && !ownLocked(r) && effectiveLocked(dashboard, r)">
+        含锁定成员，请展开后解锁成员。
+      </p>
       <div v-if="editable" class="row-actions">
-        <button
-          @click="
-            emit('command', { type: 'set-lock', refs: [r], locked: !effectiveLocked(dashboard, r) })
-          "
-        >
-          {{ effectiveLocked(dashboard, r) ? '解锁' : '锁定' }}
+        <button @click="emit('command', { type: 'set-lock', refs: [r], locked: !ownLocked(r) })">
+          {{ ownLocked(r) ? '解锁' : '锁定' }}
         </button>
         <button @click="rename(r)">改名</button>
         <button

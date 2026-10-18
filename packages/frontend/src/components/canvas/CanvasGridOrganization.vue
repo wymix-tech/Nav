@@ -58,6 +58,7 @@ function locate(r: SelectionRef) {
         :selected="selected"
         tool="interact"
         :list="true"
+        :geometry-tools="false"
         :snapping="false"
         :additive="additive"
         @additive="additive = !additive"

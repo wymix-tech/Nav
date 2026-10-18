@@ -211,6 +211,10 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
     }
   }
 }
+export function validateCurrentDashboard(d: unknown): asserts d is Dashboard {
+  validateDashboard(d)
+  assert(d.documentVersion === 3, '写入需要文档版本 3')
+}
 export function validateInstalled(widget: unknown): asserts widget is InstalledWidget {
   assert(record(widget) && record(widget.manifest), '缺少插件 manifest')
   checkStructure(widget)

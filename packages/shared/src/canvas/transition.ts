@@ -1,15 +1,10 @@
 import type { Dashboard } from '../types/dashboard.js'
 import { assert } from '../validation.js'
-import { canonical, effectiveLocked, groupFor } from './scene.js'
+import { canonical, effectiveLocked, groupFor, layoutProtected } from './scene.js'
 // Compare the current lock state, never the proposed one. Unlock is a separate command.
 export function validateCanvasTransition(current: Dashboard, next: Dashboard) {
   for (const w of current.widgets) {
-    const owner = groupFor(current, w.id)
-    if (
-      !effectiveLocked(current, { kind: 'widget', id: w.id }) &&
-      !(owner && effectiveLocked(current, { kind: 'group', id: owner.id }))
-    )
-      continue
+    if (!layoutProtected(current, w.id)) continue
     const other = next.widgets.find((v) => v.id === w.id)
     assert(
       other &&

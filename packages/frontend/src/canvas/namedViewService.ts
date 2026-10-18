@@ -22,6 +22,7 @@ function valid(row: NamedView) {
     Number.isSafeInteger(row.revision) &&
     row.revision >= 1 &&
     typeof row.id === 'string' &&
+    /^[\w-]{1,100}$/.test(row.id) &&
     typeof row.createdAt === 'string' &&
     typeof row.updatedAt === 'string'
   )

@@ -7,7 +7,6 @@ import {
   clientToViewport,
   boundCamera,
   clamp,
-  snapCanvas,
   wheelDelta,
   canonical,
   commonDelta,
@@ -334,25 +333,26 @@ export function useCanvasInteraction(o: Options) {
       raw = { x: end.x - begin.x, y: end.y - begin.y },
       widgets: Record<string, CanvasLayout> = {},
       regions: Record<string, CanvasRegion> = {}
+    const keys = new Set(a.refs.map(refKey)),
+      references = [
+        ...(d.canvasScene?.layers ?? []),
+        ...(d.canvasScene?.regions ?? []).map((r) => ({ kind: 'region' as const, id: r.id })),
+      ]
+        .filter((r) => !keys.has(refKey(r)))
+        .map((r) => ({ id: refKey(r), rect: selectionRect(d, r) }))
+    const snapped =
+      o.snapping.value && !e.altKey
+        ? snapSelection(
+            a.rect!,
+            raw,
+            references,
+            a.camera.zoom,
+            visibleBounds(a.camera, o.size.value),
+            guides.value,
+            a.mode === 'resize' ? 'resize' : 'move',
+          )
+        : { delta: raw, guides: [] }
     if (a.mode === 'move') {
-      const keys = new Set(a.refs.map(refKey)),
-        references = [
-          ...(d.canvasScene?.layers ?? []),
-          ...(d.canvasScene?.regions ?? []).map((r) => ({ kind: 'region' as const, id: r.id })),
-        ]
-          .filter((r) => !keys.has(refKey(r)))
-          .map((r) => ({ id: refKey(r), rect: selectionRect(d, r) }))
-      const snapped =
-        o.snapping.value && !e.altKey
-          ? snapSelection(
-              a.rect!,
-              raw,
-              references,
-              a.camera.zoom,
-              visibleBounds(a.camera, o.size.value),
-              guides.value,
-            )
-          : { delta: raw, guides: [] }
       const delta = commonDelta(d, a.refs, snapped.delta)
       guides.value = snapped.guides.filter(
         (g) => Math.abs(delta[g.axis] - snapped.delta[g.axis]) < 1e-7,
@@ -368,24 +368,29 @@ export function useCanvasInteraction(o: Options) {
       draft.value = { widgets, regions, delta }
     } else {
       const r = a.refs[0],
-        c = a.rect!,
-        snap = (v: number) => (o.snapping.value && !e.altKey ? snapCanvas(v) : v)
+        c = a.rect!
       if (r.kind === 'widget') {
         const w = d.widgets.find((w) => w.id === r.id)!,
           min = resolveWidgetSize(w.widgetId, w.source)
         widgets[r.id] = {
           ...widgetRect(d, r.id),
-          w: clamp(snap(c.w + raw.x), min.minWidth, CANVAS.maxSize),
-          h: clamp(snap(c.h + raw.y), min.minHeight, CANVAS.maxSize),
+          w: clamp(c.w + snapped.delta.x, min.minWidth, CANVAS.maxSize),
+          h: clamp(c.h + snapped.delta.y, min.minHeight, CANVAS.maxSize),
         }
       } else {
         const original = d.canvasScene!.regions.find((x) => x.id === r.id)!
         regions[r.id] = {
           ...original,
-          w: clamp(snap(c.w + raw.x), 40, CANVAS.positionLimit + CANVAS.maxSize - c.x),
-          h: clamp(snap(c.h + raw.y), 40, CANVAS.positionLimit + CANVAS.maxSize - c.y),
+          w: clamp(c.w + snapped.delta.x, 40, CANVAS.positionLimit + CANVAS.maxSize - c.x),
+          h: clamp(c.h + snapped.delta.y, 40, CANVAS.positionLimit + CANVAS.maxSize - c.y),
         }
       }
+      const actual = r.kind === 'widget' ? widgets[r.id] : regions[r.id]
+      guides.value = snapped.guides.filter(
+        (g) =>
+          Math.abs((g.axis === 'x' ? actual.w - c.w : actual.h - c.h) - snapped.delta[g.axis]) <
+          1e-7,
+      )
       draft.value = { widgets, regions }
     }
   }

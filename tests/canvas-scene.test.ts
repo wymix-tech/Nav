@@ -341,3 +341,19 @@ test('search whitelist excludes chat secrets and arbitrary plugin config, suppor
   assert.equal(searchCanvas(idx, '工作')[0].ref.kind, 'group')
   assert.equal(searchCanvas(idx, '  AI   助手 ').length, 1)
 })
+
+test('resize snaps only its active right/bottom edges, retains origin and falls back to size grid', () => {
+  const box = { x: 17, y: 23, w: 100, h: 100 },
+    viewport = { x: -500, y: -500, w: 2000, h: 2000 },
+    references = [{ id: 'target', rect: { x: 200, y: 200, w: 100, h: 100 } }]
+  const result = snapSelection(box, { x: 78, y: 72 }, references, 1, viewport, [], 'resize')
+  assert.deepEqual(result.delta, { x: 83, y: 77 })
+  assert.equal(box.x, 17)
+  assert.equal(box.y, 23)
+  assert.deepEqual(
+    result.guides.map((g) => g.value),
+    [200, 200],
+  )
+  const free = snapSelection(box, { x: 21, y: 21 }, [], 1, viewport, [], 'resize')
+  assert.deepEqual(free.delta, { x: 20, y: 20 })
+})

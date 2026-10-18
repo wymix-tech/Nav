@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
-  validateDashboard,
+  validateCurrentDashboard,
   validateCanvasTransition,
   applyCanvasCommand as executeCanvasCommand,
   canonical,
@@ -94,7 +94,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       return false
     }
     try {
-      validateDashboard(next)
+      validateCurrentDashboard(next)
       if (dashboard.value) validateCanvasTransition(dashboard.value, next)
       if (dashboard.value && canonical(dashboard.value) === canonical(next)) return true
     } catch (e) {

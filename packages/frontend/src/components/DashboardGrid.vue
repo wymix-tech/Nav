@@ -9,7 +9,7 @@ import {
   constraints,
   findPlacement,
   GAP,
-  effectiveLocked,
+  layoutProtected,
   groupFor,
   type Dashboard,
   type WidgetInstance,
@@ -131,8 +131,7 @@ onUnmounted(() => {
 watch(
   () => props.dashboard.canvasScene,
   () => {
-    if (interaction && effectiveLocked(props.dashboard, { kind: 'widget', id: interaction.id }))
-      cancel()
+    if (interaction && layoutProtected(props.dashboard, interaction.id)) cancel()
   },
 )
 watch(canEdit, (allowed) => {
@@ -161,7 +160,7 @@ function start(e: PointerEvent, w: WidgetInstance, mode: 'move' | 'resize') {
     !canEdit.value ||
     cols.value === 1 ||
     e.button !== 0 ||
-    effectiveLocked(props.dashboard, { kind: 'widget', id: w.id })
+    layoutProtected(props.dashboard, w.id)
   )
     return
   e.preventDefault()
@@ -234,7 +233,7 @@ function lostCapture() {
 function keyboard(e: KeyboardEvent, w: WidgetInstance) {
   if (
     !canEdit.value ||
-    effectiveLocked(props.dashboard, { kind: 'widget', id: w.id }) ||
+    layoutProtected(props.dashboard, w.id) ||
     !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) ||
     cols.value === 1
   )
@@ -306,9 +305,7 @@ function style(id: string) {
         :class="{ editing: canEdit }"
       >
         <button
-          v-if="
-            canEdit && cols > 1 && !effectiveLocked(dashboard, { kind: 'widget', id: widget.id })
-          "
+          v-if="canEdit && cols > 1 && !layoutProtected(dashboard, widget.id)"
           class="drag-handle"
           :aria-label="'移动 ' + widget.widgetId"
           @pointerdown="start($event, widget, 'move')"
@@ -321,9 +318,7 @@ function style(id: string) {
           ⠿
         </button>
         <div
-          v-if="
-            canEdit && cols === 1 && !effectiveLocked(dashboard, { kind: 'widget', id: widget.id })
-          "
+          v-if="canEdit && cols === 1 && !layoutProtected(dashboard, widget.id)"
           class="stack-actions"
         >
           <button aria-label="上移" @click="reorder(widget.id, -1)">↑</button
@@ -333,17 +328,12 @@ function style(id: string) {
           :widget="widget"
           :editing="editing"
           :editable="editable"
-          :can-delete="
-            !effectiveLocked(dashboard, { kind: 'widget', id: widget.id }) &&
-            !groupFor(dashboard, widget.id)
-          "
+          :can-delete="!layoutProtected(dashboard, widget.id) && !groupFor(dashboard, widget.id)"
           @remove="emit('remove-widget', widget.id)"
           @update-config="(config) => emit('update-config', widget.id, config)"
         />
         <button
-          v-if="
-            canEdit && cols > 1 && !effectiveLocked(dashboard, { kind: 'widget', id: widget.id })
-          "
+          v-if="canEdit && cols > 1 && !layoutProtected(dashboard, widget.id)"
           class="resize-handle"
           :aria-label="'调整 ' + widget.widgetId + ' 大小'"
           @pointerdown="start($event, widget, 'resize')"

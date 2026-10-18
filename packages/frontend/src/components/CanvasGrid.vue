@@ -2,15 +2,13 @@
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
   CANVAS,
-  effectiveLocked,
+  layoutProtected,
   groupFor,
   normalizeSelection,
   sceneRanks,
   refKey,
   selectionRect,
   resolveCanvasLabel,
-  type CanvasCommand,
-  type SelectionRef,
   worldToScreen,
   zoomAt,
   fitBounds,
@@ -26,7 +24,7 @@ import {
   type Rect,
   type Size,
 } from '@nav/shared'
-import { useDashboardStore } from '../stores/dashboardStore'
+import { useCanvasWorkspace } from '../canvas/useCanvasWorkspace'
 import { useCanvasLabels } from '../canvas/useCanvasLabels'
 import { useCanvasSelection } from '../canvas/useCanvasSelection'
 import type { CanvasTool } from '../canvas/useCanvasInteraction'
@@ -51,7 +49,6 @@ const emit = defineEmits<{
   'remove-widget': [id: string]
   'update-config': [id: string, config: Record<string, any>]
 }>()
-const store = useDashboardStore()
 const tool = ref<CanvasTool>('interact'),
   snapping = ref(true),
   panel = ref<'' | 'layers' | 'search' | 'views'>('')
@@ -63,7 +60,7 @@ const root = ref<HTMLElement | null>(null),
 const hand = ref(false),
   minimap = ref(false),
   notice = ref(''),
-  highlight = ref('')
+  highlight = ref<string[]>([])
 const rects = computed(() => [
   ...props.dashboard.widgets.map(widgetCanvas),
   ...(props.dashboard.canvasScene?.regions ?? []),
@@ -187,7 +184,7 @@ function keyboard(e: KeyboardEvent, w: WidgetInstance) {
     return
   e.preventDefault()
   e.stopPropagation()
-  if (effectiveLocked(props.dashboard, { kind: 'widget', id: w.id })) {
+  if (layoutProtected(props.dashboard, w.id)) {
     notice.value = '组件布局已锁定'
     return
   }
@@ -234,7 +231,7 @@ async function addWidget(request: AddWidgetRequest) {
     props.dashboard.baseColumns ?? props.dashboard.columns,
   )
   emit('add-widget', w)
-  highlight.value = w.id
+  highlight.value = [w.id]
   selected.value = [{ kind: 'widget', id: w.id }]
   const c = w.canvas!
   if (
@@ -275,126 +272,49 @@ const isSelected = (id: string) =>
   normalizeSelection(props.dashboard, [{ kind: 'widget', id }]).some((r) =>
     selected.value.some((s) => refKey(s) === refKey(r)),
   )
-const locked = (id: string) => effectiveLocked(props.dashboard, { kind: 'widget', id })
-async function commandAction(command: CanvasCommand, cancel = true) {
-  if (cancel) interaction.cancel()
-  if (!canEdit.value) return
-  const ok = await store.applyCanvasCommand(command)
-  notice.value = ok ? '操作已完成' : store.error
-  if (ok) selected.value = normalizeSelection(props.dashboard, selected.value)
-}
-function changeTool(value: CanvasTool) {
-  settleNavigation()
-  hand.value = false
-  tool.value = value
-}
-function selectFromPanel(r: SelectionRef, extend: boolean) {
-  interaction.cancel()
-  if (canEdit.value) choose(r, extend || additive.value)
-}
-let previousCamera: CanvasCamera | null = null,
-  highlightTimer: ReturnType<typeof setTimeout> | undefined,
-  trigger: HTMLElement | null = null
-function openPanel(value: typeof panel.value) {
-  settleNavigation()
-  trigger = document.activeElement as HTMLElement
-  panel.value = panel.value === value ? '' : value
-}
-function closePanel() {
-  panel.value = ''
-  nextTick(() => trigger?.focus())
-}
-async function locate(r: SelectionRef) {
-  const valid =
-    r.kind === 'widget'
-      ? props.dashboard.widgets.some((w) => w.id === r.id)
-      : normalizeSelection(props.dashboard, [r]).length > 0
-  if (!valid) {
-    notice.value = '目标已不存在'
-    return
+const locked = (id: string) => layoutProtected(props.dashboard, id)
+const {
+  commandAction,
+  changeTool,
+  selectFromPanel,
+  openPanel,
+  closePanel,
+  locate,
+  back,
+  namedNavigate,
+  located,
+} = useCanvasWorkspace({
+  dashboard: () => props.dashboard,
+  canEdit,
+  root,
+  tool,
+  hand,
+  selected,
+  additive,
+  panel,
+  notice,
+  highlight,
+  camera,
+  list,
+  presentation,
+  names,
+  ordered,
+  interaction,
+  fit,
+  settleNavigation,
+  choose,
+})
+const overlayBoxes = computed(() => {
+  if (!located.value) return selectedBoxes.value
+  try {
+    return [
+      ...selectedBoxes.value,
+      { ref: located.value, rect: selectionRect(props.dashboard, located.value) },
+    ]
+  } catch {
+    return selectedBoxes.value
   }
-  settleNavigation()
-  previousCamera ??= { ...camera.value }
-  let ids: string[] = []
-  if (r.kind === 'widget') ids = [r.id]
-  if (r.kind === 'group')
-    ids = props.dashboard.canvasScene!.groups.find((g) => g.id === r.id)!.memberIds
-  if (list.value && r.kind !== 'region') {
-    await nextTick()
-    root.value
-      ?.querySelector<HTMLElement>(`[data-widget-id="${ids[0]}"]`)
-      ?.scrollIntoView({ block: 'center' })
-  } else {
-    if (list.value) presentation.value = 'spatial'
-    await nextTick()
-    fit(selectionRect(props.dashboard, r))
-  }
-  highlight.value = ids[0] ?? ''
-  if (highlightTimer) clearTimeout(highlightTimer)
-  highlightTimer = setTimeout(() => {
-    highlight.value = ''
-  }, 1500)
-  notice.value = `已定位 ${resolveCanvasLabel(props.dashboard, r, names.value)}`
-}
-function back() {
-  if (previousCamera) {
-    settleNavigation()
-    camera.value = previousCamera
-    previousCamera = null
-  }
-}
-function namedNavigate(value: CanvasCamera) {
-  settleNavigation()
-  presentation.value = 'spatial'
-  camera.value = { ...value }
-}
-function shortcuts(e: KeyboardEvent) {
-  const target = e.target as Element
-  if (
-    !root.value?.closest('.canvas-stage')?.contains(target) ||
-    target.closest('input,textarea,select,[contenteditable],[role="dialog"],.widget-content')
-  )
-    return
-  if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault()
-    openPanel('search')
-    return
-  }
-  if (!canEdit.value) return
-  if (e.key === 'Escape') {
-    if (panel.value) closePanel()
-    else selected.value = []
-    return
-  }
-  if (tool.value !== 'select') return
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-    e.preventDefault()
-    selected.value = [...(props.dashboard.canvasScene?.layers ?? [])]
-    return
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
-    if (e.shiftKey && selected.value.length && selected.value.every((r) => r.kind === 'group')) {
-      e.preventDefault()
-      void commandAction({ type: 'ungroup', refs: selected.value })
-    } else if (
-      !e.shiftKey &&
-      selected.value.length >= 2 &&
-      selected.value.every((r) => r.kind === 'widget')
-    ) {
-      e.preventDefault()
-      void commandAction({
-        type: 'group',
-        widgetIds: selected.value.map((r) => r.id),
-        id: crypto.randomUUID(),
-        title: '新分组',
-      })
-    }
-  }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selected.value.length) {
-    e.preventDefault()
-    void commandAction({ type: 'delete', refs: selected.value })
-  }
-}
+})
 defineExpose({ addWidget })
 let observer: ResizeObserver | undefined,
   frame = 0
@@ -411,7 +331,6 @@ watch(presentation, () => {
   hand.value = false
 })
 onMounted(() => {
-  window.addEventListener('keydown', shortcuts)
   observer = new ResizeObserver(([entry]) => {
     const next = { width: entry.contentRect.width, height: entry.contentRect.height }
     cancelAnimationFrame(frame)
@@ -428,8 +347,6 @@ onMounted(() => {
   }
 })
 onUnmounted(() => {
-  window.removeEventListener('keydown', shortcuts)
-  if (highlightTimer) clearTimeout(highlightTimer)
   observer?.disconnect()
   cancelAnimationFrame(frame)
   root.value?.removeEventListener('wheel', interaction.wheel)
@@ -476,7 +393,7 @@ onUnmounted(() => {
               editable,
               list,
               canEdit,
-              highlight === w.id,
+              highlight.includes(w.id),
               draft?.widgets[w.id] ?? null,
               isSelected(w.id),
               locked(w.id),
@@ -485,7 +402,7 @@ onUnmounted(() => {
               list ? ordered : null,
             ]"
             class="canvas-item"
-            :class="{ highlight: highlight === w.id, selected: isSelected(w.id) }"
+            :class="{ highlight: highlight.includes(w.id), selected: isSelected(w.id) }"
             :data-widget-id="w.id"
             :style="style(w)"
             tabindex="-1"
@@ -539,7 +456,7 @@ onUnmounted(() => {
         ></div>
         <CanvasSelectionOverlay
           v-if="!list"
-          :boxes="selectedBoxes"
+          :boxes="overlayBoxes"
           :camera="camera"
           :size="size"
           :marquee="marquee"

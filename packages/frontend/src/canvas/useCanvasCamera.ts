@@ -94,7 +94,7 @@ export function useCanvasCamera(
           )
           if (old) {
             const raw = JSON.parse(old.data)
-            if (raw.documentVersion !== 2 && raw.viewport)
+            if (raw.documentVersion === undefined && raw.viewport)
               seed = legacyCamera(raw.viewport, size.value, {
                 width: raw.viewportWidth ?? 1920,
                 height: raw.viewportHeight ?? 1080,

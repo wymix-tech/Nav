@@ -2,7 +2,7 @@ import {
   createDashboard,
   migrateDashboard,
   migrateCanvasDocument,
-  validateDashboard,
+  validateCurrentDashboard,
   type Dashboard,
   type InstalledWidget,
   type StorageAdapter,
@@ -36,7 +36,7 @@ export class LocalAdapter implements StorageAdapter {
   }
 
   async saveDashboard(dashboard: Dashboard): Promise<void> {
-    validateDashboard(dashboard)
+    validateCurrentDashboard(dashboard)
     await db.dashboards.put({
       id: dashboard.id,
       data: JSON.stringify(dashboard),
