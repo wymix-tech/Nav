@@ -1,0 +1,83 @@
+# 无限画布 V1：操作、升级与验收
+
+本分支从 main `27e915f1f33692fa8c90b8736974255d0b73eff9` 开始。原方案见 [完整设计](infinite-canvas-v1-plan.md)。中间提交不得独立部署。真实部署、数据库迁移和合并 main 尚未执行。
+
+## 操作
+
+- 画布 100% 表示一个世界单位等于一个 CSS 像素。窗口和侧栏改变只调整可用视口，保留相机中心与倍率。
+- 空白拖动、中键拖动、聚焦画布后空格拖动，以及手形工具可平移。手形工具在插件 iframe 上方提供宿主手势层；退出按钮始终位于宿主工具栏。
+- 背景滚轮平移，Ctrl/Meta + 滚轮以光标为锚点缩放。组件内部滚轮继续交给组件。支持空白单指平移、双指平移和缩放；组件内容保留原生触控滚动。
+- 移动和尺寸手柄仅编辑模式可用。方向键移动 20 世界单位，Shift + 方向键调整大小。松开提交一次；Escape、pointercancel、失焦、尺寸变化、权限失效取消预览。
+- 点击组件库在可用视口中心创建；桌面也可拖入。释放到画布外或 Escape 取消。触屏使用点击添加。
+- 适应全部、100%、回到默认、小地图和空间／列表切换均为本机浏览操作，不进入文档历史或同步队列。列表使用相同组件实例，关闭几何编辑。
+- “发布为默认视角”需要编辑权限，产生可撤销的文档操作。撤销只改变共享默认，不移动当前相机。
+- 个人视角独立存放，停止操作约 300ms 合并保存。每个标签页保持独立内存相机；最后写入者供下次打开恢复。服务实例和 standalone 空间使用不同的键。
+
+## 数据与协议
+
+`documentVersion: 2` 和 `canvasSettings.version: 1` 是新文档协议；`layoutVersion: 2` 仍然是原网格协议。旧 viewport 字段仅作为兼容镜像，不能覆盖权威默认相机。世界坐标和 originalW/originalH 保留。
+
+GET/PUT `/api/dashboards` 状态接口声明 `X-Nav-State-Schema: 2`。PUT `/api/dashboards/:id/state` 必须附带 `schemaVersion: 2`、新版 snapshot、operationId、If-Match 和认证。旧请求返回 426，不自动重试。
+
+客户端未检测到服务端版本 2 时保留本地草稿，暂停发送。旧 pending 的 ID、snapshot、revision、generation、conflict 和 lease 原样备份，隔离后显示差异供用户选择采用远端或重新提交本地。后者使用新 ID 和最新远端 revision；远端再次变化仍返回 412。恢复期间新增但尚不能提交的编辑额外保存在备份中。
+
+## 升级步骤
+
+在与生产一致的隔离副本先演练。停止应用写入，保留旧镜像、提交和客户端未同步草稿，执行一致性 SQLite 备份和 uploads 备份。备份 API 含历史凭据，仅管理员可读取，备份文件应受同等保护。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+# NAV_DB_PATH 设为实际数据库的绝对路径。
+NAV_DB_PATH=/data/nav.db pnpm db:backup /backup/nav-before-canvas-v1.db
+# 同时将 uploads 目录复制到备份位置。
+NAV_DB_PATH=/data/nav.db node packages/server/dist/maintenance.js canvas-preflight
+NAV_DB_PATH=/data/nav.db node packages/server/dist/maintenance.js canvas-dry-run
+NAV_DB_PATH=/data/nav.db node packages/server/dist/maintenance.js canvas-migrate
+```
+
+preflight/dry-run 验证所有文档并回滚预演中的所有文档写入。apply 对每份文档在同一事务备份原始 dashboard/widget 数据行，生成新 state_json 和兼容视角列，revision 仅增加一次；重复执行不增版本。未知版本、非法数值或缺失插件会报错，失败文档回滚。已成功迁移的其他文档保留，修复错误后可重跑；在全部迁移成功前保持应用写入关闭。
+
+备份键为 `canvas-camera-v1:<dashboardId>:<sourceRevision>`。管理员可通过 `/api/dashboards/:id/backup` 读取。GET 不承担相机文档升级；旧布局的历史恢复备份机制仍保留。
+
+standalone 在同一个 IndexedDB 事务备份和升级；相机首次恢复单独处理，不回滚已升级文档。Dexie version 3 增加 viewPreferences，其他表和旧队列保留。
+
+完成迁移后部署同版本后端、前端和 Service Worker，验证旧 PUT 为 426、新版条件写入和幂等重试正常，再恢复写入。旧队列存在时更新按钮允许更新，并提供导出及恢复入口；不要在编辑或聊天生成过程中强制刷新。
+
+## 回滚
+
+- 未产生新版编辑：停止写入，恢复部署前应用、一致性数据库和 uploads 备份。
+- 已产生新版编辑：先备份当前数据库、uploads 和所有客户端草稿；在隔离副本导出／转换新版数据并校验后再回滚，不能直接覆盖成旧库。
+- 仅前端交互缺陷：保留服务端版本保护，使用新版网格布局作为临时回退，避免旧客户端盲写。
+
+## 实施记录
+
+P0 固定 main 和回滚点；P1 共享模型、边界、几何及纯迁移；P2 独立视角表、事务迁移、能力检测与队列恢复；P3–P5 相机拆分、稳定组件、交互、插入、导航和窄屏容器已落地。
+
+自动化结果和未验证项目见后续验收记录。没有真实 macOS Safari、真实触控板或手机验收记录时，不据此宣称已验证这些设备。
+
+## 本轮自动化验收（2026-10-18）
+
+| 检查 | 结果 |
+| --- | --- |
+| 原 main 基线 `pnpm check` | 35 个测试通过，类型、Lint、构建通过 |
+| V1 `pnpm check` | 48 个测试通过，类型、Lint、构建通过 |
+| 开发模式 Chromium | 15 通过；生产专用离线壳用例 1 跳过 |
+| 生产模式 Chromium / Firefox / WebKit 全矩阵 | 43 通过，2 个非 Chromium 触屏注入跳过；3 个测试检查点失败后修正并复测 |
+| 修正后的三浏览器滚轮／离线壳定向复测 | 6 通过；覆盖上述 3 个检查点，未修改产品代码规避测试 |
+| 100 个时钟组件，生产构建、3 次采样 | 实例均保持；p95 帧间隔 31.9 / 37.1 / 58.6 ms |
+
+矩阵中的测试检查点修正：连续滚轮取消必须与上一周期先明确分开；生产离线测试必须确保 Service Worker 控制页面，并在恢复网络后重新加载确认同步。带网络桩的功能测试阻止 Service Worker，实际离线壳另用不含外部服务的独立测试验证，防止请求绕过测试桩而访问真实聊天或天气接口。
+
+覆盖范围包括：1% / 100% / 800% 坐标数学；迁移幂等、备份和回滚；426 与能力检测；不可变旧队列及恢复；相机写入隔离；窗口矩阵；单次几何提交与取消；权限失效；点击／拖入新增；默认发布与撤销；聊天草稿及 iframe 状态在空间／列表切换后保留；离线草稿和本机视角恢复。测试数据和数据库使用每轮独立 ID。
+
+性能采样环境为共享 Linux 容器、AMD EPYC 9V74、9 个可见逻辑 CPU、1280×720 CSS 视口、Headless Chromium 138，配置 SwiftShader；每轮 60 个 RAF，舍弃前 6 帧。相机变化通过世界层 transform 更新，组件宿主使用 memo 避免逐帧重复渲染。原始汇总见 [验证数据](infinite-canvas-v1-validation.json)。
+
+### 发布前仍需完成
+
+- **100 组件性能目标尚未稳定达到 ≤33ms。** 当前容器三次 p95 中位数为 37.1ms；此结果不能当作物理 PC 的最终验收。需在约定参考设备复核，并分析时钟定时更新与软件渲染开销，再决定是否继续局部优化。
+- 真实 macOS Safari、触控板、系统缩放和手机双指手势；自动化 WebKit 不等同于 Safari 真机。
+- 实际部署副本的 SQLite + uploads 备份与迁移演练、升级 Service Worker 与旧客户端 426 冒烟。
+- GitHub CI 完整复跑及人工审查；保持草稿 PR，完成这些事项前不合并／发布。
+
+本轮未修改生产数据库，未部署，未合并 main。
