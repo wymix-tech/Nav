@@ -32,7 +32,7 @@ export type CanvasCommand =
   | { type: 'reorder'; refs: SelectionRef[]; action: LayerAction }
   | { type: 'align'; refs: SelectionRef[]; action: AlignAction }
   | { type: 'distribute'; refs: SelectionRef[]; axis: 'x' | 'y' }
-  | { type: 'create-region'; region: CanvasRegion }
+  | { type: 'create-region'; region: CanvasRegion; bounded?: boolean }
   | { type: 'region-color'; id: string; color: CanvasRegion['color'] }
   | { type: 'add-widget'; widget: WidgetInstance }
   | { type: 'clear' }

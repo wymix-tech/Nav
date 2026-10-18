@@ -254,7 +254,7 @@ test('V2 regions remain background annotations and group layer changes preserve 
   await expect(input).toHaveValue('iframe kept')
 })
 
-test('V2 region gesture creates once, moves and deletes only the annotation, and marquee selects content without writing', async ({
+test('V2 region gesture creates once, moves and deletes only the annotation, and Ctrl+A selects content without writing', async ({
   page,
   request,
 }) => {

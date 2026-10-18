@@ -6,12 +6,15 @@ import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
 import WidgetConfigForm from './WidgetConfigForm.vue'
 
-const props = defineProps<{
-  widget: WidgetInstance
-  editing: boolean
-  editable: boolean
-  canDelete?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    widget: WidgetInstance
+    editing: boolean
+    editable: boolean
+    canDelete?: boolean
+  }>(),
+  { canDelete: true },
+)
 
 const emit = defineEmits<{
   remove: []

@@ -137,13 +137,25 @@ function finishRename(r: SelectionRef) {
           >
             从组移出
           </button>
+          <button v-if="editable" @click="rename({ kind: 'widget', id })">改成员名称</button>
+          <form
+            v-if="renaming === refKey({ kind: 'widget', id })"
+            @submit.prevent="finishRename({ kind: 'widget', id })"
+          >
+            <input v-model="name" aria-label="组件共享显示名称" /><button>保存成员名称</button>
+            <p>名称会随公开仪表盘展示</p>
+          </form>
           <button
-            v-if="editable && dashboard.canvasScene?.widgetMeta[id].locked"
+            v-if="editable"
             @click="
-              emit('command', { type: 'set-lock', refs: [{ kind: 'widget', id }], locked: false })
+              emit('command', {
+                type: 'set-lock',
+                refs: [{ kind: 'widget', id }],
+                locked: !dashboard.canvasScene?.widgetMeta[id].locked,
+              })
             "
           >
-            解锁成员
+            {{ dashboard.canvasScene?.widgetMeta[id].locked ? '解锁成员' : '锁定成员' }}
           </button>
         </li>
       </ul>

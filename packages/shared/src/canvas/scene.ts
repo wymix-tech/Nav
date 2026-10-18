@@ -1,4 +1,4 @@
-import type { Dashboard, CanvasLayout } from '../types/dashboard.js'
+import type { Dashboard, CanvasLayout, WidgetInstance } from '../types/dashboard.js'
 import { CANVAS } from './constants.js'
 import { contentBounds } from './geometry.js'
 import type { Rect } from './types.js'
@@ -202,6 +202,9 @@ export function sceneRanks(d: Dashboard): Record<string, number> {
 export function widgetRect(d: Dashboard, id: string): CanvasLayout {
   const w = d.widgets.find((w) => w.id === id)
   assert(w, '组件已不存在')
+  return canvasForWidget(w)
+}
+export function canvasForWidget(w: WidgetInstance): CanvasLayout {
   if (w.canvas) return w.canvas
   const l = w.layouts.lg
   return {

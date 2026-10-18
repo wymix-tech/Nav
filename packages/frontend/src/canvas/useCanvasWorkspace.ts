@@ -62,7 +62,11 @@ export function useCanvasWorkspace(o: Options) {
     if (cancel) interaction.cancel()
     if (!canEdit.value) return
     const ok = await store.applyCanvasCommand(command)
-    notice.value = ok ? '操作已完成' : store.error
+    notice.value = ok
+      ? command.type === 'create-region' && command.bounded
+        ? '区域已创建，边界已限制到世界范围；组件位置保持不变'
+        : '操作已完成'
+      : store.error
     if (ok) selected.value = normalizeSelection(dashboard(), selected.value)
   }
   function changeTool(value: CanvasTool) {
@@ -101,6 +105,7 @@ export function useCanvasWorkspace(o: Options) {
     if (r.kind === 'widget') ids = [r.id]
     if (r.kind === 'group')
       ids = dashboard().canvasScene!.groups.find((g) => g.id === r.id)!.memberIds
+    let navigationNote = ''
     if (list.value && r.kind !== 'region') {
       ids = ordered.value.filter((w) => ids.includes(w.id)).map((w) => w.id)
       await nextTick()
@@ -111,6 +116,7 @@ export function useCanvasWorkspace(o: Options) {
       if (list.value) presentation.value = 'spatial'
       await nextTick()
       fit(selectionRect(dashboard(), r))
+      navigationNote = notice.value
     }
     highlight.value = ids
     located.value = r
@@ -119,7 +125,7 @@ export function useCanvasWorkspace(o: Options) {
       highlight.value = []
       located.value = null
     }, 1500)
-    notice.value = `已定位 ${resolveCanvasLabel(dashboard(), r, names.value)}`
+    notice.value = `已定位 ${resolveCanvasLabel(dashboard(), r, names.value)}${navigationNote ? '；' + navigationNote : ''}`
   }
   function back() {
     if (previousCamera) {

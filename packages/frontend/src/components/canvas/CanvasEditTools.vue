@@ -11,15 +11,18 @@ import {
   type AlignAction,
 } from '@nav/shared'
 import type { CanvasTool } from '../../canvas/useCanvasInteraction'
-const props = defineProps<{
-  dashboard: Dashboard
-  selected: SelectionRef[]
-  tool: CanvasTool
-  additive: boolean
-  snapping: boolean
-  list: boolean
-  geometryTools?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    dashboard: Dashboard
+    selected: SelectionRef[]
+    tool: CanvasTool
+    additive: boolean
+    snapping: boolean
+    list: boolean
+    geometryTools?: boolean
+  }>(),
+  { geometryTools: true },
+)
 const emit = defineEmits<{
   tool: [tool: CanvasTool]
   additive: []
@@ -49,6 +52,7 @@ function enclose() {
     y = Math.max(-p, b.y - 24)
   emit('command', {
     type: 'create-region',
+    bounded: x !== b.x - 24 || y !== b.y - 24 || b.x + b.w + 24 > end || b.y + b.h + 24 > end,
     region: {
       id: crypto.randomUUID(),
       title: '所选区域',

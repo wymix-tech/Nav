@@ -244,14 +244,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
     URL.revokeObjectURL(url)
   }
   window.addEventListener('nav-storage-changed', (event) => {
+    if ((event as CustomEvent).detail?.external) {
+      history.value = []
+      future.value = []
+    }
     void (async () => {
       const adapter = await getStorageAdapter()
       await refreshStatus()
       if (!writes && !unsaved && !isEditing && adapter.cached) {
-        if ((event as CustomEvent).detail?.external) {
-          history.value = []
-          future.value = []
-        }
         const cached = await adapter.cached()
         if (cached) dashboard.value = cached
       }
