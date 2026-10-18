@@ -34,6 +34,12 @@ VITE_STORAGE_MODE=local pnpm --filter @nav/frontend build
 - 拖拽、缩放、键盘调整结束后提交一次原子布局；支持撤销、重做、自动整理和设为基准。
 - 小卡片采用内容适配和内部滚动；竖屏不会仅因长宽比切成单列。
 
+## 无限画布 V1
+
+空间视图使用固定世界坐标和独立本机相机，缩放范围 1%–800%。窗口变化、平移、缩放、适应全部、小地图和主动切换列表不会写文档或占用撤销历史。新组件在当前可见区域添加，也可从组件库拖入；仅“发布为默认视角”保存共享视角。
+
+升级已有服务器数据前，必须执行文档版本 2 的备份、预检和显式迁移；旧客户端写入返回 426，旧离线队列保留并经确认恢复。操作与部署步骤见 [无限画布 V1](docs/infinite-canvas-v1.md)。
+
 ## 保存、同步与离线
 
 独立模式使用 IndexedDB。服务器模式先以本地事务保存快照与待同步操作，再以版本条件和稳定操作 ID 同步到 SQLite。多设备冲突不会自动覆盖，双方草稿可导出并明确处理；跨标签页草稿变化也有版本保护。
@@ -97,6 +103,7 @@ NAV_DB_PATH=/absolute/path/nav.db pnpm db:backup /absolute/path/backup.db
 - [完整修复设计](docs/repair-plan-2026-10-17.md)
 - [实际修复与验证记录](docs/repair-status.md)
 - [升级、备份及回滚](docs/upgrade-and-rollback.md)
+- [无限画布 V1：操作、迁移与验收](docs/infinite-canvas-v1.md)
 - [第三方组件协议 v2](docs/widget-protocol-v2.md)
 
 第三方组件需预构建为自带依赖的 ESM bundle，并使用 manifestVersion 2；固定到不可变提交，在受限 iframe 内运行。旧 SFC 插件保留配置与位置，升级后才能执行。

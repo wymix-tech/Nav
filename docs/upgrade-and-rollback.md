@@ -4,6 +4,12 @@
 
 旧画布 / AI 聊天 / Docker 监控用户请先阅读 [main 合并兼容修复](merge-repair-2026-10-17.md)。已被旧合并版本清空的坐标需要从部署前备份提取。
 
+## 无限画布 V1 的额外升级步骤
+
+文档版本 2 的升级以 [无限画布 V1 部署说明](infinite-canvas-v1.md) 为准。先停止写入、备份数据库和 uploads，再依次执行 `canvas-preflight`、`canvas-dry-run`、`canvas-migrate`。普通读取接口不会升级相机文档；未完成迁移时新写入也会被阻止。旧布局历史恢复机制仍保留。
+
+新版状态写入请求同时要求 `schemaVersion: 2`、`snapshot.documentVersion: 2`、If-Match、operationId 和认证。个人相机不进入快照，默认相机为 `canvasSettings.defaultCamera`。旧队列不原地改写；先备份和比较，再明确恢复。Service Worker 更新时旧队列可保留，不能因 pending 非零永久阻止更新。
+
 ## 部署前
 
 1. 使用 Node.js 22 或更高版本与项目声明的 pnpm 9。执行 `pnpm install --frozen-lockfile`、`pnpm check`。

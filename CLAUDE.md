@@ -1,6 +1,6 @@
 # Nav 开发说明
 
-以 README.md、docs/upgrade-and-rollback.md 和 docs/widget-protocol-v2.md 为当前实现约定；docs/superpowers 下文档为历史设计，不应覆盖当前协议。
+以 README.md、docs/upgrade-and-rollback.md 和 docs/widget-protocol-v2.md、docs/infinite-canvas-v1.md 为当前实现约定；docs/superpowers 下文档为历史设计，不应覆盖当前协议。
 
 Node.js 22+、pnpm 9.15.0。运行 pnpm check 检查类型、ESLint、单元/路由/仓储测试与构建；pnpm test:browser 和 NAV_TEST_DIST=true pnpm test:browser 检查真实浏览器与生产应用壳。
 

@@ -41,6 +41,8 @@ test('production shell restores an offline canvas draft and independent camera, 
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload()
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await page.getByRole('button', { name: '放大画布' }).click()
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('120%')
   await page.locator('.floating-panel').hover()
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await context.setOffline(true)
@@ -52,6 +54,7 @@ test('production shell restores an offline canvas draft and independent camera, 
   await page.reload()
   await expect(page.locator('.canvas-item')).toHaveCSS('left', '20px')
   await expect(page.locator('.clock-widget')).toBeVisible()
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('120%')
   await context.setOffline(false)
   await expect
     .poll(
