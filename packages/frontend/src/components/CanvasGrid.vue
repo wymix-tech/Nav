@@ -97,31 +97,39 @@ function area(): Rect {
   return { x: 0, y: 0, w: size.value.width, h: size.value.height }
 }
 function fit(bounds = contentBounds(rects.value)) {
-  interaction.cancel()
+  settleNavigation()
   const result = fitBounds(bounds, size.value, area())
   if (result) {
     camera.value = result.camera
     notice.value = result.limited ? '已达到最小缩放，可通过小地图定位' : ''
   }
 }
+function settleNavigation() {
+  interaction.endWheel()
+  interaction.cancel()
+}
+function publishDefault() {
+  settleNavigation()
+  emit('set-default-camera', { ...camera.value })
+}
 function zoom(value: number) {
   if (!ready.value || size.value.width <= 0 || size.value.height <= 0) return
-  interaction.cancel()
+  settleNavigation()
   const a = area()
   camera.value = zoomAt(camera.value, { x: a.x + a.w / 2, y: a.y + a.h / 2 }, size.value, value)
 }
 function toggleHand() {
   const next = !hand.value
-  interaction.cancel()
+  settleNavigation()
   hand.value = next
 }
 function home() {
-  interaction.cancel()
+  settleNavigation()
   if (validCamera(props.dashboard.canvasSettings?.defaultCamera))
     camera.value = { ...props.dashboard.canvasSettings!.defaultCamera }
 }
 function navigate(p: Point) {
-  interaction.cancel()
+  settleNavigation()
   camera.value = {
     ...camera.value,
     centerX: clamp(p.x, -CANVAS.cameraLimit, CANVAS.cameraLimit),
@@ -188,10 +196,7 @@ watch(
   () => props.dashboard.widgets.map((w) => w.id).join(','),
   () => interaction.cancel(),
 )
-watch(
-  () => [props.dashboard.id, props.dashboard.instanceId],
-  () => interaction.cancel(),
-)
+watch([() => props.dashboard.id, () => props.dashboard.instanceId], () => interaction.cancel())
 watch(presentation, () => {
   interaction.cancel()
   hand.value = false
@@ -241,6 +246,16 @@ onUnmounted(() => {
         <div
           v-for="w in dashboard.widgets"
           :key="w.id"
+          v-memo="[
+            w,
+            editing,
+            editable,
+            list,
+            canEdit,
+            highlight === w.id,
+            draft?.id === w.id ? draft.canvas : null,
+            list ? ordered : null,
+          ]"
           class="canvas-item"
           :class="{ highlight: highlight === w.id }"
           :data-widget-id="w.id"
@@ -286,7 +301,7 @@ onUnmounted(() => {
     <div class="canvas-ui dock">
       <p v-if="error || notice" role="status">{{ error || notice }}</p>
       <CanvasControls
-        v-if="ready"
+        :style="{ visibility: ready ? 'visible' : 'hidden' }"
         :zoom="camera.zoom"
         :hand="hand"
         :list="list"
@@ -296,7 +311,7 @@ onUnmounted(() => {
         @hundred="zoom(1)"
         @fit="fit()"
         @home="home"
-        @publish="emit('set-default-camera', { ...camera })"
+        @publish="publishDefault"
         @hand="toggleHand"
         @list="presentation = list ? 'spatial' : 'list'"
         @minimap="minimap = !minimap"

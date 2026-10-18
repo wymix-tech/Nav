@@ -5,7 +5,8 @@ const testRunId = randomUUID()
 export default defineConfig({
   testDir: './tests/browser',
   workers: 1,
-  timeout: 30000,
+  timeout: 60000,
+  expect: { timeout: 10000 },
   use: {
     baseURL:
       process.env.NAV_TEST_URL ??

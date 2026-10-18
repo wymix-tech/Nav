@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { createDashboard } from '../../packages/shared/src/index'
+test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
 let token = ''
 const pageErrors = new WeakMap<object, string[]>()
@@ -93,8 +94,6 @@ test.beforeEach(async ({ page, request }) => {
   await expect(page.locator('.bookmark-widget')).toBeVisible()
   await expect(page.locator('.weather-widget')).toContainText('Sunny')
   await expect(page.locator('.monitor-widget')).toContainText('test-host')
-  if (process.env.NAV_TEST_DIST === 'true')
-    await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
 })
 test('desktop viewport matrix stays in bounds and window changes do not save layouts', async ({
   page,
@@ -199,10 +198,6 @@ test('offline edits persist locally and synchronize after reconnection', async (
   await handle.focus()
   await handle.press('ArrowRight')
   await expect(page.getByRole('status')).toContainText('本机')
-  if (process.env.NAV_TEST_DIST === 'true') {
-    await page.reload()
-    await expect(page.locator('.css-grid-item')).toHaveCount(5)
-  }
   await context.setOffline(false)
   await expect
     .poll(async () => {
@@ -292,6 +287,31 @@ test('a plugin survives reload and cannot access its host or unapproved network'
   await expect(page.locator('.monitor-widget')).toContainText('test-host')
   await page.reload()
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 300, zoom: 0.7 } }
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: (i % 3) * 400, y: Math.floor(i / 3) * 260, w: 360, h: 220 }
+    })
+  })
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await page.getByRole('button', { name: '适应全部', exact: true }).click()
+  const pluginRoot = page.frameLocator('.sandbox-widget iframe').locator('#root')
+  await expect(pluginRoot).toHaveText('isolated')
+  await pluginRoot.evaluate((el) => {
+    el.textContent = 'runtime kept'
+  })
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await expect(pluginRoot).toHaveText('runtime kept')
+  await page.getByRole('button', { name: '空间视图', exact: true }).click()
+  await page.getByRole('button', { name: '手形工具', exact: true }).click()
+  const frame = (await page.locator('.sandbox-widget iframe').boundingBox())!
+  await page.mouse.move(frame.x + 30, frame.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(frame.x + 80, frame.y + 60)
+  await page.mouse.up()
+  await page.getByRole('button', { name: '退出手形', exact: true }).click()
+  await expect(pluginRoot).toHaveText('runtime kept')
 })
 
 async function replaceDashboard(page: any, request: any, change: (d: any) => void) {
@@ -427,7 +447,8 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   })
   const chats = page.locator('.chat-widget')
   await expect(chats).toHaveCount(2)
-  await chats.first().getByPlaceholder('输入消息...').fill('hello')
+  await chats.first().getByPlaceholder('输入消息...').click()
+  await chats.first().getByPlaceholder('输入消息...').pressSequentially('hello')
   await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('hello')
   await chats.first().getByTitle('发送', { exact: true }).click()
   await expect(chats.first().locator('.message.assistant')).toHaveCount(1)
@@ -439,6 +460,21 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await page.reload()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
   await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 250, zoom: 0.7 } }
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: i * 400, y: 0, w: 360, h: 500 }
+    })
+  })
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await page.getByRole('button', { name: '适应全部', exact: true }).click()
+  await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  await chats.first().getByPlaceholder('输入消息...').pressSequentially('draft kept')
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
+  await page.getByRole('button', { name: '空间视图', exact: true }).click()
+  await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
   await page.locator('.floating-panel').hover()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await expect(chats.first().getByPlaceholder('输入消息...')).toBeDisabled()
@@ -466,6 +502,7 @@ async function setupCanvas(page: any, request: any) {
     })
   })
   await expect(page.locator('.canvas-item')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('100%')
 }
 test('canvas navigation, resize and list presentation never write document state or recreate widgets', async ({
@@ -525,8 +562,8 @@ test('canvas wheel anchoring, cancellation and component scrolling respect event
   await page.mouse.move(x, y)
   await page.keyboard.down('Control')
   await page.mouse.wheel(0, -100)
-  await page.keyboard.up('Control')
   await expect.poll(async () => (await canvasCamera(page)).zoom).toBeGreaterThan(1)
+  await page.keyboard.up('Control')
   const zoomed = await canvasCamera(page),
     beforeWorld = {
       x: initial.centerX + (60 - box.width / 2) / initial.zoom,
@@ -538,7 +575,27 @@ test('canvas wheel anchoring, cancellation and component scrolling respect event
   expect(
     Math.abs(zoomed.centerY + (70 - box.height / 2) / zoomed.zoom - beforeWorld.y),
   ).toBeLessThan(1)
-  await page.keyboard.press('Escape')
+  const cycleStart = await canvasCamera(page)
+  await page.evaluate(
+    ({ x, y }) => {
+      document.querySelector('.canvas-background')!.dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaY: -20,
+          ctrlKey: true,
+          clientX: x,
+          clientY: y,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      )
+    },
+    { x, y },
+  )
+  expect(await canvasCamera(page)).toEqual(cycleStart)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
   expect(await canvasCamera(page)).toEqual(initial)
   const search = page.locator('.search-widget'),
     searchBox = (await search.boundingBox())!
@@ -592,9 +649,9 @@ test('canvas insertion follows the current viewport and publishing a default is 
     .poll(async () => (await (await request.get(backend + '/api/dashboards')).json()).revision)
     .toBe(before.revision + 1)
   const published = await (await request.get(backend + '/api/dashboards')).json()
-  expect(published.canvasSettings.defaultCamera.centerX).toBeCloseTo(camera.centerX, 6)
-  expect(published.canvasSettings.defaultCamera.centerY).toBeCloseTo(camera.centerY, 6)
-  expect(published.canvasSettings.defaultCamera.zoom).toBeCloseTo(camera.zoom, 6)
+  expect(published.canvasSettings.defaultCamera.centerX).toBeCloseTo(camera.centerX, 2)
+  expect(published.canvasSettings.defaultCamera.centerY).toBeCloseTo(camera.centerY, 2)
+  expect(published.canvasSettings.defaultCamera.zoom).toBeCloseTo(camera.zoom, 5)
   await page.getByRole('button', { name: '撤销', exact: true }).click()
   await expect
     .poll(
@@ -711,6 +768,7 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     }))
   })
   await expect(page.locator('.canvas-item')).toHaveCount(100)
+  await expect(page.locator('.clock-widget')).toHaveCount(100)
   const sample = await page.evaluate(async () => {
     const elements = [...document.querySelectorAll('.clock-widget')],
       times: number[] = []

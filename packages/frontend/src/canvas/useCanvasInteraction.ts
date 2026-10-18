@@ -36,6 +36,7 @@ export function useCanvasInteraction(o: Options) {
     start: Point
     camera: CanvasCamera
     origin: CanvasCamera
+    viewport: Size
     id?: string
     canvas?: CanvasLayout
     middle?: Point
@@ -77,6 +78,12 @@ export function useCanvasInteraction(o: Options) {
   }
   function start(e: PointerEvent, mode: 'pan' | 'move' | 'resize' = 'pan', w?: WidgetInstance) {
     if (!o.enabled() || ![0, 1].includes(e.button)) return
+    const measured = o.root.value!.getBoundingClientRect()
+    if (
+      Math.abs(measured.width - o.size.value.width) > 0.5 ||
+      Math.abs(measured.height - o.size.value.height) > 0.5
+    )
+      return
     const target = e.target as Element
     if (target.closest('.canvas-ui,[role="dialog"]')) return
     const forcePan = e.button === 1 || space.value || o.hand.value
@@ -111,6 +118,10 @@ export function useCanvasInteraction(o: Options) {
       start: point(e),
       camera: { ...o.camera.value },
       origin: { ...o.camera.value },
+      viewport: {
+        width: o.root.value!.getBoundingClientRect().width,
+        height: o.root.value!.getBoundingClientRect().height,
+      },
       id: w?.id,
       canvas: w ? { ...widgetCanvas(w) } : undefined,
     }
@@ -120,6 +131,14 @@ export function useCanvasInteraction(o: Options) {
     if (!active || !pointers.has(e.pointerId)) return
     pointers.set(e.pointerId, point(e))
     const a = active
+    const rect = o.root.value!.getBoundingClientRect()
+    if (
+      Math.abs(rect.width - a.viewport.width) > 0.5 ||
+      Math.abs(rect.height - a.viewport.height) > 0.5
+    ) {
+      cancel()
+      return
+    }
     if (a.mode === 'pinch') {
       const [p, q] = [...pointers.values()]
       if (!q) return

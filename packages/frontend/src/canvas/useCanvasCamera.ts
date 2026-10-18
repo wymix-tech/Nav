@@ -58,12 +58,11 @@ export function useCanvasCamera(
   }
   watch([camera, presentation], changed, { deep: true, flush: 'sync' })
   watch(
-    () =>
-      [
-        dashboard().id,
-        dashboard().instanceId,
-        size.value.width > 0 && size.value.height > 0,
-      ] as const,
+    [
+      () => dashboard().id,
+      () => dashboard().instanceId,
+      () => size.value.width > 0 && size.value.height > 0,
+    ],
     async () => {
       const ticket = ++serial
       if (!size.value.width || !size.value.height) return

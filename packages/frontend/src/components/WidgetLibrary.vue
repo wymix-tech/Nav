@@ -17,8 +17,8 @@ const props = defineProps<{
   top?: number
 }>()
 
-function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
-  if (suppress) {
+function addToDashboard(widgetId: string, source: 'builtin' | 'installed', keyboard = false) {
+  if (suppress && !keyboard) {
     suppress = false
     return
   }
@@ -35,8 +35,8 @@ let drag: {
   target: HTMLElement
 } | null = null
 let suppress = false
-let suppressTimer: ReturnType<typeof setTimeout> | undefined
 function start(e: PointerEvent, widgetId: string, source: 'builtin' | 'installed') {
+  suppress = false
   if (
     !props.spatial ||
     e.button !== 0 ||
@@ -72,10 +72,6 @@ function move(e: PointerEvent) {
 function cancel() {
   const previous = drag
   suppress = !!drag?.moved
-  if (suppressTimer) clearTimeout(suppressTimer)
-  suppressTimer = setTimeout(() => {
-    suppress = false
-  }, 0)
   drag = null
   if (previous?.target.hasPointerCapture(previous.id))
     previous.target.releasePointerCapture(previous.id)
@@ -146,7 +142,7 @@ async function uninstall(id: string) {
             role="button"
             tabindex="0"
             @pointerdown="start($event, w.id, 'builtin')"
-            @keydown.enter="addToDashboard(w.id, 'builtin')"
+            @keydown.enter="addToDashboard(w.id, 'builtin', true)"
             @click="addToDashboard(w.id, 'builtin')"
           >
             <span class="widget-icon">{{ w.icon }}</span>
@@ -166,7 +162,7 @@ async function uninstall(id: string) {
             role="button"
             tabindex="0"
             @pointerdown="start($event, w.widgetId, 'installed')"
-            @keydown.enter="addToDashboard(w.widgetId, 'installed')"
+            @keydown.enter="addToDashboard(w.widgetId, 'installed', true)"
             @click="addToDashboard(w.widgetId, 'installed')"
           >
             <span class="widget-icon">{{ w.manifest.icon }}</span>

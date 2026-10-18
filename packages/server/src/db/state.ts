@@ -109,6 +109,22 @@ export function readSnapshot(id = 'default'): Dashboard {
   )
   return { ...migrateDashboard(original), revision: row.revision, instanceId }
 }
+function mirrorWidgetRows(updated: Dashboard) {
+  db.prepare('DELETE FROM widget_instances WHERE dashboard_id=?').run(updated.id)
+  const insert = db.prepare(
+    'INSERT INTO widget_instances(id,dashboard_id,widget_id,source,config,layouts,canvas) VALUES(?,?,?,?,?,?,?)',
+  )
+  for (const w of updated.widgets)
+    insert.run(
+      w.id,
+      updated.id,
+      w.widgetId,
+      w.source,
+      JSON.stringify(w.config),
+      JSON.stringify(w.layouts),
+      w.canvas ? JSON.stringify(w.canvas) : null,
+    )
+}
 export function commitSnapshot(
   snapshot: Dashboard,
   expected: number,
@@ -155,20 +171,7 @@ export function commitSnapshot(
       updated.viewportHeight ?? 1080,
       updated.id,
     )
-    db.prepare('DELETE FROM widget_instances WHERE dashboard_id=?').run(updated.id)
-    const insert = db.prepare(
-      'INSERT INTO widget_instances(id,dashboard_id,widget_id,source,config,layouts,canvas) VALUES(?,?,?,?,?,?,?)',
-    )
-    for (const w of updated.widgets)
-      insert.run(
-        w.id,
-        updated.id,
-        w.widgetId,
-        w.source,
-        JSON.stringify(w.config),
-        JSON.stringify(w.layouts),
-        w.canvas ? JSON.stringify(w.canvas) : null,
-      )
+    mirrorWidgetRows(updated)
     db.prepare(
       'INSERT INTO committed_operations(operation_id,dashboard_id,request_hash,response) VALUES(?,?,?,?)',
     ).run(operationId, updated.id, hash, JSON.stringify({ revision: updated.revision }))
@@ -231,6 +234,7 @@ export function migrateCanvasDatabase(apply = false) {
           next.viewportHeight,
           row.id,
         )
+        mirrorWidgetRows(next)
       }
       return { id: row.id, status: apply ? 'migrated' : 'pending', revision: next.revision }
     })

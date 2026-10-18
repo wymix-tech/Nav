@@ -219,6 +219,16 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
   const old: any = createDashboard()
   delete old.documentVersion
   delete old.canvasSettings
+  const layout = { x: 0, y: 0, w: 4, h: 3 }
+  old.widgets = [
+    {
+      id: 'migration-clock',
+      widgetId: 'clock',
+      source: 'builtin',
+      config: { label: 'preserved' },
+      layouts: { lg: layout, md: layout, sm: layout, xs: layout },
+    },
+  ]
   old.id = 'migration-fixture'
   old.layoutMode = 'canvas'
   old.viewport = { panX: 20, panY: 40, zoom: 0.5, homeX: 0, homeY: 0 }
@@ -238,6 +248,11 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
   const row = db.prepare('SELECT * FROM dashboards WHERE id=?').get(old.id) as any
   assert.equal(row.revision, 8)
   assert.equal(JSON.parse(row.state_json).documentVersion, 2)
+  const mirrored = db
+    .prepare('SELECT canvas,config FROM widget_instances WHERE id=?')
+    .get('migration-clock') as any
+  assert.deepEqual(JSON.parse(mirrored.canvas), JSON.parse(row.state_json).widgets[0].canvas)
+  assert.deepEqual(JSON.parse(mirrored.config), { label: 'preserved' })
   const backup = JSON.parse(
     (
       db
