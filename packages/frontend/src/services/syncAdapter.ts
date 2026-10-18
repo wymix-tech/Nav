@@ -182,6 +182,10 @@ export class SyncAdapter implements StorageAdapter {
           snapshot: migrateCanvasDocument(remote),
           revision: remote.revision ?? 0,
           pending: [],
+          upgradeRequired: !this.schemaReady,
+          error: this.schemaReady
+            ? undefined
+            : '服务端协议或文档尚未升级到版本 3，请管理员完成升级和数据迁移；本地草稿已保留',
           lastSyncAt: new Date().toISOString(),
         }
         await db.sync.put(next)
@@ -267,7 +271,7 @@ export class SyncAdapter implements StorageAdapter {
       this.schemaReady = this.schemaReady && capability?.documentVersion === 3
       if (!this.schemaReady) {
         await db.sync.update(this.key, {
-          error: '服务端尚未支持文档版本 3，请更新服务端；本地草稿已保留',
+          error: '服务端协议或文档尚未升级到版本 3，请管理员完成升级和数据迁移；本地草稿已保留',
           upgradeRequired: true,
         })
         return

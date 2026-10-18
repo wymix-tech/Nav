@@ -661,3 +661,21 @@ test('concurrent dashboard and catalog initialization share one adapter and one 
     await Promise.all([...new Set(adapters)].map((a) => (a as SyncAdapter).dispose()))
   }
 })
+
+test('an unmigrated V1 server is upgrade-required immediately, before any user edit or write attempt', async () => {
+  remote.documentVersion = 2
+  delete remote.canvasScene
+  const original = structuredClone(remote),
+    a = new SyncAdapter()
+  try {
+    const candidate = await a.getDashboard()
+    assert.equal(candidate.documentVersion, 3)
+    assert.equal((await a.getSyncState()).status, 'upgrade-required')
+    assert.match((await a.getSyncState()).error!, /迁移/)
+    assert.deepEqual(remote, original)
+    await a.flush()
+    assert.equal(putCount, 0)
+  } finally {
+    await a.dispose()
+  }
+})
