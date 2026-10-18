@@ -4,11 +4,13 @@
 
 旧画布 / AI 聊天 / Docker 监控用户请先阅读 [main 合并兼容修复](merge-repair-2026-10-17.md)。已被旧合并版本清空的坐标需要从部署前备份提取。
 
-## 无限画布 V1 的额外升级步骤
+## 无限画布 V2 的当前升级步骤
 
-文档版本 2 的升级以 [无限画布 V1 部署说明](infinite-canvas-v1.md) 为准。先停止写入、备份数据库和 uploads，再依次执行 `canvas-preflight`、`canvas-dry-run`、`canvas-migrate`。普通读取接口不会升级相机文档；未完成迁移时新写入也会被阻止。旧布局历史恢复机制仍保留。
+本分支当前文档/写入协议为 **3**。以 [V2 操作说明](infinite-canvas-v2.md) 为准，先停写并备份数据库、uploads、配置和未同步草稿，再在隔离副本依次执行 `pnpm canvas-v2-preflight`、`pnpm canvas-v2-dry-run`、`pnpm canvas-v2-migrate`。数据库路径必须已经存在；普通 GET 不升级旧文档，全部文档迁移成功前停写。
 
-新版状态写入请求同时要求 `schemaVersion: 2`、`snapshot.documentVersion: 2`、If-Match、operationId 和认证。个人相机不进入快照，默认相机为 `canvasSettings.defaultCamera`。旧队列不原地改写；先备份和比较，再明确恢复。Service Worker 更新时旧队列可保留，不能因 pending 非零永久阻止更新。
+写入要求 `schemaVersion: 3`、`snapshot.documentVersion: 3`、精确能力头、If-Match、稳定 operationId 和原认证。组、区域、名称、锁与层序保存在完整 state_json 的 canvasScene。默认相机仍为 canvasSettings.defaultCamera，本机相机和独立 namedViews 表不进入文档同步/导出。旧 pending 的操作 ID 和内容不能原地改写。
+
+V1 的版本 2 和 `canvas-*` 命令仅是旧版本历史。本分支统一使用真实实现的 `canvas-v2-*` 命令，它能从更老网格/相机文档完整升级到 3，无须先部署 V1 再部署 V2。旧 V1 不能接管 V2 写入，也不能通过把版本号改回 2 来回滚；有 V2 编辑时先保留组织元数据，在副本核对后决定恢复方案。Dexie 4 不保证可由旧浏览器客户端降级打开。
 
 ## 部署前
 
