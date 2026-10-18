@@ -575,6 +575,7 @@ test('canvas wheel anchoring, cancellation and component scrolling respect event
   expect(
     Math.abs(zoomed.centerY + (70 - box.height / 2) / zoomed.zoom - beforeWorld.y),
   ).toBeLessThan(1)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
   const cycleStart = await canvasCamera(page)
   await page.evaluate(
     ({ x, y }) => {

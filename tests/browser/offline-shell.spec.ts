@@ -56,6 +56,7 @@ test('production shell restores an offline canvas draft and independent camera, 
   await expect(page.locator('.clock-widget')).toBeVisible()
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('120%')
   await context.setOffline(false)
+  await page.reload()
   await expect
     .poll(
       async () =>
