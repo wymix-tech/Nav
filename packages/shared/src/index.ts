@@ -4,3 +4,8 @@ export * from './types/storage.js'
 export * from './types/auth.js'
 export * from './validation.js'
 export * from './layout.js'
+
+export * from './canvas/types.js'
+export * from './canvas/constants.js'
+export * from './canvas/geometry.js'
+export * from './canvas/migration.js'

@@ -16,7 +16,14 @@ export interface SyncState {
   lastSyncAt: string | null
   pendingChanges: number
   status?:
-    'local-only' | 'pending-sync' | 'syncing' | 'synced' | 'conflict' | 'auth-required' | 'error'
+    | 'upgrade-required'
+    | 'local-only'
+    | 'pending-sync'
+    | 'syncing'
+    | 'synced'
+    | 'conflict'
+    | 'auth-required'
+    | 'error'
   error?: string
 }
 

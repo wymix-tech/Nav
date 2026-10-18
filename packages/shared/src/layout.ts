@@ -1,3 +1,4 @@
+import { migrateCanvasDocument } from './canvas/migration.js'
 import type { Dashboard, WidgetInstance, WidgetLayout } from './types/dashboard.js'
 
 export type LayoutMap = Record<string, WidgetLayout>
@@ -136,8 +137,9 @@ export function migrateDashboard(input: Dashboard): Dashboard {
   return d
 }
 export function createDashboard(): Dashboard {
-  return {
+  return migrateCanvasDocument({
     id: 'default',
+    canvasSettings: { version: 1, defaultCamera: { centerX: 0, centerY: 0, zoom: 1 } },
     name: '我的导航',
     title: 'Nav - 个人导航页',
     widgets: [],
@@ -149,5 +151,5 @@ export function createDashboard(): Dashboard {
     layoutSettings: { columnMode: 'auto', contentWidthMode: 'centered', maxContentWidth: 1600 },
     layoutProfiles: {},
     background: { mode: 'color', color: '#0c1021', images: [], interval: 30, index: 0 },
-  }
+  })
 }
