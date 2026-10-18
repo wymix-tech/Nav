@@ -76,7 +76,16 @@ export class SyncAdapter implements StorageAdapter {
   private async quarantineLegacy() {
     await db.transaction('rw', db.sync, db.backups, async () => {
       const r = await db.sync.get(this.key)
-      if (!r || !r.pending.some((op) => op.snapshot.documentVersion !== 2)) return
+      if (!r) return
+      if (r.snapshot.documentVersion !== 2) {
+        const backupKey = `canvas-cache-v1:${this.key}:${r.generation ?? 0}`
+        if (!(await db.backups.get(backupKey)))
+          await db.backups.add({ key: backupKey, data: JSON.stringify(r) })
+        const seedKey = `canvas-seed:${r.snapshot.instanceId}:${r.snapshot.id}`
+        if (!(await db.backups.get(seedKey)))
+          await db.backups.add({ key: seedKey, data: JSON.stringify(r.snapshot) })
+      }
+      if (!r.pending.some((op) => op.snapshot.documentVersion !== 2)) return
       const key = `canvas-queue-v1:${this.key}:${r.generation ?? 0}`
       if (!(await db.backups.get(key))) await db.backups.add({ key, data: JSON.stringify(r) })
       r.upgradeRequired = true

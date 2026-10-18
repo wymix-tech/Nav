@@ -340,3 +340,37 @@ test('a server without schema capability receives no writes and the current prot
     await a.dispose()
   }
 })
+
+test('first offline upgrade retains a legacy cached camera even with no pending document edits', async () => {
+  const a = new SyncAdapter()
+  try {
+    const old: any = {
+      ...remote,
+      instanceId: 'same-server',
+      viewport: { panX: 240, panY: -70, zoom: 0.5, homeX: 0, homeY: 0 },
+      viewportWidth: 1920,
+      viewportHeight: 1080,
+    }
+    delete old.documentVersion
+    delete old.canvasSettings
+    await db.sync.put({
+      key: a.key,
+      snapshot: old,
+      revision: 0,
+      generation: 2,
+      pending: [],
+      lastSyncAt: null,
+    })
+    online = false
+    const current = await a.getDashboard()
+    assert.equal(current.documentVersion, 2)
+    assert.deepEqual(
+      JSON.parse((await db.backups.get('canvas-seed:same-server:default'))!.data),
+      old,
+    )
+    assert.deepEqual((await db.sync.get(a.key))!.snapshot, old)
+    assert.equal((await a.getSyncState()).pendingChanges, 0)
+  } finally {
+    await a.dispose()
+  }
+})
