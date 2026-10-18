@@ -3,6 +3,7 @@ import {
   migrateDashboard,
   migrateCanvasDocument,
   validateCurrentDashboard,
+  validateCanvasTransition,
   type Dashboard,
   type InstalledWidget,
   type StorageAdapter,
@@ -37,10 +38,22 @@ export class LocalAdapter implements StorageAdapter {
 
   async saveDashboard(dashboard: Dashboard): Promise<void> {
     validateCurrentDashboard(dashboard)
-    await db.dashboards.put({
-      id: dashboard.id,
-      data: JSON.stringify(dashboard),
-      updatedAt: new Date().toISOString(),
+    await db.transaction('rw', db.dashboards, async () => {
+      const previous = await db.dashboards.get(dashboard.id)
+      if (previous) {
+        const raw = JSON.parse(previous.data)
+        if (raw.documentVersion !== undefined && ![2, 3].includes(raw.documentVersion))
+          throw new Error('未来或未知文档版本，已停止写入并保留原始数据')
+        if (raw.documentVersion === 3) {
+          validateCurrentDashboard(raw)
+          validateCanvasTransition(raw, dashboard)
+        }
+      }
+      await db.dashboards.put({
+        id: dashboard.id,
+        data: JSON.stringify(dashboard),
+        updatedAt: new Date().toISOString(),
+      })
     })
   }
   async getInstalledWidgets(): Promise<InstalledWidget[]> {

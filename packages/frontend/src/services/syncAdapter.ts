@@ -135,7 +135,12 @@ export class SyncAdapter implements StorageAdapter {
             key: `canvas-seed:${remote.instanceId}:${remote.id}`,
             data: JSON.stringify(remote),
           })
-        if (row && row.pending.some((op) => op.snapshot.documentVersion !== 3)) {
+        if (
+          row &&
+          ((row.snapshot.documentVersion !== undefined &&
+            ![2, 3].includes(row.snapshot.documentVersion)) ||
+            row.pending.some((op) => op.snapshot.documentVersion !== 3))
+        ) {
           if (!row.upgradeRequired)
             await db.backups.put({
               key: `canvas-queue-v1:${this.key}:${row.generation ?? 0}`,
@@ -202,7 +207,22 @@ export class SyncAdapter implements StorageAdapter {
     let upgradeBlocked = false
     await db.transaction('rw', db.sync, db.backups, async () => {
       const row = await db.sync.get(this.key)
-      if (row && row.pending.some((op) => op.snapshot.documentVersion !== 3)) {
+      if (
+        row &&
+        ((row.snapshot.documentVersion !== undefined &&
+          ![2, 3].includes(row.snapshot.documentVersion)) ||
+          row.pending.some((op) => op.snapshot.documentVersion !== 3))
+      ) {
+        if (
+          row.snapshot.documentVersion !== undefined &&
+          ![2, 3].includes(row.snapshot.documentVersion)
+        ) {
+          const key = `future-document:${this.key}:${row.generation ?? 0}`
+          if (!(await db.backups.get(key))) await db.backups.add({ key, data: JSON.stringify(row) })
+          row.upgradeRequired = true
+          row.error = '未来或未知文档版本，请更新客户端；原数据和新增草稿已保留'
+          await db.sync.put(row)
+        }
         await db.backups.put({
           key: `upgrade-edit:${this.key}:${crypto.randomUUID()}`,
           data: JSON.stringify(d),
@@ -224,7 +244,7 @@ export class SyncAdapter implements StorageAdapter {
       row.error = undefined
       await db.sync.put(row)
     })
-    if (upgradeBlocked) throw new Error('请先恢复旧版离线草稿；当前编辑已备份')
+    if (upgradeBlocked) throw new Error('存储文档版本不兼容，请先处理升级/恢复；当前编辑已备份')
     this.observedGeneration = committedGeneration
     this.changed()
     void this.flush()

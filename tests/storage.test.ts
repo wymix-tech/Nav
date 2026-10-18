@@ -614,3 +614,35 @@ test('V1 pending and future snapshots keep immutable contents, while old-schema 
     await a.dispose()
   }
 })
+
+test('already-open writers cannot downgrade future standalone or sync cache rows even when pending is empty', async () => {
+  const local = new LocalAdapter(),
+    d = await local.getDashboard(),
+    future: any = { ...d, documentVersion: 4 }
+  const original = JSON.stringify(future)
+  await db.dashboards.put({ id: d.id, data: original, updatedAt: 'future' })
+  await assert.rejects(() => local.saveDashboard({ ...d, title: 'stale writer' }), /未来|未知/)
+  assert.equal((await db.dashboards.get(d.id))!.data, original)
+  const a = new SyncAdapter()
+  try {
+    const cached = await a.getDashboard()
+    await db.sync.put({
+      key: a.key,
+      snapshot: future,
+      revision: 0,
+      generation: 0,
+      pending: [],
+      lastSyncAt: null,
+    })
+    await assert.rejects(() => a.saveDashboard({ ...cached, title: 'new unsaved draft' }), /已备份/)
+    assert.deepEqual((await db.sync.get(a.key))!.snapshot, future)
+    assert.equal((await db.sync.get(a.key))!.pending.length, 0)
+    assert.equal((await a.getSyncState()).status, 'upgrade-required')
+    assert.equal(
+      JSON.parse((await db.backups.get(`upgrade-edit:${a.key}`))!.data).title,
+      'new unsaved draft',
+    )
+  } finally {
+    await a.dispose()
+  }
+})
