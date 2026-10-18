@@ -11,7 +11,7 @@
   "implementation": {
     "branch": "feat/infinite-canvas-v2",
     "pr": 3,
-    "latest_source_commit": "af7d43222b4f617c977c8542ab5bcb343cb9c955",
+    "latest_source_commit": "3f63410c7f4d9620fed4bd7d6f5903958e769cac",
     "documentVersion": 3,
     "schemaVersion": 3,
     "dexieSchema": 4,
@@ -27,12 +27,18 @@
     "pnpm_check": {
       "typecheck": "passed",
       "eslint": "passed",
-      "unit_route_storage_tests": 78,
+      "unit_route_storage_tests": 79,
       "failed": 0,
       "production_build": "passed"
     },
     "browser_execution": "unavailable: Playwright browser ZIP downloads were truncated/invalid",
-    "docker": "unavailable"
+    "docker": "unavailable",
+    "adapter_initialization_regression": {
+      "original_factory_created_adapters": 3,
+      "original_factory_failed": true,
+      "shared_task_factory_created_adapters": 1,
+      "fixed_factory_passed": true
+    }
   },
   "ci_runs": [
     {
@@ -57,9 +63,18 @@
       "production_and_docker": "skipped after browser failure"
     },
     {
-      "id": 39136278144,
+      "id": 39136273337,
       "commit": "39fe8fe47452b548593ceec569ce50d351926878",
-      "status": "running"
+      "stage": "development three-browser",
+      "passed": 58,
+      "failed": 6,
+      "skipped": 5,
+      "failure": "undo history cleared by duplicate same-page SyncAdapters; fixed with shared initialization promise",
+      "production_and_docker": "skipped after browser failure"
+    },
+    {
+      "commit": "3f63410c7f4d9620fed4bd7d6f5903958e769cac",
+      "status": "awaiting final head CI"
     }
   ],
   "synthetic_sqlite_rehearsal": {
