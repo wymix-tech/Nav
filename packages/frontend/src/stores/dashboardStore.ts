@@ -5,7 +5,8 @@ import {
   profileKey,
   type Dashboard,
   type CanvasLayout,
-  type DashboardViewport,
+  type CanvasCamera,
+  validCamera,
   type WidgetInstance,
   type LayoutMap,
   type SyncState,
@@ -23,8 +24,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
   let writes = 0,
     queue = Promise.resolve(),
     unsaved = false
+  const recoveryPreview = ref<{
+    localTitle: string
+    remoteTitle: string
+    differences: string[]
+  } | null>(null)
   async function refreshStatus() {
-    syncState.value = await (await getStorageAdapter()).getSyncState()
+    const adapter = await getStorageAdapter()
+    syncState.value = await adapter.getSyncState()
+    recoveryPreview.value =
+      'getRecoveryPreview' in adapter ? await (adapter as any).getRecoveryPreview() : null
   }
   let isEditing = false
   window.addEventListener('nav-editing-changed', (e) => {
@@ -151,9 +160,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (w) w.canvas = clone(canvas)
     })
   }
-  function updateViewport(viewport: DashboardViewport) {
+  function setDefaultCamera(camera: CanvasCamera) {
+    if (!validCamera(camera)) return Promise.resolve(false)
     return mutate((d) => {
-      d.viewport = clone(viewport)
+      d.canvasSettings = { version: 1, defaultCamera: clone(camera) }
     })
   }
   function resetProfile(cols: number) {
@@ -232,6 +242,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loading,
     error,
     syncState,
+    recoveryPreview,
     history,
     future,
     load,
@@ -244,7 +255,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     updateWidgetLayouts,
     updateLayouts,
     updateCanvas,
-    updateViewport,
+    setDefaultCamera,
     resetProfile,
     setBase,
     undo,

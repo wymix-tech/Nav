@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { defineConfig } from '@playwright/test'
+const testRunId = randomUUID()
 export default defineConfig({
   testDir: './tests/browser',
   workers: 1,
@@ -9,22 +11,26 @@ export default defineConfig({
       process.env.NAV_TEST_URL ??
       (process.env.NAV_TEST_DIST === 'true' ? 'http://127.0.0.1:4000' : 'http://127.0.0.1:3000'),
     headless: true,
-    launchOptions: process.env.NAV_CHROMIUM_PATH
-      ? {
-          executablePath: process.env.NAV_CHROMIUM_PATH,
-          args: [
-            '--no-sandbox',
-            '--disable-dev-shm-usage',
-            '--use-gl=angle',
-            '--use-angle=swiftshader',
-            '--no-zygote',
-          ],
-        }
-      : {},
   },
-  projects: (process.env.NAV_TEST_BROWSERS ?? 'chromium')
-    .split(',')
-    .map((name) => ({ name, use: { browserName: name as 'chromium' | 'firefox' | 'webkit' } })),
+  projects: (process.env.NAV_TEST_BROWSERS ?? 'chromium').split(',').map((name) => ({
+    name,
+    use: {
+      browserName: name as 'chromium' | 'firefox' | 'webkit',
+      launchOptions:
+        name === 'chromium' && process.env.NAV_CHROMIUM_PATH
+          ? {
+              executablePath: process.env.NAV_CHROMIUM_PATH,
+              args: [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--use-gl=angle',
+                '--use-angle=swiftshader',
+                '--no-zygote',
+              ],
+            }
+          : {},
+    },
+  })),
   reporter: 'list',
   webServer:
     process.env.NAV_TEST_EXTERNAL === 'true'
@@ -36,8 +42,8 @@ export default defineConfig({
             env: {
               NAV_JWT_SECRET: 'browser-test-secret',
               NAV_PASSWORD: 'browser-test-password',
-              NAV_DB_PATH: `/tmp/nav-e2e-${process.pid}.db`,
-              NAV_UPLOAD_DIR: `/tmp/nav-e2e-uploads-${process.pid}`,
+              NAV_DB_PATH: `/tmp/nav-e2e-${testRunId}.db`,
+              NAV_UPLOAD_DIR: `/tmp/nav-e2e-uploads-${testRunId}`,
               PORT: '4000',
               NAV_PUBLIC_DIR:
                 process.env.NAV_TEST_DIST === 'true'

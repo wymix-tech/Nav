@@ -12,11 +12,18 @@ import ConfirmDialog from './components/ConfirmDialog.vue'
 import { useDashboardStore } from './stores/dashboardStore'
 import { useWidgetStore } from './stores/widgetStore'
 import { useAuthStore } from './stores/authStore'
+import { constraints, findPlacement, type WidgetInstance } from '@nav/shared'
+import type { AddWidgetRequest } from './canvas/useCanvasInsertion'
 import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
 
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
 const authStore = useAuthStore()
+const mainElement = ref<HTMLElement | null>(null)
+const libraryTop = ref(12)
+let mainObserver: ResizeObserver | undefined
+const canvasStage = ref<InstanceType<typeof CanvasGrid> | null>(null)
+const spatial = computed(() => dashboardStore.dashboard?.layoutMode === 'canvas')
 const editing = ref(false)
 watch(editing, (active) =>
   window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active })),
@@ -38,6 +45,10 @@ let slideshowTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   window.addEventListener('nav-update-available', updateAvailable)
+  mainObserver = new ResizeObserver(() => {
+    libraryTop.value = (mainElement.value?.getBoundingClientRect().top ?? 0) + 12
+  })
+  if (mainElement.value) mainObserver.observe(mainElement.value)
   await Promise.all([dashboardStore.load(), widgetStore.load()])
   try {
     await authStore.verify()
@@ -52,6 +63,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  mainObserver?.disconnect()
   window.removeEventListener('nav-update-available', updateAvailable)
   document.removeEventListener('dragstart', handleDragStart)
   document.removeEventListener('dragend', handleDragEnd)
@@ -171,13 +183,44 @@ async function handleLoginSuccess() {
   await Promise.all([dashboardStore.load(), widgetStore.load()])
 }
 
+function requestAddWidget(request: AddWidgetRequest) {
+  if (!editing.value || (backendAvailable.value && !authStore.isAuthenticated)) return
+  const d = dashboardStore.dashboard
+  if (!d) return
+  if (spatial.value) {
+    void canvasStage.value?.addWidget(request)
+    return
+  }
+  if (request.client) return
+  try {
+    const cols = d.baseColumns ?? d.columns,
+      size = constraints[request.widgetId] ??
+        widgetStore.getWidget(request.widgetId)?.manifest.size ?? { w: 4, h: 3 }
+    const layout = findPlacement(
+      Object.fromEntries(d.widgets.map((w) => [w.id, w.layouts.lg])),
+      Math.min(size.w, cols),
+      size.h,
+      cols,
+    )
+    const w: WidgetInstance = {
+      id: crypto.randomUUID(),
+      widgetId: request.widgetId,
+      source: request.source,
+      config: {},
+      layouts: { lg: layout, md: layout, sm: layout, xs: layout },
+    }
+    void dashboardStore.addWidget(w)
+  } catch (e) {
+    dashboardStore.error = (e as Error).message
+  }
+}
 function toggleLibrary() {
   showLibrary.value = !showLibrary.value
 }
 </script>
 
 <template>
-  <div class="app" :class="{ 'light-theme': isLightBg }" :style="bgStyle">
+  <div class="app" :class="{ 'light-theme': isLightBg, 'canvas-app': spatial }" :style="bgStyle">
     <TopBar
       :editing="editing"
       :backend-available="backendAvailable"
@@ -206,6 +249,7 @@ function toggleLibrary() {
           syncing: '正在同步',
           synced: '已同步',
           conflict: '检测到其他设备修改，请选择处理方式',
+          'upgrade-required': '需要升级或恢复旧版草稿，请导出备份后处理',
           'auth-required': '需要登录才能同步',
           error: '已保存到本机，同步失败，请重试',
         }[dashboardStore.syncState.status || 'synced']
@@ -222,7 +266,23 @@ function toggleLibrary() {
       </button>
       <button @click="dashboardStore.retry">重试同步</button
       ><button @click="dashboardStore.exportData">导出备份</button>
-      <template v-if="dashboardStore.syncState.status === 'conflict'"
+      <details v-if="dashboardStore.recoveryPreview" class="recovery-preview">
+        <summary>比较本地与远端草稿</summary>
+        <p>
+          本地：{{ dashboardStore.recoveryPreview.localTitle }}；远端：{{
+            dashboardStore.recoveryPreview.remoteTitle
+          }}
+        </p>
+        <ul>
+          <li
+            v-for="(difference, index) in dashboardStore.recoveryPreview.differences"
+            :key="index"
+          >
+            {{ difference }}
+          </li>
+        </ul>
+      </details>
+      <template v-if="dashboardStore.recoveryPreview"
         ><button @click="dashboardStore.resolveConflict(false)">采用远端</button
         ><button @click="dashboardStore.resolveConflict(true)">重新提交本地草稿</button></template
       >
@@ -230,15 +290,21 @@ function toggleLibrary() {
     <div v-if="updateApp" class="save-status">
       新版本已就绪
       <button
-        :disabled="editing || !!dashboardStore.syncState.pendingChanges || !!dashboardStore.error"
+        :disabled="
+          editing ||
+          (!!dashboardStore.syncState.pendingChanges &&
+            dashboardStore.syncState.status !== 'upgrade-required') ||
+          !!dashboardStore.error
+        "
         @click="updateApp()"
       >
         更新并刷新
       </button>
     </div>
     <main
+      ref="mainElement"
       class="main"
-      :class="{ 'library-open': editing && showLibrary }"
+      :class="{ 'library-open': editing && showLibrary, 'canvas-main': spatial }"
       :style="{
         maxWidth:
           dashboardStore.dashboard?.layoutMode === 'canvas' ||
@@ -249,15 +315,14 @@ function toggleLibrary() {
     >
       <p v-if="dashboardStore.loading">加载中...</p>
       <CanvasGrid
+        ref="canvasStage"
         v-else-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
-        :widgets="dashboardStore.dashboard.widgets"
+        :dashboard="dashboardStore.dashboard"
         :editing="editing"
         :editable="!backendAvailable || authStore.isAuthenticated"
-        :viewport="dashboardStore.dashboard.viewport"
-        :viewport-width="dashboardStore.dashboard.viewportWidth"
-        :viewport-height="dashboardStore.dashboard.viewportHeight"
         @update-canvas="dashboardStore.updateCanvas"
-        @update-viewport="dashboardStore.updateViewport"
+        @set-default-camera="dashboardStore.setDefaultCamera"
+        @add-widget="dashboardStore.addWidget"
         @remove-widget="dashboardStore.removeWidget"
         @update-config="dashboardStore.updateWidgetConfig"
         @interaction="(active) => (isDragging = active)"
@@ -283,7 +348,10 @@ function toggleLibrary() {
 
     <WidgetLibrary
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
-      :visible="showLibrary && !isDragging"
+      :visible="showLibrary"
+      :spatial="spatial"
+      :top="libraryTop"
+      @request-add-widget="requestAddWidget"
       @show-install="showInstall = true"
       @toggle-library="toggleLibrary"
     />
@@ -313,6 +381,33 @@ function toggleLibrary() {
   position: relative;
 }
 
+.canvas-app {
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.canvas-app .canvas-main {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  width: 100%;
+}
+.canvas-app .canvas-main.library-open {
+  margin: 0 0 0 284px;
+  width: calc(100% - 284px);
+}
+@media (max-width: 1099px) {
+  .canvas-app:has(.canvas-main.library-open) :deep(.floating-panel) {
+    bottom: 244px;
+  }
+  .canvas-app .canvas-main.library-open {
+    margin: 0;
+    width: 100%;
+    padding-bottom: 220px;
+  }
+}
 .main {
   min-height: 100dvh;
   padding: 24px;
@@ -327,6 +422,10 @@ function toggleLibrary() {
   padding: 8px 24px;
   background: var(--bg-secondary);
   font-size: 13px;
+}
+.recovery-preview {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .save-status.error {
   color: var(--danger);
