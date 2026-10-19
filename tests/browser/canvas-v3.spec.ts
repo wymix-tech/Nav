@@ -194,10 +194,17 @@ test('deleting a chat and undoing restores stopped private draft, never reissues
 }) => {
   await page.getByPlaceholder('输入消息...').fill('undo private draft')
   await edit(page)
-  await page.locator('[data-widget-id="runtime-0"] .remove-btn').click()
-  await expect(page.locator('[data-widget-id="runtime-0"]')).toHaveCount(0)
-  await page.getByRole('button', { name: '撤销', exact: true }).click()
-  await expect(page.getByPlaceholder('输入消息...')).toHaveValue('undo private draft')
+  let sends = 0
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/chat/stream')) sends++
+  })
+  for (let cycle = 0; cycle < 20; cycle++) {
+    await page.locator('[data-widget-id="runtime-0"] .remove-btn').click()
+    await expect(page.locator('[data-widget-id="runtime-0"]')).toHaveCount(0)
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
+    await expect(page.getByPlaceholder('输入消息...')).toHaveValue('undo private draft')
+  }
+  expect(sends).toBe(0)
 })
 test('old plugin iframe and private input survive 20 camera/LOD cycles and full fallback', async ({
   page,
