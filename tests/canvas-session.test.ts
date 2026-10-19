@@ -349,3 +349,74 @@ test('V2 Shift removal does not drag, lock and permission invalidation cancel ge
   assert.equal(h.commits.length, 0)
   assert.equal(h.captures.size, 0)
 })
+
+test('region rename and color changes preserve a drag and the final patch keeps latest metadata', async (t) => {
+  const { applyCanvasCommand } = await import('../packages/shared/src/index.ts')
+  const h = interactionHarness()
+  t.after(h.unmount)
+  h.scene.value.regions.push({
+    id: 'region',
+    title: 'before',
+    color: 'blue',
+    locked: false,
+    x: 0,
+    y: 0,
+    w: 300,
+    h: 200,
+  })
+  h.snapping.value = false
+  h.value.start(pointer(10, 10), 'move', { kind: 'region', id: 'region' })
+  h.value.move(pointer(80, 60))
+  flushFrames()
+  assert.ok(h.value.draft.value)
+  h.scene.value.regions[0].title = 'remote rename'
+  h.scene.value.regions[0].color = 'rose'
+  await nextTick()
+  assert.ok(h.value.draft.value)
+  assert.equal(h.captures.size, 1)
+  h.value.finish(pointer(100, 80))
+  assert.equal(h.commits.length, 1)
+  const latest = { ...createDashboard(), widgets: h.widgets.value, canvasScene: h.scene.value }
+  const result = applyCanvasCommand(
+    latest,
+    h.commits[0] as Parameters<typeof applyCanvasCommand>[1],
+  )
+  assert.deepEqual(result.canvasScene!.regions[0], {
+    id: 'region',
+    title: 'remote rename',
+    color: 'rose',
+    locked: false,
+    x: 90,
+    y: 70,
+    w: 300,
+    h: 200,
+  })
+})
+
+test('region lock and geometry changes still cancel the whole active drag', async (t) => {
+  for (const change of ['locked', 'x'] as const) {
+    const h = interactionHarness()
+    t.after(h.unmount)
+    h.scene.value.regions.push({
+      id: 'region',
+      title: 'before',
+      color: 'blue',
+      locked: false,
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+    })
+    h.value.start(pointer(10, 10), 'move', { kind: 'region', id: 'region' })
+    h.value.move(pointer(80, 60))
+    flushFrames()
+    assert.ok(h.value.draft.value)
+    if (change === 'locked') h.scene.value.regions[0].locked = true
+    else h.scene.value.regions[0].x++
+    await nextTick()
+    assert.equal(h.value.draft.value, null)
+    assert.equal(h.captures.size, 0)
+    h.value.finish(pointer(100, 80))
+    assert.equal(h.commits.length, 0)
+  }
+})

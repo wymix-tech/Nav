@@ -53,4 +53,4 @@ class NavDatabase extends Dexie {
   }
 }
 export const localDatabase = new NavDatabase()
-export const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x))
+export { clone } from '../utils/clone'

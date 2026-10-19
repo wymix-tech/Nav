@@ -10,6 +10,7 @@ import {
   type SelectionRef,
   type Rect,
   type WidgetInstance,
+  type CanvasTypeNames,
 } from '@nav/shared'
 import { useDashboardStore } from '../stores/dashboardStore'
 import type { CanvasTool, useCanvasInteraction } from './useCanvasInteraction'
@@ -27,7 +28,7 @@ interface Options {
   camera: Ref<CanvasCamera>
   list: Ref<boolean>
   presentation: Ref<'list' | 'spatial'>
-  names: Ref<Record<string, string>>
+  names: Ref<CanvasTypeNames>
   ordered: Ref<WidgetInstance[]>
   interaction: ReturnType<typeof useCanvasInteraction>
   fit: (bounds: Rect | null) => void
@@ -78,7 +79,13 @@ export function useCanvasWorkspace(o: Options) {
     interaction.cancel()
     if (canEdit.value) choose(r, extend || additive.value)
   }
-  let previousCamera: CanvasCamera | null = null,
+  let previousNavigation: {
+      camera: CanvasCamera
+      presentation: 'list' | 'spatial'
+      left: number
+      top: number
+    } | null = null,
+    navigationSerial = 0,
     highlightTimer: ReturnType<typeof setTimeout> | undefined,
     trigger: HTMLElement | null = null
   function openPanel(value: typeof panel.value) {
@@ -99,8 +106,14 @@ export function useCanvasWorkspace(o: Options) {
       notice.value = '目标已不存在'
       return
     }
+    const ticket = ++navigationSerial
     settleNavigation()
-    previousCamera ??= { ...camera.value }
+    previousNavigation ??= {
+      camera: { ...camera.value },
+      presentation: presentation.value,
+      left: root.value?.scrollLeft ?? 0,
+      top: root.value?.scrollTop ?? 0,
+    }
     let ids: string[] = []
     if (r.kind === 'widget') ids = [r.id]
     if (r.kind === 'group')
@@ -109,13 +122,20 @@ export function useCanvasWorkspace(o: Options) {
     if (list.value && r.kind !== 'region') {
       ids = ordered.value.filter((w) => ids.includes(w.id)).map((w) => w.id)
       await nextTick()
+      if (ticket !== navigationSerial) return
       root.value
         ?.querySelector<HTMLElement>(`[data-widget-id="${ids[0]}"]`)
         ?.scrollIntoView({ block: 'center' })
     } else {
       if (list.value) presentation.value = 'spatial'
       await nextTick()
-      fit(selectionRect(dashboard(), r))
+      if (ticket !== navigationSerial) return
+      try {
+        fit(selectionRect(dashboard(), r))
+      } catch {
+        notice.value = '目标已不存在'
+        return
+      }
       navigationNote = notice.value
     }
     highlight.value = ids
@@ -127,14 +147,21 @@ export function useCanvasWorkspace(o: Options) {
     }, 1500)
     notice.value = `已定位 ${resolveCanvasLabel(dashboard(), r, names.value)}${navigationNote ? '；' + navigationNote : ''}`
   }
-  function back() {
-    if (previousCamera) {
-      settleNavigation()
-      camera.value = previousCamera
-      previousCamera = null
-    }
+  async function back() {
+    const previous = previousNavigation
+    if (!previous) return
+    const ticket = ++navigationSerial
+    previousNavigation = null
+    settleNavigation()
+    presentation.value = previous.presentation
+    camera.value = previous.camera
+    await nextTick()
+    if (ticket !== navigationSerial || !root.value) return
+    root.value.scrollLeft = previous.left
+    root.value.scrollTop = previous.top
   }
   function namedNavigate(value: CanvasCamera) {
+    navigationSerial++
     settleNavigation()
     presentation.value = 'spatial'
     camera.value = { ...value }
@@ -190,16 +217,19 @@ export function useCanvasWorkspace(o: Options) {
 
   onMounted(() => window.addEventListener('keydown', shortcuts))
   onUnmounted(() => {
+    navigationSerial++
     window.removeEventListener('keydown', shortcuts)
     if (highlightTimer) clearTimeout(highlightTimer)
   })
   watch(
-    () => [dashboard().id, dashboard().instanceId],
+    [() => dashboard().id, () => dashboard().instanceId],
     () => {
-      previousCamera = null
+      navigationSerial++
+      previousNavigation = null
       located.value = null
       highlight.value = []
     },
+    { flush: 'sync' },
   )
   return {
     commandAction,

@@ -1,4 +1,4 @@
-import { validCamera, validTitle, type CanvasCamera } from '@nav/shared'
+import { normalizeTextKey, validCamera, validTitle, type CanvasCamera } from '@nav/shared'
 import { localDatabase as db, clone } from '../services/localDatabase'
 export interface NamedView {
   spaceKey: string
@@ -11,8 +11,7 @@ export interface NamedView {
   createdAt: string
   updatedAt: string
 }
-export const viewNameKey = (s: string) =>
-  s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()
+export const viewNameKey = normalizeTextKey
 function valid(row: NamedView) {
   return (
     row.version === 1 &&

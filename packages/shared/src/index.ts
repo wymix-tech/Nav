@@ -3,6 +3,7 @@ export * from './types/widget.js'
 export * from './types/storage.js'
 export * from './types/auth.js'
 export * from './validation.js'
+export * from './text.js'
 export * from './layout.js'
 
 export * from './canvas/types.js'

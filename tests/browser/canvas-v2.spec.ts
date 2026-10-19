@@ -289,3 +289,100 @@ test('V2 region gesture creates once, moves and deletes only the annotation, and
   await expect(page.locator('.canvas-item.selected')).toHaveCount(3)
   expect((await snapshot(request)).revision).toBe(current.revision)
 })
+
+test('V2 an idle companion tab preserves editor undo and a real undo still restores the command', async ({
+  page,
+  context,
+  request,
+}) => {
+  await edit(page)
+  await selectTwo(page)
+  const before = await snapshot(request)
+  await page.getByRole('button', { name: '分组', exact: true }).click()
+  await expect.poll(async () => (await snapshot(request)).canvasScene!.groups.length).toBe(1)
+  const companion = await context.newPage()
+  const companionErrors: string[] = []
+  companion.on('pageerror', (e) => companionErrors.push(e.message))
+  try {
+    await companion.goto('/')
+    await expect(companion.locator('.canvas-item')).toHaveCount(3)
+    await page.evaluate(() => {
+      const state = window as any
+      state.__reviewNotices = 0
+      state.__reviewChannel = new BroadcastChannel('nav-storage')
+      state.__reviewChannel.addEventListener('message', () => state.__reviewNotices++)
+    })
+    await Promise.all([
+      companion.waitForResponse((r) => r.url().endsWith('/api/dashboards')),
+      companion.evaluate(() => window.dispatchEvent(new Event('visibilitychange'))),
+    ])
+    await page.waitForFunction(() => (window as any).__reviewNotices >= 2)
+    const undo = page.getByRole('button', { name: '撤销', exact: true })
+    await expect(undo).toBeEnabled()
+    await undo.click()
+    await expect.poll(async () => (await snapshot(request)).canvasScene!.groups.length).toBe(0)
+    expect((await snapshot(request)).widgets).toEqual(before.widgets)
+    expect(companionErrors).toEqual([])
+  } finally {
+    await page.evaluate(() => (window as any).__reviewChannel?.close())
+    await companion.close()
+  }
+})
+
+test('V2 list search return restores scrolling and presentation without remounts or document writes', async ({
+  page,
+  request,
+}) => {
+  const current = await snapshot(request)
+  await put(
+    request,
+    applyCanvasCommand(current, {
+      type: 'create-region',
+      region: {
+        id: 'return-region',
+        title: 'Return region',
+        color: 'blue',
+        locked: false,
+        x: -100,
+        y: -100,
+        w: 1200,
+        h: 500,
+      },
+    }),
+  )
+  await page.setViewportSize({ width: 1440, height: 760 })
+  await page.reload()
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await page.getByRole('button', { name: '搜索画布', exact: true }).click()
+  const grid = page.locator('.canvas-grid')
+  const scroll = await grid.evaluate((el) => {
+    el.scrollTop = 30
+    return el.scrollTop
+  })
+  expect(scroll).toBeGreaterThan(0)
+  await page
+    .locator('.canvas-item')
+    .evaluateAll((nodes) => nodes.forEach((n) => ((n as any).__returnHost = true)))
+  const before = await snapshot(request)
+  const query = page.getByRole('textbox', { name: '搜索画布内容' })
+  await query.fill('three')
+  await expect(page.getByLabel('搜索结果').locator('li')).toHaveCount(1)
+  await page.getByLabel('搜索结果').getByRole('button').click()
+  await expect.poll(() => grid.evaluate((el) => el.scrollTop)).not.toBe(scroll)
+  await page.getByRole('button', { name: '返回定位前视角', exact: true }).click()
+  await expect.poll(() => grid.evaluate((el) => el.scrollTop)).toBeCloseTo(scroll, 0)
+  await query.fill('Return region')
+  await expect(page.getByLabel('搜索结果').locator('li')).toHaveCount(1)
+  await page.getByLabel('搜索结果').getByRole('button').click()
+  await expect(grid).not.toHaveClass(/stacked/)
+  await page.getByRole('button', { name: '返回定位前视角', exact: true }).click()
+  await expect(grid).toHaveClass(/stacked/)
+  await expect.poll(() => grid.evaluate((el) => el.scrollTop)).toBeCloseTo(scroll, 0)
+  expect((await snapshot(request)).revision).toBe(before.revision)
+  expect(
+    await page
+      .locator('.canvas-item')
+      .evaluateAll((nodes) => nodes.every((n) => (n as any).__returnHost)),
+  ).toBe(true)
+})

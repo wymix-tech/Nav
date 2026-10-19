@@ -15,5 +15,10 @@ export function canvasSceneDifferences(local: CanvasScene, remote: CanvasScene):
         remote[field].find((x) => x.id === id),
       )
   diff('layers', local.layers, remote.layers)
+  diff(
+    'regions.order',
+    local.regions.map((r) => r.id),
+    remote.regions.map((r) => r.id),
+  )
   return out
 }

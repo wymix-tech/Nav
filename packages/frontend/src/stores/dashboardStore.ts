@@ -20,6 +20,7 @@ import {
 import { getStorageAdapter, localMode } from '../services/storageAdapter'
 import { useAuthStore } from './authStore'
 import { clone, localDatabase } from '../services/localDatabase'
+import { sameDashboardContent, type StorageNotice } from '../services/storageEvents'
 export const useDashboardStore = defineStore('dashboard', () => {
   const dashboard = ref<Dashboard | null>(null),
     loading = ref(true),
@@ -88,7 +89,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       writes--
     }
   }
-  async function commit(next: Dashboard, remember = true): Promise<boolean> {
+  async function replaceDocument(next: Dashboard, updateHistory: () => void): Promise<boolean> {
     if (!editable()) {
       error.value = '请先登录再编辑'
       return false
@@ -101,13 +102,21 @@ export const useDashboardStore = defineStore('dashboard', () => {
       error.value = e instanceof Error ? e.message : '配置无效'
       return false
     }
-    if (remember && dashboard.value) {
-      history.value.push(clone(dashboard.value))
-      if (history.value.length > 50) history.value.shift()
-      future.value = []
-    }
-    dashboard.value = clone(next)
+    const snapshot = clone(next)
+    // No await between the document and stack changes. Delayed persistence
+    // must never mutate history after a later command has already run.
+    updateHistory()
+    dashboard.value = snapshot
     return persist(clone(next))
+  }
+  function commit(next: Dashboard, remember = true): Promise<boolean> {
+    return replaceDocument(next, () => {
+      if (remember && dashboard.value) {
+        history.value.push(clone(dashboard.value))
+        if (history.value.length > 50) history.value.shift()
+        future.value = []
+      }
+    })
   }
   function mutate(fn: (d: Dashboard) => void) {
     if (!dashboard.value) return Promise.resolve(false)
@@ -193,21 +202,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (!history.value.length || !dashboard.value || !editable()) return
     const before = dashboard.value,
       target = history.value.at(-1)!
-    await commit({ ...target, revision: before.revision }, false)
-    if (dashboard.value !== before) {
+    return replaceDocument({ ...target, revision: before.revision }, () => {
       history.value.pop()
       future.value.push(clone(before))
-    }
+    })
   }
   async function redo() {
     if (!future.value.length || !dashboard.value || !editable()) return
     const before = dashboard.value,
       target = future.value.at(-1)!
-    await commit({ ...target, revision: before.revision }, false)
-    if (dashboard.value !== before) {
+    return replaceDocument({ ...target, revision: before.revision }, () => {
       future.value.pop()
       history.value.push(clone(before))
-    }
+    })
   }
   async function retry() {
     if (unsaved && dashboard.value) await persist(clone(dashboard.value))
@@ -244,11 +251,17 @@ export const useDashboardStore = defineStore('dashboard', () => {
     URL.revokeObjectURL(url)
   }
   window.addEventListener('nav-storage-changed', (event) => {
-    if ((event as CustomEvent).detail?.external) {
-      history.value = []
-      future.value = []
-    }
+    const detail = (event as CustomEvent<Partial<StorageNotice> & { external?: boolean }>).detail
     void (async () => {
+      if (detail?.external && detail.key) {
+        // Read without adapter.cached(): observing a notification must not
+        // advance a stale editor's generation and permit it to overwrite a draft.
+        const row = await localDatabase.sync.get(detail.key)
+        if (row && dashboard.value && !sameDashboardContent(dashboard.value, row.snapshot)) {
+          history.value = []
+          future.value = []
+        }
+      }
       const adapter = await getStorageAdapter()
       await refreshStatus()
       if (!writes && !unsaved && !isEditing && adapter.cached) {

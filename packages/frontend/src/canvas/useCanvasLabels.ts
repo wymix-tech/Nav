@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import type { CanvasTypeNames } from '@nav/shared'
 import { useWidgetStore } from '../stores/widgetStore'
 export const builtinWidgets = [
   { id: 'search', name: '搜索框', icon: '🔍' },
@@ -11,10 +12,10 @@ export const builtinWidgets = [
 ]
 export function useCanvasLabels() {
   const store = useWidgetStore()
-  return computed(() =>
-    Object.fromEntries([
-      ...builtinWidgets.map((w) => [w.id, w.name]),
-      ...store.installedWidgets.map((w) => [w.widgetId, w.manifest.displayName]),
-    ]),
-  )
+  return computed<CanvasTypeNames>(() => ({
+    builtin: Object.fromEntries(builtinWidgets.map((w) => [w.id, w.name])),
+    installed: Object.fromEntries(
+      store.installedWidgets.map((w) => [w.widgetId, w.manifest.displayName]),
+    ),
+  }))
 }

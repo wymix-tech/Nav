@@ -1,7 +1,11 @@
-import type { Dashboard } from '../types/dashboard.js'
+import type { Dashboard, WidgetInstance } from '../types/dashboard.js'
+import { normalizeTextKey } from '../text.js'
 import type { SelectionRef } from './scene.js'
-export const normalizeQuery = (s: string) =>
-  s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()
+export const normalizeQuery = normalizeTextKey
+export type CanvasTypeNames = Partial<Record<WidgetInstance['source'], Record<string, string>>>
+export function resolveCanvasType(w: WidgetInstance, names: CanvasTypeNames = {}): string {
+  return names[w.source]?.[w.widgetId] ?? w.widgetId
+}
 export interface CanvasSearchEntry {
   ref: SelectionRef
   title: string
@@ -11,7 +15,7 @@ export interface CanvasSearchEntry {
 export function resolveCanvasLabel(
   d: Dashboard,
   r: SelectionRef,
-  names: Record<string, string> = {},
+  names: CanvasTypeNames = {},
 ): string {
   if (r.kind === 'group')
     return d.canvasScene?.groups.find((g) => g.id === r.id)?.title ?? '已删除的组'
@@ -19,18 +23,15 @@ export function resolveCanvasLabel(
     return d.canvasScene?.regions.find((g) => g.id === r.id)?.title ?? '已删除的区域'
   const w = d.widgets.find((w) => w.id === r.id)
   return (
-    d.canvasScene?.widgetMeta[r.id]?.title ||
-    (w ? (names[w.widgetId] ?? w.widgetId) : '已删除的组件')
+    d.canvasScene?.widgetMeta[r.id]?.title || (w ? resolveCanvasType(w, names) : '已删除的组件')
   )
 }
-export function canvasSearchIndex(
-  d: Dashboard,
-  names: Record<string, string> = {},
-): CanvasSearchEntry[] {
+export function canvasSearchIndex(d: Dashboard, names: CanvasTypeNames = {}): CanvasSearchEntry[] {
   return [
     ...d.widgets.map((w) => {
       const ref: SelectionRef = { kind: 'widget', id: w.id },
-        fields = [w.id, w.widgetId, names[w.widgetId] ?? w.widgetId]
+        type = resolveCanvasType(w, names),
+        fields = [w.id, w.widgetId, type]
       if (w.source === 'builtin' && w.widgetId === 'bookmark' && Array.isArray(w.config.groups))
         for (const g of w.config.groups) {
           if (typeof g?.name === 'string') fields.push(g.name)
@@ -43,7 +44,7 @@ export function canvasSearchIndex(
       return {
         ref,
         title: resolveCanvasLabel(d, ref, names),
-        type: names[w.widgetId] ?? w.widgetId,
+        type,
         fields: fields.map(normalizeQuery),
       }
     }),

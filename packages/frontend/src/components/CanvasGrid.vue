@@ -399,6 +399,7 @@ onUnmounted(() => {
               locked(w.id),
               ranks[w.id],
               tool,
+              names,
               list ? ordered : null,
             ]"
             class="canvas-item"

@@ -15,12 +15,14 @@ import {
 } from '@nav/shared'
 import { localDatabase as db, clone, type SyncRow } from './localDatabase'
 import { apiJson, ApiError } from './apiClient'
+import type { StorageNotice } from './storageEvents'
 
 export class SyncAdapter implements StorageAdapter {
   readonly key = `server:${location.origin}:default`
   private schemaReady = false
   private owner = crypto.randomUUID()
   private observedGeneration = 0
+  private observedRevision = 0
   private unsaved = false
   private editing = false
   private externalChange = false
@@ -56,8 +58,25 @@ export class SyncAdapter implements StorageAdapter {
       if (!document.hidden) void this.refresh()
     }, 30000)
     this.channel?.addEventListener('message', (e) => {
-      if (e.data === this.key)
-        window.dispatchEvent(new CustomEvent('nav-storage-changed', { detail: { external: true } }))
+      const message = e.data
+      // Old tabs send only a key. The store still verifies content before
+      // invalidating history, so their idle heartbeats remain harmless.
+      if (message === this.key)
+        window.dispatchEvent(
+          new CustomEvent('nav-storage-changed', {
+            detail: { key: this.key, external: true },
+          }),
+        )
+      else if (
+        message?.key === this.key &&
+        message.source !== this.owner &&
+        ['document', 'status'].includes(message.kind)
+      )
+        window.dispatchEvent(
+          new CustomEvent('nav-storage-changed', {
+            detail: { ...message, external: message.kind === 'document' },
+          }),
+        )
     })
   }
   async dispose() {
@@ -69,16 +88,25 @@ export class SyncAdapter implements StorageAdapter {
     await this.sending?.catch(() => {})
     this.channel?.close()
   }
-  private changed(external = false) {
+  private changed(external = false, documentChanged = false) {
     if (this.disposed) return
-    window.dispatchEvent(new CustomEvent('nav-storage-changed', { detail: { external } }))
-    this.channel?.postMessage(this.key)
+    const notice: StorageNotice = {
+      key: this.key,
+      source: this.owner,
+      kind: documentChanged ? 'document' : 'status',
+      generation: this.observedGeneration,
+      revision: this.observedRevision,
+    }
+    window.dispatchEvent(
+      new CustomEvent('nav-storage-changed', { detail: { ...notice, external } }),
+    )
+    this.channel?.postMessage(notice)
   }
   private async refresh() {
     if (this.editing || this.unsaved) return
     try {
       await this.getDashboard()
-      this.changed(this.externalChange)
+      this.changed(this.externalChange, this.externalChange)
       this.externalChange = false
       await this.flush()
     } catch {
@@ -127,6 +155,7 @@ export class SyncAdapter implements StorageAdapter {
       this.schemaReady = this.schemaReady && remote.documentVersion === 3
       return await db.transaction('rw', db.sync, db.backups, async () => {
         const row = await db.sync.get(this.key)
+        this.observedRevision = row?.revision ?? remote.revision ?? 0
         if (
           remote.documentVersion !== 3 &&
           !(await db.backups.get(`canvas-seed:${remote.instanceId}:${remote.id}`))
@@ -175,7 +204,10 @@ export class SyncAdapter implements StorageAdapter {
         const generation =
           (row?.generation ?? 0) + (row && row.revision !== remote.revision ? 1 : 0)
         this.observedGeneration = generation
-        this.externalChange = !!row && row.revision !== remote.revision
+        this.observedRevision = remote.revision ?? 0
+        this.externalChange =
+          !!row &&
+          (row.revision !== remote.revision || row.snapshot.instanceId !== remote.instanceId)
         const next: SyncRow = {
           generation,
           key: this.key,
@@ -195,6 +227,7 @@ export class SyncAdapter implements StorageAdapter {
       const cached = await db.sync.get(this.key)
       if (cached) {
         this.observedGeneration = cached.generation ?? 0
+        this.observedRevision = cached.revision
         return migrateCanvasDocument(migrateDashboard(clone(cached.snapshot)))
       }
       throw error
@@ -202,7 +235,10 @@ export class SyncAdapter implements StorageAdapter {
   }
   async cached(): Promise<Dashboard | null> {
     const row = await db.sync.get(this.key)
-    if (row) this.observedGeneration = row.generation ?? 0
+    if (row) {
+      this.observedGeneration = row.generation ?? 0
+      this.observedRevision = row.revision
+    }
     return row ? migrateCanvasDocument(migrateDashboard(clone(row.snapshot))) : null
   }
   async saveDashboard(d: Dashboard): Promise<void> {
@@ -241,6 +277,7 @@ export class SyncAdapter implements StorageAdapter {
       const snapshot = clone(d)
       row.generation = (row.generation ?? 0) + 1
       committedGeneration = row.generation
+      this.observedRevision = row.revision
       // An in-flight operation is immutable; only unsent successors may be coalesced.
       const keep = row.lease && row.lease.until > Date.now() ? row.pending.slice(0, 1) : []
       row.pending = [...keep, { id: crypto.randomUUID(), snapshot }]
@@ -250,7 +287,7 @@ export class SyncAdapter implements StorageAdapter {
     })
     if (upgradeBlocked) throw new Error('存储文档版本不兼容，请先处理升级/恢复；当前编辑已备份')
     this.observedGeneration = committedGeneration
-    this.changed()
+    this.changed(false, true)
     void this.flush()
   }
   async flush(): Promise<void> {
@@ -324,6 +361,7 @@ export class SyncAdapter implements StorageAdapter {
           if (!r || r.pending[0]?.id !== op.id) return
           r.pending.shift()
           r.revision = ack.revision!
+          this.observedRevision = r.revision
           r.lastSyncAt = new Date().toISOString()
           r.error = undefined
           r.authRequired = false
@@ -457,6 +495,7 @@ export class SyncAdapter implements StorageAdapter {
         data: JSON.stringify({ local: r.snapshot, remote: r.conflict }),
       })
       r.revision = r.conflict.revision ?? 0
+      this.observedRevision = r.revision
       if (useLocal) {
         r.snapshot = migrateCanvasDocument(migrateDashboard(r.snapshot))
         validateCanvasTransition(migrateCanvasDocument(migrateDashboard(r.conflict)), r.snapshot)
@@ -474,7 +513,7 @@ export class SyncAdapter implements StorageAdapter {
       r.lease = undefined
       await db.sync.put(r)
     })
-    this.changed()
+    this.changed(true, true)
     await this.flush()
   }
   async getSyncState(): Promise<SyncState> {

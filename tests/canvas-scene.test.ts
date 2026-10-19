@@ -14,6 +14,8 @@ import {
   sceneRanks,
   searchCanvas,
   canvasSearchIndex,
+  canvasSceneDifferences,
+  resolveCanvasLabel,
   selectionRect,
   snapSelection,
   validateCanvasTransition,
@@ -333,7 +335,7 @@ test('search whitelist excludes chat secrets and arbitrary plugin config, suppor
   }
   d.canvasScene!.widgetMeta.c.title = 'ＤＯＣＳ'
   d = group(d)
-  const idx = canvasSearchIndex(d, { chat: 'AI 助手', clock: '时钟' })
+  const idx = canvasSearchIndex(d, { builtin: { chat: 'AI 助手', clock: '时钟' } })
   assert.equal(searchCanvas(idx, 'secretneedle').length, 0)
   assert.equal(searchCanvas(idx, 'secrettoken').length, 0)
   assert.equal(searchCanvas(idx, 'DOCS')[0].ref.id, 'c')
@@ -356,4 +358,45 @@ test('resize snaps only its active right/bottom edges, retains origin and falls 
   )
   const free = snapSelection(box, { x: 21, y: 21 }, [], 1, viewport, [], 'resize')
   assert.deepEqual(free.delta, { x: 20, y: 20 })
+})
+
+test('recovery reports region stacking order even when IDs and every region field are unchanged', () => {
+  let d = fixture()
+  for (const id of ['r1', 'r2'])
+    d = run(d, {
+      type: 'create-region',
+      region: { id, title: id, color: 'blue', locked: false, x: 0, y: 0, w: 100, h: 100 },
+    })
+  const next = run(d, { type: 'reorder', refs: [{ kind: 'region', id: 'r1' }], action: 'front' })
+  assert.deepEqual(
+    next.canvasScene!.regions.map((r) => r.id),
+    ['r2', 'r1'],
+  )
+  const changes = canvasSceneDifferences(d.canvasScene!, next.canvasScene!)
+  assert.equal(changes.length, 1)
+  assert.match(changes[0], /regions.order/)
+  assert.deepEqual(
+    canvasSceneDifferences(d.canvasScene!, JSON.parse(JSON.stringify(d.canvasScene))),
+    [],
+  )
+})
+
+test('labels and type searches distinguish builtin and installed widgets with the same ID', () => {
+  const d = fixture()
+  d.widgets[1].source = 'installed'
+  const names = { builtin: { clock: '时钟' }, installed: { clock: 'Plugin Clock' } }
+  assert.equal(resolveCanvasLabel(d, w('a'), names), '时钟')
+  assert.equal(resolveCanvasLabel(d, w('b'), names), 'Plugin Clock')
+  const index = canvasSearchIndex(d, names)
+  assert.deepEqual(
+    searchCanvas(index, 'Plugin').map((e) => e.ref.id),
+    ['b'],
+  )
+  assert.deepEqual(
+    searchCanvas(index, '时钟').map((e) => e.ref.id),
+    ['a', 'c', 'd'],
+  )
+  d.canvasScene!.widgetMeta.b.title = 'My plugin'
+  assert.equal(resolveCanvasLabel(d, w('b'), names), 'My plugin')
+  assert.equal(searchCanvas(canvasSearchIndex(d, names), 'Plugin Clock')[0].ref.id, 'b')
 })

@@ -33,6 +33,8 @@ import {
   type Rect,
 } from '@nav/shared'
 import { resolveWidgetSize } from './resolveWidgetSize'
+import { selectCanvasRef } from './selection'
+import { clone } from '../utils/clone'
 export type CanvasTool = 'interact' | 'select' | 'region'
 interface Options {
   root: Ref<HTMLElement | null>
@@ -54,21 +56,24 @@ export function geometryFingerprint(d: Dashboard, refs: SelectionRef[]) {
     const normalized = normalizeSelection(d, refs)
     if (canonical(normalized) !== canonical(refs)) return 'invalid'
     return canonical(
-      refs.map((r) => ({
-        ref: r,
-        rect: selectionRect(d, r),
-        locked: effectiveLocked(d, r),
-        members:
-          r.kind === 'group'
-            ? d.canvasScene?.groups.find((g) => g.id === r.id)?.memberIds
-            : undefined,
-        widgets: selectionWidgets(d, [r]).map((id) => ({
-          id,
-          canvas: widgetRect(d, id),
-          locked: d.canvasScene?.widgetMeta[id]?.locked,
-          group: groupFor(d, id)?.id,
-        })),
-      })),
+      refs.map((r) => {
+        const { x, y, w, h } = selectionRect(d, r)
+        return {
+          ref: r,
+          rect: { x, y, w, h },
+          locked: effectiveLocked(d, r),
+          members:
+            r.kind === 'group'
+              ? d.canvasScene?.groups.find((g) => g.id === r.id)?.memberIds
+              : undefined,
+          widgets: selectionWidgets(d, [r]).map((id) => ({
+            id,
+            canvas: widgetRect(d, id),
+            locked: d.canvasScene?.widgetMeta[id]?.locked,
+            group: groupFor(d, id)?.id,
+          })),
+        }
+      }),
     )
   } catch {
     return 'invalid'
@@ -87,7 +92,6 @@ export function useCanvasInteraction(o: Options) {
   type Mode = 'pan' | 'move' | 'resize' | 'pinch' | 'marquee' | 'region'
   type Active = {
     mode: Mode
-    pointer: number
     start: Point
     camera: CanvasCamera
     origin: CanvasCamera
@@ -100,7 +104,6 @@ export function useCanvasInteraction(o: Options) {
     distance?: number
     dragged: boolean
     extend: boolean
-    refsAtStart: SelectionRef[]
   }
   const active = shallowRef<Active | null>(null)
   let frame = 0,
@@ -172,7 +175,7 @@ export function useCanvasInteraction(o: Options) {
     if (el.closest('.canvas-ui,[role="dialog"]')) return
     if (active.value) {
       if (e.pointerType !== 'touch' || pointers.size !== 1) return
-      const [firstId, first] = [...pointers.entries()][0],
+      const first = [...pointers.values()][0],
         origin = active.value.origin,
         before = active.value.before
       active.value = null
@@ -184,7 +187,6 @@ export function useCanvasInteraction(o: Options) {
       const middle = local({ x: (first.x + e.clientX) / 2, y: (first.y + e.clientY) / 2 })
       active.value = {
         mode: 'pinch',
-        pointer: firstId,
         start: first,
         camera: { ...o.camera.value },
         origin,
@@ -196,7 +198,6 @@ export function useCanvasInteraction(o: Options) {
         distance: Math.max(1, Math.hypot(first.x - e.clientX, first.y - e.clientY)),
         dragged: false,
         extend: false,
-        refsAtStart: [],
       }
       e.preventDefault()
       e.stopPropagation()
@@ -204,26 +205,22 @@ export function useCanvasInteraction(o: Options) {
     }
     const forcePan = e.button === 1 || space.value || o.hand.value
     let next: Mode = forcePan ? 'pan' : mode
-    const before = structuredCloneSafe(o.selected.value),
+    const before = clone(o.selected.value),
       extend = e.shiftKey || o.additive.value
     let refs: SelectionRef[] = []
     if (!forcePan) {
       if (target) {
         if (!o.canEdit()) return
-        const r = normalizeSelection(o.dashboard(), [target])[0]
+        const selection = selectCanvasRef(o.dashboard(), o.selected.value, target, extend)
+        const r = selection.target
         if (!r) return
-        const has = o.selected.value.some((x) => refKey(x) === refKey(r))
-        if (extend)
-          o.selected.value = has
-            ? o.selected.value.filter((x) => refKey(x) !== refKey(r))
-            : [...o.selected.value, r]
-        else if (!has) o.selected.value = [r]
-        if (extend && has) {
+        o.selected.value = selection.selected
+        if (!selection.included) {
           e.preventDefault()
           e.stopPropagation()
           return
         }
-        refs = next === 'resize' ? [r] : structuredCloneSafe(o.selected.value)
+        refs = next === 'resize' ? [r] : clone(o.selected.value)
         if (refs.some((r) => effectiveLocked(o.dashboard(), r))) {
           e.preventDefault()
           e.stopPropagation()
@@ -250,7 +247,6 @@ export function useCanvasInteraction(o: Options) {
     o.root.value.setPointerCapture(e.pointerId)
     active.value = {
       mode: next,
-      pointer: e.pointerId,
       start: point(e),
       camera: { ...o.camera.value },
       origin: { ...o.camera.value },
@@ -263,7 +259,6 @@ export function useCanvasInteraction(o: Options) {
         : undefined,
       dragged: false,
       extend,
-      refsAtStart: structuredCloneSafe(o.selected.value),
     }
   }
   function preview(e: PointerEvent) {
@@ -498,9 +493,5 @@ export function useCanvasInteraction(o: Options) {
     lost,
     wheel,
     endWheel,
-    hasActive: () => !!active.value,
   }
-}
-function structuredCloneSafe<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value))
 }

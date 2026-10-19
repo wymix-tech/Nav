@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted, onMounted } from 'vue'
-import { canvasSearchIndex, searchCanvas, type Dashboard, type SelectionRef } from '@nav/shared'
-const props = defineProps<{ dashboard: Dashboard; names: Record<string, string> }>()
+import {
+  canvasSearchIndex,
+  searchCanvas,
+  type CanvasTypeNames,
+  type Dashboard,
+  type SelectionRef,
+} from '@nav/shared'
+const props = defineProps<{ dashboard: Dashboard; names: CanvasTypeNames }>()
 const emit = defineEmits<{ locate: [ref: SelectionRef]; back: []; close: [] }>()
 const query = ref(''),
   debounced = ref(''),

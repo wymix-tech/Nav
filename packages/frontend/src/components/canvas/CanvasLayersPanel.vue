@@ -8,12 +8,13 @@ import {
   type Dashboard,
   type SelectionRef,
   type CanvasCommand,
+  type CanvasTypeNames,
 } from '@nav/shared'
 const props = defineProps<{
   dashboard: Dashboard
   selected: SelectionRef[]
   editable: boolean
-  names: Record<string, string>
+  names: CanvasTypeNames
 }>()
 const emit = defineEmits<{
   select: [ref: SelectionRef, extend: boolean]

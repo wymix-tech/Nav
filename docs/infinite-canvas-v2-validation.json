@@ -428,5 +428,32 @@
     "target_p95_ms": 33,
     "target_claimed_met": false
   },
-  "release_status": "draft; implementation, available CI and synthetic database rehearsal passed; no merge/deployment/production migration; physical-device, reference-performance and production-replica release gates remain"
+  "release_status": "draft; implementation, available CI and synthetic database rehearsal passed; no merge/deployment/production migration; physical-device, reference-performance and production-replica release gates remain",
+  "review_fixes_2026_10_19": {
+    "reviewed_commit": "75bdd9c2ce45bdf2acfa9f5c5ca92de520e9a027",
+    "findings": ["R1", "R2", "R3", "R4", "R5", "R6"],
+    "cleanup": [
+      "shared selection transition",
+      "stable text normalization",
+      "JSON clone utility",
+      "unused gesture fields and method removed"
+    ],
+    "local": {
+      "pnpm_check": "passed",
+      "tests": 92,
+      "failed": 0,
+      "typecheck": "passed",
+      "eslint": "passed",
+      "production_build": "passed",
+      "formatting": "passed",
+      "git_diff_check": "passed"
+    },
+    "negative_proof": {
+      "original_R1_R2_tests_failed": 2,
+      "fixed_R1_R2_tests_passed": true
+    },
+    "browser_regressions_added": 2,
+    "ci": "pending",
+    "production_data_touched": false
+  }
 }
