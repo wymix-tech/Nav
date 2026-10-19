@@ -374,6 +374,7 @@ test('V2 list search return restores scrolling and presentation without remounts
   await expect.poll(() => grid.evaluate((el) => el.scrollTop)).toBeCloseTo(scroll, 0)
   await query.fill('Return region')
   await expect(page.getByLabel('搜索结果').locator('li')).toHaveCount(1)
+  await expect(page.getByLabel('搜索结果').getByRole('button')).toContainText('Return region')
   await page.getByLabel('搜索结果').getByRole('button').click()
   await expect(grid).not.toHaveClass(/stacked/)
   await page.getByRole('button', { name: '返回定位前视角', exact: true }).click()
