@@ -2,6 +2,10 @@
 
 V3 从 `899b4561b6faec0f4d8b0c5a2871a800ae1b29d2`（V2 PR #3）建立 `feat/infinite-canvas-v3`，继续依赖 V2。main 仍为 `27e915f`，不能绕过 V1/V2 直接部署。本轮不合并、不部署、不修改生产数据。设计输入保存在 [V3 方案](infinite-canvas-v3-plan.md)。
 
+当前是可审查的首轮实现，尚未完整发布验收。产品实现为 `7eed296`，`9402d82` 增强聊天删除/撤销回归。逐浏览器最终运行合计 91 通过、5 跳过，另有增强用例的重复验证；它们来自同一产品源码的独立运行。一次早期 WebKit 撤销后详情待挂载超时仍为开放问题 `V3-WK-UNDO-01`，后续通过不等于根因解决。完整运行记录、生产构建结果及 partial/manual-pending 以验证 JSON 为准。
+
+正式性能采样已完成四种模式各三个场景、共 10800 个正式帧；采样成功不代表性能目标通过。密集 safe 的长任务仍偏多，记录为 `V3-PERF-DENSE-01`，需要进一步 profile。生产场景覆盖来自原全套 31 项通过和修正后的离线壳定向 1 项通过；后者用虚拟时钟跨过既有 20 秒租约/30 秒心跳恢复窗口，没有修改生产同步协议。
+
 ## 操作
 
 画布底部的“资源模式”只影响当前标签页：
@@ -61,7 +65,7 @@ Search 和 Bookmark 的草稿在 Runtime。删除撤销用的内存记录最多�
 
 ## 验证和复现
 
-实际结果见 [验证清单](infinite-canvas-v3-validation.json) 和 `docs/performance/` 原始数据；未执行项不算通过。
+实际结果见 [验证清单](infinite-canvas-v3-validation.json)、[性能对照与规模研究](infinite-canvas-v3-performance.md) 和 `docs/performance/` 原始数据；未执行项不算通过。
 
 ```bash
 corepack enable

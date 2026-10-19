@@ -24,7 +24,10 @@
       "modules": 115,
       "typecheck": "passed",
       "eslint": "passed",
-      "build": "passed"
+      "build": "passed",
+      "resumedVerification": "passed again on frozen product sources; 115 tests, typecheck, ESLint and build",
+      "productSourcesUnchangedSince": "7eed296",
+      "finalTestLint": "passed after both strengthened browser test changes"
     },
     "browserDevelopment": {
       "fullPreFinal": {
@@ -38,18 +41,132 @@
         "failed": 0,
         "browsers": ["chromium", "firefox", "webkit"],
         "scope": "V3 lifecycle, V2 list navigation and chat/Docker; final sampler concurrency is additionally covered by module tests; full final CI pending"
+      },
+      "resumedFullRuns": {
+        "chromium": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 1
+        },
+        "firefoxAndWebkitFirst": {
+          "passed": 59,
+          "failed": 1,
+          "skipped": 4,
+          "failure": "V3-WK-UNDO-01"
+        },
+        "webkitFinal": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2
+        },
+        "strengthenedUndoChromiumFirefox": {
+          "passed": 2,
+          "failed": 0,
+          "cyclesPerCase": 20
+        }
+      },
+      "latestPerBrowserCoverage": {
+        "chromium": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 1,
+          "log": "checks/browser-chromium.log"
+        },
+        "firefox": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2,
+          "log": "checks/browser-firefox-webkit.log"
+        },
+        "webkit": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2,
+          "log": "checks/browser-webkit-final.log"
+        },
+        "aggregate": {
+          "passed": 91,
+          "failed": 0,
+          "skipped": 5,
+          "note": "Assembled from separate per-browser runs on identical product sources. One earlier WebKit failure remains an unresolved intermittent observation."
+        }
+      },
+      "skipReasons": [
+        "Three production-only offline-shell cases skipped in development; production Chromium runs the shell case separately.",
+        "Two CDP-specific touch cases are Chromium-only; skipped in Firefox and WebKit."
+      ]
+    },
+    "browserProduction": {
+      "fullBeforeLeaseAwareClock": {
+        "passed": 31,
+        "failed": 1,
+        "log": "checks/browser-production.log",
+        "failure": "Offline online-event/reload race can retain a valid 20s lease; the previous assertion expected recovery within 10s."
+      },
+      "shellFinal": {
+        "passed": 1,
+        "failed": 0,
+        "log": "checks/browser-production-shell-final.log",
+        "testChange": "Install Playwright clock, preserve offline reload/cache/camera assertions, advance 31s after online reload through the existing 30s heartbeat. Product sync code, lease and assertion timeout unchanged."
+      },
+      "latestScenarioCoverage": {
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "note": "Assembled from 31 unchanged suite cases plus the final lease-aware shell case; not a single final 32-case command."
       }
     },
-    "browserProduction": "pending",
-    "docker": "not-installed-locally; CI pending",
-    "performance": "pending-final-controlled-runs"
+    "docker": "not-installed-locally; V3 CI not run because push is awaiting explicit authorization",
+    "performance": {
+      "status": "formal-capture-complete; release-acceptance-open",
+      "instrumentation": {
+        "trace": "off",
+        "screenshot": "off",
+        "video": "off"
+      },
+      "detailSelector": ".widget-content > *",
+      "formalExpectedScenarios": 12,
+      "formalExpectedFrames": 10800,
+      "exploratory": {
+        "completedScenarios": 9,
+        "instrumentation": "inherited retain-on-failure trace",
+        "includedInFormalComparison": false,
+        "fullRun": "intentionally interrupted before completion"
+      },
+      "releaseAcceptance": "open; reference PC and real Safari not executed",
+      "harnessResults": {
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "rounds": 36,
+        "formalFrames": 10800,
+        "warmupFrames": 1080
+      },
+      "harnessHash": "a6ef62c70611324ed3f9b83f33d34888d9fde2b1694b71e758d8b50e620311c1",
+      "allProductSourcesClean": true,
+      "allFinalLoadingCountsZero": false,
+      "sharedRoundsOver33ms": 29,
+      "report": "docs/infinite-canvas-v3-performance.md",
+      "rawData": "docs/performance/",
+      "referenceDevice": "not-tested",
+      "hostLoad": "shared host load uncontrolled; logged once per mode in checks/performance-environment.log",
+      "pendingDetailSnapshots": [
+        {
+          "scenario": "safe-dense-clock",
+          "round": 1,
+          "count": 1,
+          "note": "Root count includes an async loading placeholder at the end of the camera sequence; other 35 round snapshots have zero placeholders. Not a ready-latency acceptance claim."
+        }
+      ]
+    }
   },
   "testIsolation": {
     "defaultExternalRequests": "blocked in tests/helpers/browserTest.ts",
     "realNetwork": "isolated local application only",
     "services": "fixed synthetic weather/AI/system/plugin fixtures",
     "credentials": "test database credentials only",
-    "autoReviewInterruption": "Initial browser validation stopped because favicon requests could disclose bookmark domains; replaced with default-deny external request boundary before reruns."
+    "autoReviewInterruption": "Initial browser validation stopped because favicon requests could disclose bookmark domains; replaced with default-deny external request boundary before reruns.",
+    "browserEnvironment": "Chromium 153.0.8010.0, Firefox 157.0, WebKit 27.2. Test-only Firefox sandbox flags and extracted host dependencies; product plugin isolation unchanged."
   },
   "negativeControls": [
     {
@@ -64,7 +181,7 @@
     }
   ],
   "inheritedReleaseGates": ["V2 真机和参考性能验收", "生产部署副本的升级/回滚验证"],
-  "releaseStatus": "draft; automated verification in progress; manual and reference-device gates remain open",
+  "releaseStatus": "draft; not release-accepted: intermittent WebKit mount observation, dense safe performance and partial/manual release gates remain open",
   "acceptance": [
     {
       "id": "A01",
@@ -132,7 +249,7 @@
         "tests/browser/canvas-v3.spec.ts"
       ],
       "status": "partial",
-      "remaining": "删除/undo/类型替换已覆盖，5 分钟 TTL 的浏览器长时间实测未单独执行。"
+      "remaining": "20 次删除/undo 恢复回归已增强；V3-WK-UNDO-01 的间歇挂载停滞根因未确定；5 分钟 TTL 浏览器长时间实测待补。"
     },
     {
       "id": "A07",
@@ -747,7 +864,7 @@
         "docs/infinite-canvas-v3.md"
       ],
       "status": "partial",
-      "remaining": "共享 Linux 同环境生产对照将记录，不能替代参考 PC 验收。"
+      "remaining": "12 个同工具生产场景、10800 个正式帧已归档；共享宿主后台负载不受严格控制，参考 PC 性能门槛未验。"
     },
     {
       "id": "H02",
@@ -767,12 +884,12 @@
       "scenario": "20 轮跨区/缩放/定位/进入退出",
       "required": "owner/订阅/端口/缓存回落，无持续泄漏",
       "evidence": [
-        "tests/performance.spec.ts",
-        "scripts/benchmark-spatial.ts",
-        "docs/performance/",
-        "docs/infinite-canvas-v3.md"
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/runtime.test.ts",
+        "tests/runtime-services.test.ts"
       ],
-      "status": "automated-covered"
+      "status": "partial",
+      "remaining": "owner/View/时钟订阅和 iframe 身份的 20 轮回归通过；真实 MessagePort 与浏览器堆的长期趋势未独立采集。"
     },
     {
       "id": "H04",
@@ -785,7 +902,7 @@
         "docs/infinite-canvas-v3.md"
       ],
       "status": "partial",
-      "remaining": "RAF、长任务、索引和文档 clone/校验/canonical 基准；真实 IndexedDB 写入与发送链路分项 profiler 尚未完整采集。"
+      "remaining": "密集 safe 长任务 101、observe 9，需独立 profiler 定位贡献；真实 IndexedDB 写入与发送链路分项尚未完整采集。"
     },
     {
       "id": "H05",
@@ -797,7 +914,8 @@
         "docs/performance/",
         "docs/infinite-canvas-v3.md"
       ],
-      "status": "automated-covered"
+      "status": "partial",
+      "remaining": "逐浏览器最终覆盖 91 通过/5 跳过，生产场景覆盖 32 项（全套31＋修正后离线壳定向1）；Docker 未安装，V3 远端 CI 未运行。"
     },
     {
       "id": "H06",
@@ -837,5 +955,46 @@
       ],
       "status": "automated-covered"
     }
-  ]
+  ],
+  "delivery": {
+    "localBranch": "feat/infinite-canvas-v3",
+    "productCommit": "7eed296263a2184f46cc95f229c7e922c3043177",
+    "pushed": false,
+    "pullRequestCreated": false,
+    "remoteCI": "not-run",
+    "pushBlock": "Automatic approval review rejected disclosure of new source and commit history to GitHub without explicit authorization.",
+    "testCommits": ["9402d82", "0c9a403", "068897a"]
+  },
+  "knownIssues": [
+    {
+      "id": "V3-WK-UNDO-01",
+      "status": "intermittent-unresolved",
+      "observed": "One WebKit full-suite run restored the chat document after undo, but its detail remained in a pending mount state and the input was absent after 10 seconds. No wrong draft value was observed.",
+      "investigation": "Original trace retained locally. A diagnostic repeat command announced 15 cases but only four completion lines were captured; not counted as 15 passes. A single 20-cycle delete/undo case passed with diagnostics, then passed again without diagnostics. The strengthened 20-cycle case subsequently passed in Chromium and Firefox, and the complete WebKit rerun passed 30 cases with 2 expected skips.",
+      "change": "Strengthened the regression to 20 delete/undo cycles and an explicit zero-chat-request assertion. No speculative product fix or timeout relaxation.",
+      "remaining": "Confirm cause of the intermittent pending mount. Passing reruns alone do not prove resolution."
+    },
+    {
+      "id": "V3-PERF-DENSE-01",
+      "status": "open",
+      "observed": "Formal capture-off dense-clock safe has 101 long tasks across the three full 330-frame windows; observe has 9. Safe reduces end-of-round detail roots to 65/64/76 but does not establish stable frame-time improvement.",
+      "remaining": "Profile mount scheduling, clock updates and main-thread/GPU rendering separately; shared-host noise prevents causal attribution. Reference PC p95 acceptance remains open.",
+      "evidence": [
+        "docs/infinite-canvas-v3-performance.md",
+        "docs/performance/safe-dense-clock.json",
+        "docs/performance/observe-dense-clock.json"
+      ]
+    }
+  ],
+  "phaseStatus": {
+    "P0": "fixed V2 SHA and CI; same-harness shared-container production baseline and all four modes captured; reference-device/stable-load acceptance pending",
+    "P1-P5": "core implementation delivered; automated coverage and partial acceptance recorded per item",
+    "P6": "partial: intermittent WebKit mount observation, dense safe long tasks, Docker/reference-device/manual/production-copy gates remain",
+    "P7": "Rect[] and document cost research plus expansion protocol design; production expansion disabled"
+  },
+  "acceptanceSummary": {
+    "automated-covered": 43,
+    "partial": 19,
+    "manual-pending": 2
+  }
 }
