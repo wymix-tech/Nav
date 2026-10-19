@@ -11,13 +11,13 @@
   "implementation": {
     "branch": "feat/infinite-canvas-v2",
     "pr": 3,
-    "latest_source_commit": "09e61fd67011c1d04e539208b49ab57980e007e3",
+    "latest_source_commit": "32027e944cceaec94d167fbbe5bbd43372867d24",
     "documentVersion": 3,
     "schemaVersion": 3,
     "dexieSchema": 4,
     "deployed": false,
     "productionDataTouched": false,
-    "followup_scope": "validation documentation and App.vue formatting only"
+    "followup_scope": "documentation-only evidence for 2026-10-19 review fixes"
   },
   "local": {
     "environment": "shared Linux x86_64",
@@ -28,7 +28,7 @@
     "pnpm_check": {
       "typecheck": "passed",
       "eslint": "passed",
-      "unit_route_storage_tests": 80,
+      "unit_route_storage_tests": 92,
       "failed": 0,
       "production_build": "passed"
     },
@@ -453,7 +453,45 @@
       "fixed_R1_R2_tests_passed": true
     },
     "browser_regressions_added": 2,
-    "ci": "pending",
-    "production_data_touched": false
+    "ci": {
+      "run_id": 39183401596,
+      "job_id": 117840735907,
+      "url": "https://github.com/wymix-tech/Nav/actions/runs/39183401596",
+      "conclusion": "success",
+      "unit_route_storage_tests": 92,
+      "development": {
+        "passed": 70,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"],
+        "skip_reasons": {
+          "production_only_service_worker_cases": 3,
+          "CDP_touch_only_chromium": 2
+        }
+      },
+      "production": {
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": {
+        "result": "passed",
+        "image": "sha256:ee353cc0eebb018b33d38a87e58a92bd726f375432a068951beba103774392ce"
+      }
+    },
+    "production_data_touched": false,
+    "implementation_commit": "b387876b05bbf2547d59b71b6873d0ddcbfef92c",
+    "validated_commit": "32027e944cceaec94d167fbbe5bbd43372867d24",
+    "previous_ci": {
+      "run_id": 39182871004,
+      "commit": "b387876b05bbf2547d59b71b6873d0ddcbfef92c",
+      "passed": 67,
+      "failed": 3,
+      "skipped": 5,
+      "reason": "New list navigation test clicked the previous single result before query debounce completed; added target-name wait without removing assertions.",
+      "idle_companion_undo": "passed in Chromium, Firefox and WebKit",
+      "production_and_docker": "skipped after browser failure"
+    }
   }
 }
