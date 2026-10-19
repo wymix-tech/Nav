@@ -40,6 +40,7 @@ test('production shell restores an offline canvas draft and independent camera, 
     ).ok(),
   ).toBeTruthy()
   await page.addInitScript((token) => localStorage.setItem('nav_token', token), token)
+  await page.clock.install()
   await page.goto('/')
   await page.evaluate(() => navigator.serviceWorker.ready)
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload()
@@ -61,6 +62,11 @@ test('production shell restores an offline canvas draft and independent camera, 
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('120%')
   await context.setOffline(false)
   await page.reload()
+  await expect(page.locator('.clock-widget')).toBeVisible()
+  // The online event may acquire the existing 20s sync lease just before reload.
+  // A new page must respect it; advance through the 30s recovery heartbeat rather
+  // than requiring a second owner to steal a valid lease within the 10s assertion.
+  await page.clock.fastForward(31000)
   await expect
     .poll(
       async () =>
