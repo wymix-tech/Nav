@@ -224,81 +224,90 @@ function toggleLibrary() {
       @show-about="showAbout = true"
     />
 
-    <div v-if="dashboardStore.error" class="save-status error" role="alert">
-      {{ dashboardStore.error }} <button @click="dashboardStore.load">重新加载</button
-      ><button @click="dashboardStore.exportData">导出备份</button>
-    </div>
-    <div
-      v-if="editing || dashboardStore.syncState.pendingChanges || dashboardStore.syncState.error"
-      class="save-status"
-      role="status"
-    >
-      <span>{{
-        {
-          'local-only': '已保存到本机',
-          'pending-sync': '已保存到本机，等待同步',
-          syncing: '正在同步',
-          synced: '已同步',
-          conflict: '检测到其他设备修改，请选择处理方式',
-          'upgrade-required': '需要升级或恢复旧版草稿，请导出备份后处理',
-          'auth-required': '需要登录才能同步',
-          error: '已保存到本机，同步失败，请重试',
-        }[dashboardStore.syncState.status || 'synced']
-      }}</span>
-      <button
-        v-if="editing"
-        :disabled="!dashboardStore.history.length"
-        @click="dashboardStore.undo"
+    <div class="app-notices" :class="{ 'canvas-chrome': spatial }">
+      <div v-if="dashboardStore.error" class="save-status error" role="alert">
+        {{ dashboardStore.error }} <button @click="dashboardStore.load">重新加载</button
+        ><button @click="dashboardStore.exportData">导出备份</button>
+      </div>
+      <div
+        v-if="editing || dashboardStore.syncState.pendingChanges || dashboardStore.syncState.error"
+        class="save-status"
+        role="status"
       >
-        撤销
-      </button>
-      <button v-if="editing" :disabled="!dashboardStore.future.length" @click="dashboardStore.redo">
-        重做
-      </button>
-      <button @click="dashboardStore.retry">重试同步</button
-      ><button @click="dashboardStore.exportData">导出备份</button>
-      <details v-if="dashboardStore.recoveryPreview" class="recovery-preview">
-        <summary>比较本地与远端草稿</summary>
-        <p>
-          本地：{{ dashboardStore.recoveryPreview.localTitle }}；远端：{{
-            dashboardStore.recoveryPreview.remoteTitle
-          }}
-        </p>
-        <ul>
-          <li
-            v-for="(difference, index) in dashboardStore.recoveryPreview.differences.slice(0, 100)"
-            :key="index"
-          >
-            {{ difference }}
-          </li>
-        </ul>
-        <p v-if="dashboardStore.recoveryPreview.differences.length > 100">
-          还有
-          {{ dashboardStore.recoveryPreview.differences.length - 100 }}
-          项变化；导出备份可查看完整双方快照。
-        </p>
-        <p v-if="dashboardStore.recoveryPreview.remoteFresh === false">
-          当前为缓存预览；联网获取最新远端后才能恢复。
-        </p>
-      </details>
-      <template v-if="dashboardStore.recoveryPreview"
-        ><button @click="dashboardStore.resolveConflict(false)">采用远端</button
-        ><button @click="dashboardStore.resolveConflict(true)">重新提交本地草稿</button></template
-      >
-    </div>
-    <div v-if="updateApp" class="save-status">
-      新版本已就绪
-      <button
-        :disabled="
-          editing ||
-          (!!dashboardStore.syncState.pendingChanges &&
-            dashboardStore.syncState.status !== 'upgrade-required') ||
-          !!dashboardStore.error
-        "
-        @click="updateApp()"
-      >
-        更新并刷新
-      </button>
+        <span>{{
+          {
+            'local-only': '已保存到本机',
+            'pending-sync': '已保存到本机，等待同步',
+            syncing: '正在同步',
+            synced: '已同步',
+            conflict: '检测到其他设备修改，请选择处理方式',
+            'upgrade-required': '需要升级或恢复旧版草稿，请导出备份后处理',
+            'auth-required': '需要登录才能同步',
+            error: '已保存到本机，同步失败，请重试',
+          }[dashboardStore.syncState.status || 'synced']
+        }}</span>
+        <button
+          v-if="editing"
+          :disabled="!dashboardStore.history.length"
+          @click="dashboardStore.undo"
+        >
+          撤销
+        </button>
+        <button
+          v-if="editing"
+          :disabled="!dashboardStore.future.length"
+          @click="dashboardStore.redo"
+        >
+          重做
+        </button>
+        <button @click="dashboardStore.retry">重试同步</button
+        ><button @click="dashboardStore.exportData">导出备份</button>
+        <details v-if="dashboardStore.recoveryPreview" class="recovery-preview">
+          <summary>比较本地与远端草稿</summary>
+          <p>
+            本地：{{ dashboardStore.recoveryPreview.localTitle }}；远端：{{
+              dashboardStore.recoveryPreview.remoteTitle
+            }}
+          </p>
+          <ul>
+            <li
+              v-for="(difference, index) in dashboardStore.recoveryPreview.differences.slice(
+                0,
+                100,
+              )"
+              :key="index"
+            >
+              {{ difference }}
+            </li>
+          </ul>
+          <p v-if="dashboardStore.recoveryPreview.differences.length > 100">
+            还有
+            {{ dashboardStore.recoveryPreview.differences.length - 100 }}
+            项变化；导出备份可查看完整双方快照。
+          </p>
+          <p v-if="dashboardStore.recoveryPreview.remoteFresh === false">
+            当前为缓存预览；联网获取最新远端后才能恢复。
+          </p>
+        </details>
+        <template v-if="dashboardStore.recoveryPreview"
+          ><button @click="dashboardStore.resolveConflict(false)">采用远端</button
+          ><button @click="dashboardStore.resolveConflict(true)">重新提交本地草稿</button></template
+        >
+      </div>
+      <div v-if="updateApp" class="save-status">
+        新版本已就绪
+        <button
+          :disabled="
+            editing ||
+            (!!dashboardStore.syncState.pendingChanges &&
+              dashboardStore.syncState.status !== 'upgrade-required') ||
+            !!dashboardStore.error
+          "
+          @click="updateApp()"
+        >
+          更新并刷新
+        </button>
+      </div>
     </div>
     <main
       ref="mainElement"
@@ -353,7 +362,7 @@ function toggleLibrary() {
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
       :visible="showLibrary"
       :spatial="spatial"
-      :top="libraryTop"
+      :top="spatial ? Math.max(libraryTop, 84) : libraryTop"
       @request-add-widget="requestAddWidget"
       @show-install="showInstall = true"
       @toggle-library="toggleLibrary"
@@ -398,8 +407,8 @@ function toggleLibrary() {
   width: 100%;
 }
 .canvas-app .canvas-main.library-open {
-  margin: 0 0 0 284px;
-  width: calc(100% - 284px);
+  margin: 0;
+  width: 100%;
 }
 @media (max-width: 1099px) {
   .canvas-app:has(.canvas-main.library-open) :deep(.floating-panel) {
@@ -408,7 +417,71 @@ function toggleLibrary() {
   .canvas-app .canvas-main.library-open {
     margin: 0;
     width: 100%;
-    padding-bottom: 220px;
+    padding-bottom: 0;
+  }
+}
+.canvas-app .app-notices {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 60;
+  max-width: min(640px, calc(100% - 340px));
+  max-height: 35dvh;
+  overflow: auto;
+}
+.canvas-app .app-notices:empty {
+  display: none;
+}
+.canvas-app .app-notices .save-status {
+  padding: 6px 10px;
+  background: transparent;
+}
+.canvas-app :deep(.floating-panel .panel-content) {
+  position: absolute;
+  bottom: calc(100% + 68px);
+  left: 0;
+}
+.canvas-app :deep(.floating-panel .panel-content::after) {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 68px;
+}
+@media (max-width: 1099px) {
+  .canvas-app .canvas-main.library-open :deep(.dock) {
+    bottom: 244px;
+  }
+  .canvas-app .canvas-main.library-open :deep(.canvas-stage) {
+    --dock-clearance: 310px;
+  }
+  .canvas-app .canvas-main.library-open :deep(.canvas-stage.is-editing) {
+    --dock-clearance: 370px;
+  }
+}
+@media (max-width: 768px) {
+  .canvas-app .canvas-main.library-open :deep(.dock) {
+    bottom: 304px;
+  }
+  .canvas-app .canvas-main.library-open :deep(.canvas-stage) {
+    --dock-clearance: 370px;
+  }
+  .canvas-app .canvas-main.library-open :deep(.canvas-stage.is-editing) {
+    --dock-clearance: 430px;
+  }
+  .canvas-app .app-notices {
+    top: 76px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
+  .canvas-app :deep(.floating-panel .panel-content) {
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 132px);
+  }
+  .canvas-app :deep(.floating-panel .panel-content::after) {
+    height: 132px;
   }
 }
 .main {

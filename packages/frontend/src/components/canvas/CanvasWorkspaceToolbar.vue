@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CanvasIcon from './CanvasIcon.vue'
+import './canvasChrome.css'
 defineProps<{
   panel: '' | 'layers' | 'search' | 'views'
   panelId: string
@@ -8,30 +10,36 @@ const emit = defineEmits<{ open: [panel: 'layers' | 'search' | 'views'] }>()
 </script>
 
 <template>
-  <nav class="workspace-toolbar" aria-label="内容导航">
+  <nav class="workspace-toolbar canvas-chrome" :class="{ spatial }" aria-label="内容导航">
     <span class="workspace-label">{{ spatial ? '画布' : '仪表盘' }}</span>
     <div class="workspace-actions">
       <button
+        aria-label="图层"
+        title="图层"
         :aria-expanded="panel === 'layers'"
         :aria-controls="panelId"
         @click="emit('open', 'layers')"
       >
-        图层
+        <CanvasIcon name="layers" /><span>图层</span>
       </button>
       <button
+        aria-label="搜索画布"
+        title="搜索画布"
         :aria-expanded="panel === 'search'"
         :aria-controls="panelId"
         @click="emit('open', 'search')"
       >
-        搜索画布
+        <CanvasIcon name="search" /><span>搜索画布</span>
       </button>
       <button
         v-if="spatial"
+        aria-label="我的视角"
+        title="我的视角"
         :aria-expanded="panel === 'views'"
         :aria-controls="panelId"
         @click="emit('open', 'views')"
       >
-        我的视角
+        <CanvasIcon name="views" /><span>我的视角</span>
       </button>
     </div>
   </nav>
@@ -42,44 +50,28 @@ const emit = defineEmits<{ open: [panel: 'layers' | 'search' | 'views'] }>()
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  padding: 6px;
 }
 .workspace-label {
+  margin-inline: 8px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .workspace-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
 }
-button {
-  min-height: 36px;
-  padding: 6px 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 13px;
-  white-space: nowrap;
-}
-button:hover,
-button[aria-expanded='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
+.spatial .workspace-label {
+  display: none;
 }
 @media (max-width: 480px) {
-  .workspace-toolbar {
-    padding: 6px 8px;
+  .spatial button {
+    width: 36px;
+    padding: 0;
   }
-  button {
-    padding-inline: 9px;
+  .spatial button span {
+    display: none;
   }
 }
 </style>

@@ -1,3 +1,4 @@
+import { setResourceMode } from '../helpers/canvasUi'
 import { test, expect, type Page } from '../helpers/browserTest'
 import {
   backend,
@@ -70,7 +71,7 @@ test('safe mode delays offscreen detail, reclaims after grace, search mounts the
   await page.getByRole('button', { name: '返回定位前视角' }).click()
   await expect(page.locator('.chat-widget')).toBeVisible()
   for (const mode of ['full', 'observe', 'safe']) {
-    await page.getByLabel('画布资源模式').selectOption(mode)
+    await setResourceMode(page, mode)
     if (mode !== 'safe') await expect(page.locator('.widget-renderer')).toHaveCount(25)
   }
   for (let i = 0; i < hosts.length; i++)
@@ -156,7 +157,7 @@ test('stream stays single and continuous across offscreen/LOD/full fallback; rel
   await page.waitForTimeout(1700)
   await expect(page.locator('.chat-widget')).toHaveCount(1)
   expect(await page.evaluate(() => (window as any).__chatAborts)).toBe(0)
-  for (const mode of ['full', 'safe']) await page.getByLabel('画布资源模式').selectOption(mode)
+  for (const mode of ['full', 'safe']) await setResourceMode(page, mode)
   await page.getByRole('button', { name: '回到默认', exact: true }).click()
   await expect(page.locator('.message.assistant')).toContainText('1,2,3,4,5,')
   expect(await page.evaluate(() => (window as any).__chatSends)).toBe(1)
@@ -228,7 +229,7 @@ test('old plugin iframe and private input survive 20 camera/LOD cycles and full 
   await page.waitForTimeout(1700)
   expect(await original!.evaluate((el) => el === document.querySelector('iframe'))).toBe(true)
   expect(await page.locator('iframe').getAttribute('srcdoc')).toBe(source)
-  await page.getByLabel('画布资源模式').selectOption('full')
+  await setResourceMode(page, 'full')
   await expect(frame.getByPlaceholder('plugin draft')).toHaveValue('iframe retained')
 })
 test('20 viewport cycles leave one owner per model, no orphan View attachments and clock demand matches visible detail', async ({

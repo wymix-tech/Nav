@@ -58,8 +58,25 @@ test('workspace navigation stays visible and opens usable panels at desktop and 
       expect(bounds).not.toBeNull()
       expect(bounds!.y).toBeGreaterThanOrEqual(0)
       expect(bounds!.y + bounds!.height).toBeLessThan(height)
+      let stageBounds = null
+      if (mode === 'canvas') {
+        stageBounds = await page.locator('.canvas-stage').boundingBox()
+        const canvasBounds = await page.locator('.canvas-grid').boundingBox()
+        expect(canvasBounds).toEqual(stageBounds)
+        expect(canvasBounds!.height).toBe(height)
+        expect(canvasBounds!.width).toBe(width)
+        const dockBounds = await page
+          .getByRole('navigation', { name: '画布控制', exact: true })
+          .boundingBox()
+        expect(dockBounds!.x).toBeGreaterThanOrEqual(0)
+        expect(dockBounds!.x + dockBounds!.width).toBeLessThanOrEqual(width)
+        expect(dockBounds!.y + dockBounds!.height).toBeLessThan(height)
+      }
       await layers.click()
       await expect(layers).toHaveAttribute('aria-expanded', 'true')
+      if (mode === 'canvas') {
+        expect(await page.locator('.canvas-grid').boundingBox()).toEqual(stageBounds)
+      }
       await expect(page.getByRole('complementary', { name: '图层面板' })).toBeVisible()
       await nav.getByRole('button', { name: '搜索画布', exact: true }).click()
       const search = page.getByRole('complementary', { name: '搜索面板' })
@@ -88,6 +105,53 @@ test('workspace navigation stays visible and opens usable panels at desktop and 
     const after = await (await request.get(backend + '/api/dashboards')).json()
     expect(after.revision).toBe(before.revision)
     expect(after.widgets).toEqual(before.widgets)
+    if (mode === 'canvas') {
+      await page.locator('.floating-panel').hover()
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
+      for (const [width, height] of [
+        [1366, 768],
+        [1024, 768],
+        [390, 844],
+      ]) {
+        await page.setViewportSize({ width, height })
+        const bounds = await page.locator('.canvas-grid').boundingBox()
+        expect(bounds).toEqual({ x: 0, y: 0, width, height })
+        const controls = page.getByRole('navigation', { name: '画布控制', exact: true })
+        const controlsBounds = await controls.boundingBox()
+        expect(controlsBounds!.x).toBeGreaterThanOrEqual(0)
+        expect(controlsBounds!.x + controlsBounds!.width).toBeLessThanOrEqual(width)
+        if (width < 1100) {
+          await expect
+            .poll(async () => (await page.locator('.library-panel').boundingBox())!.y)
+            .toBe(height - 220)
+          expect(controlsBounds!.y + controlsBounds!.height).toBeLessThan(height - 220)
+        }
+        await page.evaluate(() => {
+          document.documentElement.dataset.escapeCount = '0'
+          window.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'Escape') {
+                document.documentElement.dataset.escapeCount = String(
+                  Number(document.documentElement.dataset.escapeCount) + 1,
+                )
+              }
+            },
+            { once: true },
+          )
+        })
+        const more = controls.getByRole('button', { name: '更多画布选项', exact: true })
+        await more.click()
+        await expect(page.getByLabel('画布资源模式')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(more).toHaveAttribute('aria-expanded', 'false')
+        await expect(more).toBeFocused()
+        expect(await page.evaluate(() => document.documentElement.dataset.escapeCount)).toBe('0')
+        await page.keyboard.press('Escape')
+        expect(await page.evaluate(() => document.documentElement.dataset.escapeCount)).toBe('1')
+        expect(await page.locator('.canvas-grid').boundingBox()).toEqual(bounds)
+      }
+    }
   }
   expect(errors).toEqual([])
 })

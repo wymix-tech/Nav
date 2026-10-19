@@ -378,7 +378,7 @@ onUnmounted(() => {
 })
 </script>
 <template>
-  <div class="canvas-stage">
+  <div class="canvas-stage" :class="{ 'is-editing': canEdit }">
     <CanvasWorkspaceToolbar
       class="canvas-ui canvas-navigation"
       :panel="panel"
@@ -506,6 +506,7 @@ onUnmounted(() => {
         />
         <CanvasMinimap
           v-if="minimap && !list && size.width > 0 && size.height > 0"
+          v-show="!panel"
           class="canvas-ui map"
           :rects="rects"
           :viewport="visibleBounds(camera, size)"
@@ -515,7 +516,7 @@ onUnmounted(() => {
       <aside
         v-if="panel"
         id="canvas-workspace-panel"
-        class="canvas-ui workspace-panel"
+        class="canvas-ui workspace-panel canvas-chrome"
         :aria-label="{ layers: '图层面板', search: '搜索面板', views: '我的视角' }[panel]"
       >
         <button @click="closePanel">关闭面板</button>
@@ -546,30 +547,6 @@ onUnmounted(() => {
       </aside>
     </div>
     <div class="canvas-ui dock">
-      <label class="resource-mode"
-        >资源模式
-        <select v-model="renderPlan.mode.value" aria-label="画布资源模式">
-          <option value="safe">自动</option>
-          <option value="observe">仅观测</option>
-          <option value="full">完整显示</option>
-        </select></label
-      >
-      <span
-        class="resource-counts"
-        :data-hosts="renderPlan.diagnostics.value.hosts"
-        :data-mounted="renderPlan.diagnostics.value.mounted"
-        >详情 {{ renderPlan.diagnostics.value.mounted }}/{{
-          renderPlan.diagnostics.value.hosts
-        }}</span
-      >
-      <small v-if="renderPlan.diagnostics.value.overBudget"
-        >当前详情较多，已优先保留正在使用的组件</small
-      >
-      <div class="panel-buttons">
-        <button v-if="tool !== 'interact' && canEdit" @click="changeTool('interact')">
-          进入组件
-        </button>
-      </div>
       <CanvasEditTools
         v-if="canEdit"
         :dashboard="dashboard"
@@ -584,7 +561,9 @@ onUnmounted(() => {
         @command="commandAction"
         @clear="selected = []"
       />
-      <p v-if="error || notice" aria-live="polite">{{ error || notice }}</p>
+      <p v-if="error || notice" class="canvas-chrome canvas-message" aria-live="polite">
+        {{ error || notice }}
+      </p>
       <CanvasControls
         :style="{ visibility: ready ? 'visible' : 'hidden' }"
         :zoom="camera.zoom"
@@ -600,28 +579,52 @@ onUnmounted(() => {
         @hand="toggleHand"
         @list="presentation = list ? 'spatial' : 'list'"
         @minimap="minimap = !minimap"
-      />
+      >
+        <template #options>
+          <label class="resource-mode"
+            >资源模式
+            <select v-model="renderPlan.mode.value" aria-label="画布资源模式">
+              <option value="safe">自动</option>
+              <option value="observe">仅观测</option>
+              <option value="full">完整显示</option>
+            </select></label
+          >
+          <span
+            class="resource-counts"
+            :data-hosts="renderPlan.diagnostics.value.hosts"
+            :data-mounted="renderPlan.diagnostics.value.mounted"
+            >详情 {{ renderPlan.diagnostics.value.mounted }}/{{
+              renderPlan.diagnostics.value.hosts
+            }}</span
+          >
+          <small v-if="renderPlan.diagnostics.value.overBudget"
+            >当前详情较多，已优先保留正在使用的组件</small
+          >
+        </template>
+      </CanvasControls>
     </div>
   </div>
 </template>
 <style scoped>
 .canvas-workspace {
-  display: flex;
-  flex: 1;
+  position: absolute;
+  inset: 0;
   min-height: 0;
-  position: relative;
 }
 .canvas-navigation {
-  flex: none;
-  margin: 8px 12px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 45;
 }
 .workspace-panel {
-  width: 290px;
-  flex: none;
+  position: absolute;
+  top: 76px;
+  right: 16px;
+  bottom: var(--dock-clearance);
+  width: min(310px, calc(100% - 32px));
   overflow: auto;
-  padding: 8px;
-  background: var(--bg-primary);
-  border-left: 1px solid var(--glass-border);
+  padding: 12px;
   z-index: 35;
 }
 .widget-select-cover {
@@ -638,37 +641,19 @@ onUnmounted(() => {
   top: 0;
   left: 0;
 }
-.panel-buttons {
-  display: flex;
-  gap: 6px;
-}
-.panel-buttons button,
-.workspace-panel > button {
-  padding: 4px 8px;
-  border: 1px solid var(--glass-border);
-  border-radius: 6px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-@media (max-width: 700px) {
-  .workspace-panel {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: min(290px, 85%);
-  }
-}
 .canvas-stage {
   height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  isolation: isolate;
+  --dock-clearance: 88px;
+}
+.canvas-stage.is-editing {
+  --dock-clearance: 148px;
 }
 .canvas-grid {
-  flex: 1;
-  min-height: 0;
-  position: relative;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   touch-action: auto;
   background-image: radial-gradient(circle, #94a3b84d 1px, transparent 1px);
@@ -734,31 +719,46 @@ onUnmounted(() => {
 }
 .map {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  right: 16px;
+  bottom: var(--dock-clearance);
   z-index: 30;
 }
-.resource-notice {
-  position: absolute;
-  right: 12px;
-  bottom: 60px;
-  font-size: 11px;
-  pointer-events: none;
-}
 .resource-counts {
-  display: inline-block;
-  min-width: 8em;
   font-size: 12px;
-  margin-left: 8px;
+  color: var(--text-secondary);
+}
+.resource-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 .dock {
-  position: relative;
-  flex: none;
-  padding: 6px 12px 84px;
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  z-index: 40;
+  pointer-events: none;
 }
-.dock p {
+.dock > * {
+  pointer-events: auto;
+}
+.canvas-message {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
   font-size: 12px;
-  padding: 4px;
 }
 .stacked {
   overflow: auto;
@@ -770,30 +770,34 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 80px 12px var(--dock-clearance);
 }
 .stacked .canvas-item {
   position: relative;
   min-width: 0;
   flex: none;
 }
-@media (max-width: 600px) {
-  .resource-notice {
-    position: absolute;
-    right: 12px;
-    bottom: 60px;
-    font-size: 11px;
-    pointer-events: none;
-  }
-  .resource-counts {
-    display: inline-block;
-    min-width: 8em;
-    font-size: 12px;
-    margin-left: 8px;
-  }
+@media (max-width: 768px) {
   .dock {
-    position: relative;
-    padding: 4px 6px 88px;
+    bottom: max(80px, calc(env(safe-area-inset-bottom) + 64px));
+  }
+  .canvas-stage {
+    --dock-clearance: 144px;
+  }
+  .canvas-stage.is-editing {
+    --dock-clearance: 204px;
+  }
+  .canvas-navigation {
+    top: 12px;
+    right: 12px;
+  }
+  .workspace-panel {
+    top: 72px;
+    right: 12px;
+    width: min(310px, calc(100% - 24px));
+  }
+  .map {
+    right: 12px;
   }
 }
 </style>
