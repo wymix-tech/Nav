@@ -38,6 +38,7 @@ import CanvasEditTools from './canvas/CanvasEditTools.vue'
 import WidgetWrapper from './WidgetWrapper.vue'
 import CanvasControls from './canvas/CanvasControls.vue'
 import CanvasMinimap from './canvas/CanvasMinimap.vue'
+import CanvasWorkspaceToolbar from './canvas/CanvasWorkspaceToolbar.vue'
 import { useCanvasCamera } from '../canvas/useCanvasCamera'
 import { useCanvasInteraction } from '../canvas/useCanvasInteraction'
 import { createCanvasWidget, type AddWidgetRequest } from '../canvas/useCanvasInsertion'
@@ -378,6 +379,13 @@ onUnmounted(() => {
 </script>
 <template>
   <div class="canvas-stage">
+    <CanvasWorkspaceToolbar
+      class="canvas-ui canvas-navigation"
+      :panel="panel"
+      panel-id="canvas-workspace-panel"
+      spatial
+      @open="openPanel"
+    />
     <div class="canvas-workspace">
       <section
         ref="root"
@@ -506,6 +514,7 @@ onUnmounted(() => {
       </section>
       <aside
         v-if="panel"
+        id="canvas-workspace-panel"
         class="canvas-ui workspace-panel"
         :aria-label="{ layers: '图层面板', search: '搜索面板', views: '我的视角' }[panel]"
       >
@@ -557,10 +566,7 @@ onUnmounted(() => {
         >当前详情较多，已优先保留正在使用的组件</small
       >
       <div class="panel-buttons">
-        <button @click="openPanel('layers')">图层</button
-        ><button @click="openPanel('search')">搜索画布</button
-        ><button @click="openPanel('views')">我的视角</button
-        ><button v-if="tool !== 'interact' && canEdit" @click="changeTool('interact')">
+        <button v-if="tool !== 'interact' && canEdit" @click="changeTool('interact')">
           进入组件
         </button>
       </div>
@@ -604,6 +610,10 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   position: relative;
+}
+.canvas-navigation {
+  flex: none;
+  margin: 8px 12px;
 }
 .workspace-panel {
   width: 290px;

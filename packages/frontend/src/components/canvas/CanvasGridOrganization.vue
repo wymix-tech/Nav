@@ -12,6 +12,7 @@ import { useDashboardStore } from '../../stores/dashboardStore'
 import CanvasLayersPanel from './CanvasLayersPanel.vue'
 import CanvasSearchPanel from './CanvasSearchPanel.vue'
 import CanvasEditTools from './CanvasEditTools.vue'
+import CanvasWorkspaceToolbar from './CanvasWorkspaceToolbar.vue'
 const props = defineProps<{ dashboard: Dashboard; editable: boolean }>()
 const { selected, additive, choose } = useCanvasSelection(() => props.dashboard),
   names = useCanvasLabels(),
@@ -54,11 +55,17 @@ function locate(r: SelectionRef) {
 </script>
 <template>
   <div class="grid-organization">
-    <button @click="panel = panel === 'layers' ? '' : 'layers'">图层</button
-    ><button @click="panel = panel === 'search' ? '' : 'search'">搜索画布</button
-    ><span>我的视角需切换到画布后使用</span>
+    <CanvasWorkspaceToolbar
+      :panel="panel"
+      panel-id="grid-organization-panel"
+      @open="(next) => next !== 'views' && (panel = panel === next ? '' : next)"
+    />
     <p v-if="notice" role="status">{{ notice }}</p>
-    <aside v-if="panel" :aria-label="panel === 'layers' ? '图层面板' : '搜索面板'">
+    <aside
+      v-if="panel"
+      id="grid-organization-panel"
+      :aria-label="panel === 'layers' ? '图层面板' : '搜索面板'"
+    >
       <button @click="panel = ''">关闭面板</button>
       <CanvasEditTools
         v-if="editable"
@@ -96,12 +103,11 @@ function locate(r: SelectionRef) {
 </template>
 <style scoped>
 .grid-organization {
+  position: sticky;
+  top: 8px;
+  z-index: 40;
   font-size: 12px;
-  padding: 4px 8px;
-}
-.grid-organization > span {
-  color: var(--text-muted);
-  margin-left: 8px;
+  margin-bottom: 16px;
 }
 button {
   padding: 4px 8px;

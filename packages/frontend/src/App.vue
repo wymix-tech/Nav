@@ -312,6 +312,11 @@ function toggleLibrary() {
             : (dashboardStore.dashboard?.layoutSettings?.maxContentWidth ?? 1600) + 'px',
       }"
     >
+      <CanvasGridOrganization
+        v-if="dashboardStore.dashboard && dashboardStore.dashboard.layoutMode !== 'canvas'"
+        :dashboard="dashboardStore.dashboard"
+        :editable="editing && (!backendAvailable || authStore.isAuthenticated)"
+      />
       <p v-if="dashboardStore.loading">加载中...</p>
       <CanvasGrid
         ref="canvasStage"
@@ -341,11 +346,6 @@ function toggleLibrary() {
         @update-layouts="dashboardStore.updateLayouts"
         @reset-profile="dashboardStore.resetProfile"
         @set-base="dashboardStore.setBase"
-      />
-      <CanvasGridOrganization
-        v-if="dashboardStore.dashboard && dashboardStore.dashboard.layoutMode !== 'canvas'"
-        :dashboard="dashboardStore.dashboard"
-        :editable="editing && (!backendAvailable || authStore.isAuthenticated)"
       />
     </main>
 
