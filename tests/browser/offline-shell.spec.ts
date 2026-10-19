@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../helpers/browserTest'
 import { createDashboard, initialScene } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'allow' })
 test('production shell restores an offline canvas draft and independent camera, then synchronizes', async ({

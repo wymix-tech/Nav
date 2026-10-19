@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import {
   worldToScreen,
   type CanvasRegion,
@@ -25,13 +26,55 @@ const colors = {
   rose: '#fb7185',
   violet: '#a78bfa',
 }
+const visible = computed(() =>
+  props.regions.filter((r) => {
+    const p = worldToScreen(r, props.camera, props.size)
+    return (
+      p.x < props.size.width &&
+      p.x + r.w * props.camera.zoom > 0 &&
+      p.y < props.size.height &&
+      p.y + r.h * props.camera.zoom > 0
+    )
+  }),
+)
+function cornerVisible(r: CanvasRegion, end = false) {
+  const p = worldToScreen(
+    { x: r.x + (end ? r.w : 0), y: r.y + (end ? r.h : 0) },
+    props.camera,
+    props.size,
+  )
+  return p.x >= 0 && p.y >= 0 && p.x <= props.size.width && p.y <= props.size.height
+}
+function edgeVisible(r: CanvasRegion, edge: string) {
+  const p = worldToScreen(r, props.camera, props.size)
+  const coordinate =
+    edge === 'left'
+      ? p.x
+      : edge === 'right'
+        ? p.x + r.w * props.camera.zoom
+        : edge === 'top'
+          ? p.y
+          : p.y + r.h * props.camera.zoom
+  return (
+    coordinate >= -3 &&
+    coordinate <= (edge === 'left' || edge === 'right' ? props.size.width : props.size.height) + 3
+  )
+}
 function style(r: CanvasRegion) {
   const p = worldToScreen(r, props.camera, props.size)
+  const right = p.x + r.w * props.camera.zoom,
+    bottom = p.y + r.h * props.camera.zoom
+  const left = Math.max(-3, p.x),
+    top = Math.max(-3, p.y)
   return {
-    left: p.x + 'px',
-    top: p.y + 'px',
-    width: r.w * props.camera.zoom + 'px',
-    height: r.h * props.camera.zoom + 'px',
+    left: left + 'px',
+    top: top + 'px',
+    width: Math.min(props.size.width + 3, right) - left + 'px',
+    height: Math.min(props.size.height + 3, bottom) - top + 'px',
+    borderLeftColor: p.x < -3 ? 'transparent' : undefined,
+    borderTopColor: p.y < -3 ? 'transparent' : undefined,
+    borderRightColor: right > props.size.width + 3 ? 'transparent' : undefined,
+    borderBottomColor: bottom > props.size.height + 3 ? 'transparent' : undefined,
     color: colors[r.color],
     background: colors[r.color] + '12',
   }
@@ -39,8 +82,9 @@ function style(r: CanvasRegion) {
 </script>
 <template>
   <div class="region-layer">
-    <div v-for="r in regions" :key="r.id" class="region" :style="style(r)">
+    <div v-for="r in visible" :key="r.id" class="region" :style="style(r)">
       <button
+        v-if="cornerVisible(r)"
         class="region-title"
         :aria-label="`区域 ${r.title}`"
         @pointerdown="editable && emit('start', $event, 'move', { kind: 'region', id: r.id })"
@@ -48,7 +92,7 @@ function style(r: CanvasRegion) {
         {{ r.locked ? '🔒 ' : '' }}{{ r.title }}
       </button>
       <button
-        v-if="editable && !r.locked"
+        v-if="editable && !r.locked && cornerVisible(r, true)"
         class="region-resize"
         :aria-label="`调整区域 ${r.title} 大小`"
         @pointerdown="emit('start', $event, 'resize', { kind: 'region', id: r.id })"
@@ -60,6 +104,9 @@ function style(r: CanvasRegion) {
         :key="edge"
         class="edge"
         :class="edge"
+        :style="{
+          pointerEvents: edgeVisible(r, edge) ? undefined : 'none',
+        }"
         @pointerdown="editable && emit('start', $event, 'move', { kind: 'region', id: r.id })"
       ></div>
     </div>

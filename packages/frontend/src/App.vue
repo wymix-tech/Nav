@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useRuntimeReconciler } from './runtime/useRuntimeReconciler'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import CanvasGridOrganization from './components/canvas/CanvasGridOrganization.vue'
@@ -20,6 +21,12 @@ import { isBackendAvailable, resetAdapter } from './services/storageAdapter'
 const dashboardStore = useDashboardStore()
 const widgetStore = useWidgetStore()
 const authStore = useAuthStore()
+const runtime = useRuntimeReconciler(
+  () => dashboardStore.dashboard,
+  () => widgetStore.installedWidgets,
+  () => !!authStore.token,
+  authStore.getAuthHeaders,
+)
 const mainElement = ref<HTMLElement | null>(null)
 const libraryTop = ref(12)
 let mainObserver: ResizeObserver | undefined
@@ -308,7 +315,7 @@ function toggleLibrary() {
       <p v-if="dashboardStore.loading">加载中...</p>
       <CanvasGrid
         ref="canvasStage"
-        v-else-if="dashboardStore.dashboard?.layoutMode === 'canvas'"
+        v-else-if="runtime.ready.value && dashboardStore.dashboard?.layoutMode === 'canvas'"
         :dashboard="dashboardStore.dashboard"
         :editing="editing"
         :editable="!backendAvailable || authStore.isAuthenticated"
@@ -319,7 +326,7 @@ function toggleLibrary() {
         @update-config="dashboardStore.updateWidgetConfig"
       />
       <DashboardGrid
-        v-else-if="dashboardStore.dashboard"
+        v-else-if="runtime.ready.value && dashboardStore.dashboard"
         :widgets="dashboardStore.dashboard.widgets"
         :dashboard="dashboardStore.dashboard"
         :editing="editing"

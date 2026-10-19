@@ -2,9 +2,9 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import { apiJson } from '../services/apiClient'
-import { readChatStream } from '../services/chatStream'
-import { useAuthStore } from '../stores/authStore'
+import { getChatMetadata } from '../services/chatMetadata'
+import { useWidgetOwner } from '../runtime/widgetOwner'
+import { useRuntimeContext } from '../runtime/useRuntimeReconciler'
 const props = defineProps<{
   config: Record<string, any>
   instanceId: string
@@ -12,23 +12,16 @@ const props = defineProps<{
   editable: boolean
 }>()
 const emit = defineEmits<{ 'update:config': [value: Record<string, any>] }>()
-const auth = useAuthStore()
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: number
-}
+const runtimeContext = useRuntimeContext()
+const owner = useWidgetOwner()
+if (owner.value?.kind !== 'chat') throw new Error('聊天 Runtime 尚未就绪')
+const runtime = owner.value.chat
+const { messages, input, loading, error, apiKey, storageError, legacy } = runtime
 const baseUrl = ref(props.config.baseUrl ?? ''),
-  apiKey = ref(''),
   model = ref(props.config.model ?? ''),
   systemPrompt = ref(props.config.systemPrompt ?? ''),
   showConfig = ref(false)
-const messages = ref<Message[]>([]),
-  input = ref(''),
-  loading = ref(false),
-  error = ref('')
-const chatContainer = ref<HTMLElement | null>(null),
-  inputRef = ref<HTMLTextAreaElement | null>(null)
+const chatContainer = ref<HTMLElement | null>(null)
 function openConfig() {
   baseUrl.value = props.config.baseUrl ?? ''
   model.value = props.config.model || modelOptions.value[0] || ''
@@ -42,123 +35,41 @@ function cancelConfig() {
   apiKey.value = ''
   showConfig.value = false
 }
-const storageKey = computed(() => `nav_chat_${props.instanceId}`)
-let abortController: AbortController | null = null
 const modelOptions = ref<string[]>([])
-const providerLabel = computed(() => (/anthropic|claude/i.test(baseUrl.value) ? 'Claude' : 'AI'))
-function saveMessages() {
-  try {
-    sessionStorage.setItem(storageKey.value, JSON.stringify(messages.value.slice(-64)))
-  } catch {
-    /* storage can be disabled */
-  }
-}
-function loadMessages() {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(storageKey.value) ?? '[]')
-    if (Array.isArray(value))
-      messages.value = value
-        .filter(
-          (m) =>
-            m &&
-            ['user', 'assistant'].includes(m.role) &&
-            typeof m.content === 'string' &&
-            m.content.length <= 1048576,
-        )
-        .slice(-64)
-  } catch {
-    /* malformed session data is ignored */
-  }
-}
+const defaultPrompt = ref('')
+const providerLabel = computed(() =>
+  /anthropic|claude/i.test(props.config.baseUrl ?? '') ? 'Claude' : 'AI',
+)
 function newConversation() {
-  abortController?.abort()
-  messages.value = []
-  saveMessages()
+  runtime.newConversation()
 }
 async function loadDefaults() {
   if (!props.editable) return
   try {
-    const [models, defaults] = await Promise.all([
-      apiJson<{ models: string[] }>('/chat/models'),
-      apiJson<{ systemPrompt: string }>('/chat/defaults'),
-    ])
-    modelOptions.value = models.models
-    if (!model.value) model.value = models.models[0] ?? ''
-    if (!systemPrompt.value) systemPrompt.value = defaults.systemPrompt
+    const metadata = await getChatMetadata()
+    if (!props.editable) return
+    modelOptions.value = metadata.models
+    defaultPrompt.value = metadata.systemPrompt
+    if (!model.value) model.value = metadata.models[0] ?? ''
+    if (!systemPrompt.value) systemPrompt.value = metadata.systemPrompt
   } catch (e) {
     error.value = (e as Error).message
   }
 }
 async function scrollToBottom() {
   await nextTick()
-  if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  if (chatContainer.value && runtime.scroll.value === 0)
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
 }
 async function sendMessage() {
-  const text = input.value.trim()
-  if (!text || loading.value || !props.editable) return
-  if (text.length > 16384) {
-    error.value = '单条消息不能超过 16384 字符'
-    return
-  }
-  error.value = ''
-  loading.value = true
-  messages.value.push({ role: 'user', content: text, timestamp: Date.now() })
-  input.value = ''
-  const apiMessages = [
-    ...(systemPrompt.value ? [{ role: 'system', content: systemPrompt.value }] : []),
-    ...messages.value
-      .filter((m) => m.content)
-      .slice(-60)
-      .map((m) => ({ role: m.role, content: m.content })),
-  ]
-  messages.value.push({ role: 'assistant', content: '', timestamp: Date.now() })
-  const assistant = messages.value[messages.value.length - 1]
-  const controller = new AbortController()
-  abortController = controller
-  const timer = setTimeout(() => controller.abort(), 180000)
-  try {
-    const response = await fetch('/api/chat/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...auth.getAuthHeaders() },
-      signal: controller.signal,
-      body: JSON.stringify({
-        baseUrl: baseUrl.value || undefined,
-        apiKey: apiKey.value || undefined,
-        model: model.value || modelOptions.value[0],
-        messages: apiMessages,
-      }),
-    })
-    if (response.status === 401) window.dispatchEvent(new Event('nav-auth-invalid'))
-    if (
-      !response.ok ||
-      !response.body ||
-      !response.headers.get('Content-Type')?.includes('text/event-stream')
-    ) {
-      const data = await response.json().catch(() => null)
-      throw new Error(data?.error?.message ?? `请求失败 (${response.status})`)
-    }
-    await readChatStream(response.body, (text) => {
-      if (assistant.content.length + text.length > 1048576) {
-        controller.abort()
-        throw new Error('回复过长，已停止接收')
-      }
-      assistant.content += text
-      void scrollToBottom()
-    })
-  } catch (e) {
-    const message = (e as Error).name === 'AbortError' ? '已停止' : (e as Error).message
-    error.value = message
-    if (!assistant.content) assistant.content = message
-  } finally {
-    clearTimeout(timer)
-    abortController = null
-    loading.value = false
-    saveMessages()
-    void scrollToBottom()
-  }
+  await runtime.send(props.editable, {
+    model: modelOptions.value[0],
+    systemPrompt: defaultPrompt.value,
+  })
+  void scrollToBottom()
 }
 function stopGeneration() {
-  abortController?.abort()
+  runtime.stop()
 }
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
@@ -224,31 +135,65 @@ async function copyOriginal(content: string) {
   }
 }
 onMounted(() => {
-  loadMessages()
   void loadDefaults()
+  void nextTick(() => {
+    if (chatContainer.value)
+      chatContainer.value.scrollTop = runtime.scroll.value
+        ? runtime.scroll.value - 1
+        : chatContainer.value.scrollHeight
+  })
 })
-onUnmounted(() => abortController?.abort())
+let releaseForm: (() => void) | undefined
+watch(
+  showConfig,
+  (open) => {
+    releaseForm?.()
+    releaseForm = open ? runtimeContext.activity.pin(props.instanceId, 'chat-config') : undefined
+  },
+  { flush: 'sync' },
+)
+watch(messages, () => {
+  void scrollToBottom()
+})
+onUnmounted(() => releaseForm?.())
 watch(
   () => props.editable,
   (allowed) => {
     if (allowed) void loadDefaults()
-    else {
-      abortController?.abort()
+    else if (!runtimeContext.hasSession()) {
+      runtime.revoke()
       apiKey.value = ''
       showConfig.value = false
     }
   },
 )
 watch(
-  () => props.editing,
-  (val) => {
-    if (!val) void nextTick(() => inputRef.value?.focus())
+  () => props.config,
+  (config) => {
+    if (!showConfig.value) {
+      baseUrl.value = config.baseUrl ?? ''
+      model.value = config.model ?? ''
+      systemPrompt.value = config.systemPrompt ?? ''
+    }
   },
+  { deep: true },
 )
+function rememberScroll() {
+  const el = chatContainer.value
+  if (el)
+    runtime.scroll.value =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 24 ? 0 : el.scrollTop + 1
+}
 </script>
 
 <template>
   <div class="chat-widget">
+    <p v-if="storageError" role="alert">{{ storageError }}</p>
+    <details v-if="legacy">
+      <summary>旧会话记录（{{ legacy.length }} 条）</summary>
+      <p v-for="(message, i) in legacy" :key="i">{{ message.role }}：{{ message.content }}</p>
+      <button @click="runtime.bindLegacy">绑定到当前组件</button>
+    </details>
     <!-- 配置表单 -->
     <template v-if="showConfig">
       <div class="cfg">
@@ -310,7 +255,7 @@ watch(
           </div>
         </div>
 
-        <div ref="chatContainer" class="messages">
+        <div ref="chatContainer" class="messages" @scroll="rememberScroll">
           <div v-if="messages.length === 0" class="empty">
             <div class="empty-icon">✦</div>
             <div class="empty-text">开始新的对话</div>
@@ -340,10 +285,10 @@ watch(
         <p v-if="!editable">登录后可使用 AI 聊天。</p>
         <div class="input-area">
           <textarea
-            ref="inputRef"
             v-model="input"
             rows="1"
             class="input-box"
+            maxlength="16384"
             placeholder="输入消息..."
             :disabled="loading || !editable"
             @keydown="handleKeydown"

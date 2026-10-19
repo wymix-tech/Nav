@@ -1,35 +1,29 @@
 <script setup lang="ts">
+import { useFormProtection } from '../runtime/useFormProtection'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { apiJson } from '../services/apiClient'
+import {
+  subscribeDocker,
+  refreshDocker,
+  createNetworkRate,
+  type DockerContainer,
+} from '../services/dockerService'
 
 const props = defineProps<{
   config: Record<string, any>
   editing: boolean
   editable: boolean
+  resourceActive?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:config': [value: Record<string, any>]
 }>()
 
-interface DockerContainer {
-  id: string
-  name: string
-  image: string
-  state: string
-  status: string
-  cpuPercent: number
-  memUsage: string
-  memPercent: number
-  netIO: string
-  blockIO: string
-  pids: number
-}
-
 // 配置状态
 const containerName = ref(props.config.containerName ?? '')
 const refreshInterval = ref(Math.max(5, Math.min(60, Number(props.config.interval) || 5)))
 const showConfig = ref(false)
+useFormProtection(() => props.editable, showConfig)
 
 // 数据状态
 const container = ref<DockerContainer | null>(null)
@@ -39,11 +33,10 @@ const loading = ref(false)
 const dockerAvailable = ref(true)
 
 // 网速计算状态
-const netSpeed = ref({ rx: 0, tx: 0 })
-let prevNetIO: { rxBytes: number; txBytes: number; time: number } | null = null
-
-let timer: ReturnType<typeof setInterval> | null = null
-
+const netSpeed = ref<{ rx: number; tx: number } | null>(null)
+const rates = createNetworkRate()
+let release: (() => void) | undefined
+let previousContainer = ''
 const isSetup = computed(() => !!containerName.value)
 
 function getStateColor(state: string): string {
@@ -97,62 +90,62 @@ function formatSpeed(bytesPerSec: number): string {
 }
 
 // 根据两次采样计算实时网速
-function updateNetSpeed(netIO: string) {
-  const now = Date.now()
+function updateNetSpeed(netIO: string, sampledAt: number) {
   const current = parseNetIO(netIO)
-
-  if (prevNetIO) {
-    const dt = (now - prevNetIO.time) / 1000
-    if (dt > 0) {
-      const rxSpeed = Math.max(0, (current.rxBytes - prevNetIO.rxBytes) / dt)
-      const txSpeed = Math.max(0, (current.txBytes - prevNetIO.txBytes) / dt)
-      netSpeed.value = { rx: rxSpeed, tx: txSpeed }
-    }
-  }
-
-  prevNetIO = { rxBytes: current.rxBytes, txBytes: current.txBytes, time: now }
+  netSpeed.value = rates.sample(container.value!.id, current.rxBytes, current.txBytes, sampledAt)
 }
-
-let pending: AbortController | null = null
-let disposed = false
-async function fetchAll() {
-  if (!props.editable) {
-    error.value = '登录后可查看 Docker 监控'
-    return
-  }
-  if (pending || document.hidden || props.editing) return
-  pending = new AbortController()
-  loading.value = true
-  try {
-    const data = await apiJson<{
-      available: boolean
-      containers: DockerContainer[]
-      message?: string
-    }>('/system/docker', { signal: AbortSignal.any([pending.signal, AbortSignal.timeout(15000)]) })
-    if (disposed) return
-    dockerAvailable.value = data.available
-    allContainers.value = data.containers
-    if (!data.available) {
-      error.value = data.message ?? 'Docker 未可用'
-      return
-    }
-    error.value = ''
-    container.value = data.containers.find((c) => c.name === containerName.value) ?? null
-    if (container.value?.state === 'running') updateNetSpeed(container.value.netIO)
-    if (isSetup.value && !container.value) error.value = `容器 "${containerName.value}" 未找到`
-  } catch (e) {
-    if (!disposed && (e as Error).name !== 'AbortError') error.value = (e as Error).message
-  } finally {
-    pending = null
-    loading.value = false
-  }
+function fetchAll() {
+  return refreshDocker()
 }
-
+function startPolling() {
+  stopPolling()
+  if (!props.editable || props.editing || document.hidden || props.resourceActive === false) return
+  release = subscribeDocker(
+    Number(props.config.interval) || 5,
+    (data, problem, sampledAt, fresh) => {
+      if (!props.editable) return
+      error.value = problem
+      loading.value = false
+      if (!data) {
+        container.value = null
+        allContainers.value = []
+        return
+      }
+      dockerAvailable.value = data.available
+      allContainers.value = data.containers
+      container.value = data.containers.find((c) => c.name === props.config.containerName) ?? null
+      if (!data.available) error.value = data.message ?? 'Docker 未可用'
+      else if (props.config.containerName && !container.value)
+        error.value = `容器 "${props.config.containerName}" 未找到`
+      const identity = `${container.value?.id}:${container.value?.state}:${container.value?.status}`
+      if (identity !== previousContainer) {
+        rates.reset()
+        previousContainer = identity
+      }
+      if (container.value?.state === 'running') {
+        if (fresh) updateNetSpeed(container.value.netIO, sampledAt)
+      } else {
+        rates.reset()
+        netSpeed.value = null
+      }
+    },
+  )
+}
+function stopPolling() {
+  release?.()
+  release = undefined
+  rates.reset()
+  netSpeed.value = null
+}
+function visibility() {
+  if (document.hidden) stopPolling()
+  else startPolling()
+}
 function selectContainer(name: string) {
   if (!props.editable) return
   containerName.value = name
-  prevNetIO = null
-  netSpeed.value = { rx: 0, tx: 0 }
+  rates.reset()
+  netSpeed.value = null
   emit('update:config', { ...props.config, containerName: name, interval: refreshInterval.value })
   fetchAll()
 }
@@ -181,28 +174,14 @@ function resetContainer() {
   fetchAll()
 }
 
-function startPolling() {
-  stopPolling()
-  fetchAll()
-  timer = setInterval(fetchAll, refreshInterval.value * 1000)
-}
-
-function stopPolling() {
-  if (timer) clearInterval(timer)
-  timer = null
-}
-
-function visibility() {
-  if (document.hidden) stopPolling()
-  else startPolling()
-}
 watch(
   () => props.editable,
   (allowed) => {
     if (allowed) startPolling()
     else {
       stopPolling()
-      pending?.abort()
+      container.value = null
+      allContainers.value = []
       error.value = '登录后可查看 Docker 监控'
     }
   },
@@ -212,8 +191,8 @@ watch(
   () => {
     containerName.value = props.config.containerName ?? ''
     refreshInterval.value = Math.max(5, Math.min(60, Number(props.config.interval) || 5))
-    prevNetIO = null
-    netSpeed.value = { rx: 0, tx: 0 }
+    rates.reset()
+    netSpeed.value = null
     startPolling()
   },
 )
@@ -222,9 +201,7 @@ onMounted(() => {
   document.addEventListener('visibilitychange', visibility)
 })
 onBeforeUnmount(() => {
-  disposed = true
   stopPolling()
-  pending?.abort()
   document.removeEventListener('visibilitychange', visibility)
 })
 
@@ -233,6 +210,12 @@ watch(
   (val) => {
     if (val) stopPolling()
     else startPolling()
+  },
+)
+watch(
+  () => props.resourceActive,
+  () => {
+    startPolling()
   },
 )
 </script>
@@ -381,11 +364,11 @@ watch(
         <div v-if="container.state === 'running'" class="net-row">
           <div class="net-item">
             <span class="net-direction">↑</span>
-            <span class="detail-value mono">{{ formatSpeed(netSpeed.tx) }}</span>
+            <span class="detail-value mono">{{ netSpeed ? formatSpeed(netSpeed.tx) : '—' }}</span>
           </div>
           <div class="net-item">
             <span class="net-direction">↓</span>
-            <span class="detail-value mono">{{ formatSpeed(netSpeed.rx) }}</span>
+            <span class="detail-value mono">{{ netSpeed ? formatSpeed(netSpeed.rx) : '—' }}</span>
           </div>
           <div class="net-item">
             <span class="detail-label">进程</span>

@@ -1,4 +1,4 @@
-import { ref, shallowRef, watch, onUnmounted, type Ref } from 'vue'
+import { ref, computed, shallowRef, watch, onUnmounted, type Ref } from 'vue'
 import {
   CANVAS,
   panByScreen,
@@ -13,7 +13,10 @@ import {
   contentBounds,
   effectiveLocked,
   groupFor,
-  marqueeSelection,
+  createSpatialScene,
+  spatialProjection,
+  queryRectIndex,
+  intersects,
   normalizeSelection,
   refKey,
   selectionRect,
@@ -80,6 +83,8 @@ export function geometryFingerprint(d: Dashboard, refs: SelectionRef[]) {
   }
 }
 export function useCanvasInteraction(o: Options) {
+  const spatialScene = createSpatialScene()
+  const spatial = computed(() => spatialScene.update(o.dashboard()))
   const draft = ref<{
       widgets: Record<string, CanvasLayout>
       regions: Record<string, CanvasRegion>
@@ -314,9 +319,19 @@ export function useCanvasInteraction(o: Options) {
       }
     if (a.mode === 'marquee') {
       marquee.value = box
+      const hits = new Set(
+        queryRectIndex(
+          spatial.value.selectionIndex,
+          spatial.value.epoch,
+          box,
+          () => spatialProjection(o.dashboard()).selection,
+        ),
+      )
       o.selected.value = normalizeSelection(o.dashboard(), [
         ...(a.extend ? a.before : []),
-        ...marqueeSelection(o.dashboard(), box),
+        ...(o.dashboard().canvasScene?.layers ?? []).filter(
+          (r) => hits.has(refKey(r)) && intersects(box, selectionRect(o.dashboard(), r)),
+        ),
       ])
       return
     }
@@ -328,12 +343,33 @@ export function useCanvasInteraction(o: Options) {
       raw = { x: end.x - begin.x, y: end.y - begin.y },
       widgets: Record<string, CanvasLayout> = {},
       regions: Record<string, CanvasRegion> = {}
+    const viewport = visibleBounds(a.camera, o.size.value),
+      expanded = {
+        x: viewport.x - 64 / a.camera.zoom,
+        y: viewport.y - 64 / a.camera.zoom,
+        w: viewport.w + 128 / a.camera.zoom,
+        h: viewport.h + 128 / a.camera.zoom,
+      },
+      candidates = new Set([
+        ...queryRectIndex(
+          spatial.value.selectionIndex,
+          spatial.value.epoch,
+          expanded,
+          () => spatialProjection(o.dashboard()).selection,
+        ),
+        ...queryRectIndex(
+          spatial.value.regionIndex,
+          spatial.value.epoch,
+          expanded,
+          () => spatialProjection(o.dashboard()).regions,
+        ).map((id) => `region:${id}`),
+      ])
     const keys = new Set(a.refs.map(refKey)),
       references = [
         ...(d.canvasScene?.layers ?? []),
         ...(d.canvasScene?.regions ?? []).map((r) => ({ kind: 'region' as const, id: r.id })),
       ]
-        .filter((r) => !keys.has(refKey(r)))
+        .filter((r) => !keys.has(refKey(r)) && candidates.has(refKey(r)))
         .map((r) => ({ id: refKey(r), rect: selectionRect(d, r) }))
     const snapped =
       o.snapping.value && !e.altKey

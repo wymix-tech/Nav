@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { useFormProtection } from '../runtime/useFormProtection'
+import { toRef, computed } from 'vue'
+import { useWidgetOwner } from '../runtime/widgetOwner'
+import type { BookmarkGroup } from '../runtime/runtimeRegistry'
 import { validUrl } from '@nav/shared'
 
 const props = defineProps<{
@@ -12,19 +15,11 @@ const emit = defineEmits<{
   'update:config': [value: Record<string, any>]
 }>()
 
-interface Bookmark {
-  title: string
-  url: string
-  icon?: string
-}
-
-interface BookmarkGroup {
-  name: string
-  bookmarks: Bookmark[]
-}
-
-const showConfig = ref(false)
-const editingGroups = ref<BookmarkGroup[]>([])
+const owner = useWidgetOwner()
+if (owner.value?.kind !== 'bookmark') throw new Error('书签 Runtime 尚未就绪')
+const showConfig = toRef(owner.value.state, 'showConfig')
+const editingGroups = toRef(owner.value.state, 'editingGroups')
+useFormProtection(() => props.editable, showConfig)
 
 const groups = computed<BookmarkGroup[]>(() => props.config.groups ?? [])
 const isEmpty = computed(

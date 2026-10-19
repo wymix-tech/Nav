@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page } from '../helpers/browserTest'
 import {
   createDashboard,
   initialScene,
@@ -67,6 +67,7 @@ test.beforeEach(async ({ page, request }) => {
   }, token)
   await page.goto('/')
   await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await expect(page.locator('.widget-renderer[data-view-ready="true"]')).toHaveCount(3)
 })
 test.afterEach(async ({ page, request }) => {
   expect(errors.get(page) ?? []).toEqual([])

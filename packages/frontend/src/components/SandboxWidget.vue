@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
 import type { InstalledWidget } from '@nav/shared'
-import { pluginDocument } from '../services/pluginRuntime'
+import { pluginDocument, pluginIdentity } from '../services/pluginRuntime'
 const props = defineProps<{
   installed: InstalledWidget
   config: Record<string, any>
@@ -80,7 +80,8 @@ function receive(e: MessageEvent) {
     [channel.port2],
   )
 }
-watch(() => props.installed, start, { immediate: true })
+watch(() => pluginIdentity(props.installed), start, { immediate: true })
+
 watch(
   () => props.config,
   (config) => port?.postMessage({ type: 'config', config: JSON.parse(JSON.stringify(config)) }),

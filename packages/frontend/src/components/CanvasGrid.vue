@@ -24,6 +24,7 @@ import {
   type Rect,
   type Size,
 } from '@nav/shared'
+import { useCanvasRenderPlan } from '../canvas/useCanvasRenderPlan'
 import { useCanvasWorkspace } from '../canvas/useCanvasWorkspace'
 import { useCanvasLabels } from '../canvas/useCanvasLabels'
 import { useCanvasSelection } from '../canvas/useCanvasSelection'
@@ -95,6 +96,27 @@ const { draft, space, marquee, regionDraft, guides } = interaction
 function canvas(w: WidgetInstance) {
   return draft.value?.widgets[w.id] ?? widgetCanvas(w)
 }
+const renderPlan = useCanvasRenderPlan({
+  dashboard: () => props.dashboard,
+  camera,
+  size,
+  root,
+  list,
+  rect: (id) => canvas(props.dashboard.widgets.find((w) => w.id === id)!),
+})
+watch(draft, renderPlan.schedule, { deep: true })
+async function enterWidget(w: WidgetInstance) {
+  settleNavigation()
+  if (!list.value) fit(canvas(w))
+  if (await renderPlan.activate(w.id)) {
+    await nextTick()
+    root.value
+      ?.querySelector<HTMLElement>(
+        `[data-widget-id="${w.id}"] .widget-content input, [data-widget-id="${w.id}"] .widget-content textarea, [data-widget-id="${w.id}"] .widget-content button`,
+      )
+      ?.focus({ preventScroll: true })
+  }
+}
 const ordered = computed(() =>
   [...props.dashboard.widgets].sort(
     (a, b) =>
@@ -144,6 +166,7 @@ function fit(bounds = contentBounds(rects.value)) {
   }
 }
 function settleNavigation() {
+  renderPlan.cancelActivation()
   interaction.endWheel()
   interaction.cancel()
 }
@@ -303,6 +326,7 @@ const {
   fit,
   settleNavigation,
   choose,
+  ensureReady: (id) => renderPlan.activate(id),
 })
 const overlayBoxes = computed(() => {
   if (!located.value) return selectedBoxes.value
@@ -400,11 +424,14 @@ onUnmounted(() => {
               ranks[w.id],
               tool,
               names,
+              renderPlan.get(w.id),
               list ? ordered : null,
             ]"
             class="canvas-item"
             :class="{ highlight: highlight.includes(w.id), selected: isSelected(w.id) }"
             :data-widget-id="w.id"
+            :data-display-level="renderPlan.get(w.id).level"
+            :data-view-mounted="renderPlan.get(w.id).mounted"
             :style="style(w)"
             tabindex="-1"
           >
@@ -432,6 +459,11 @@ onUnmounted(() => {
               选择 {{ resolveCanvasLabel(dashboard, { kind: 'widget', id: w.id }, names) }}
             </button>
             <WidgetWrapper
+              :mounted="renderPlan.get(w.id).mounted"
+              :active="renderPlan.get(w.id).active"
+              :level="renderPlan.get(w.id).level"
+              :label="resolveCanvasLabel(dashboard, { kind: 'widget', id: w.id }, names)"
+              @activate="enterWidget(w)"
               :widget="w"
               :editing="editing"
               :editable="editable"
@@ -505,6 +537,25 @@ onUnmounted(() => {
       </aside>
     </div>
     <div class="canvas-ui dock">
+      <label class="resource-mode"
+        >资源模式
+        <select v-model="renderPlan.mode.value" aria-label="画布资源模式">
+          <option value="safe">自动</option>
+          <option value="observe">仅观测</option>
+          <option value="full">完整显示</option>
+        </select></label
+      >
+      <span
+        class="resource-counts"
+        :data-hosts="renderPlan.diagnostics.value.hosts"
+        :data-mounted="renderPlan.diagnostics.value.mounted"
+        >详情 {{ renderPlan.diagnostics.value.mounted }}/{{
+          renderPlan.diagnostics.value.hosts
+        }}</span
+      >
+      <small v-if="renderPlan.diagnostics.value.overBudget"
+        >当前详情较多，已优先保留正在使用的组件</small
+      >
       <div class="panel-buttons">
         <button @click="openPanel('layers')">图层</button
         ><button @click="openPanel('search')">搜索画布</button
@@ -677,7 +728,21 @@ onUnmounted(() => {
   bottom: 12px;
   z-index: 30;
 }
+.resource-notice {
+  position: absolute;
+  right: 12px;
+  bottom: 60px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.resource-counts {
+  display: inline-block;
+  min-width: 8em;
+  font-size: 12px;
+  margin-left: 8px;
+}
 .dock {
+  position: relative;
   flex: none;
   padding: 6px 12px 84px;
 }
@@ -703,7 +768,21 @@ onUnmounted(() => {
   flex: none;
 }
 @media (max-width: 600px) {
+  .resource-notice {
+    position: absolute;
+    right: 12px;
+    bottom: 60px;
+    font-size: 11px;
+    pointer-events: none;
+  }
+  .resource-counts {
+    display: inline-block;
+    min-width: 8em;
+    font-size: 12px;
+    margin-left: 8px;
+  }
   .dock {
+    position: relative;
     padding: 4px 6px 88px;
   }
 }

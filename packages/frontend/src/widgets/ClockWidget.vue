@@ -1,48 +1,39 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-
-defineProps<{
-  config: Record<string, any>
-  editing: boolean
-  editable: boolean
-}>()
-
-const time = ref('')
-const date = ref('')
-const seconds = ref('')
-let timer: ReturnType<typeof setInterval>
-
-function updateTime() {
-  const now = new Date()
-  const hours = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  seconds.value = String(now.getSeconds()).padStart(2, '0')
-  time.value = `${hours}:${minutes}`
-  date.value = now.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    weekday: 'long',
-  })
-}
-
-onMounted(() => {
-  updateTime()
-  timer = setInterval(updateTime, 1000)
-})
-
-onUnmounted(() => {
-  clearInterval(timer)
-})
+import { shallowRef, watch, onUnmounted } from 'vue'
+import { subscribeClock, currentClock } from '../services/clockService'
+const props = withDefaults(
+  defineProps<{
+    config: Record<string, any>
+    editing: boolean
+    editable: boolean
+    resourceActive?: boolean
+  }>(),
+  { resourceActive: true },
+)
+const display = shallowRef(currentClock())
+let release: (() => void) | undefined
+watch(
+  () => props.resourceActive,
+  (active) => {
+    release?.()
+    release = active
+      ? subscribeClock('second', (value) => {
+          display.value = value
+        }).release
+      : undefined
+  },
+  { immediate: true },
+)
+onUnmounted(() => release?.())
 </script>
 
 <template>
   <div class="clock-widget">
     <div class="time-display">
-      <span class="time-main">{{ time }}</span>
-      <span class="time-seconds">{{ seconds }}</span>
+      <span class="time-main">{{ display.time }}</span>
+      <span class="time-seconds">{{ display.seconds }}</span>
     </div>
-    <div class="date-display">{{ date }}</div>
+    <div class="date-display">{{ display.date }}</div>
   </div>
 </template>
 

@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { test, expect, type APIRequestContext } from '../helpers/browserTest'
 import { createDashboard, initialScene } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
@@ -777,7 +777,7 @@ test('touch blank pan and two-finger zoom use a fresh baseline without document 
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await client.detach()
 })
-test('100 lightweight canvas widgets keep their instances while panning and zooming', async ({
+test('100 canvas widgets keep stable hosts, recover visible clocks and never write while panning', async ({
   page,
   request,
 }, testInfo) => {
@@ -792,9 +792,10 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     }))
   })
   await expect(page.locator('.canvas-item')).toHaveCount(100)
-  await expect(page.locator('.clock-widget')).toHaveCount(100)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeGreaterThan(0)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeLessThan(100)
   const sample = await page.evaluate(async () => {
-    const elements = [...document.querySelectorAll('.clock-widget')],
+    const elements = [...document.querySelectorAll('.canvas-item')],
       times: number[] = []
     let previous = performance.now()
     for (let i = 0; i < 60; i++) {
@@ -811,14 +812,21 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     times.sort((a, b) => a - b)
     return {
       p95: times[Math.floor(times.length * 0.95)],
-      sameInstances: elements.every(
-        (el, i) => el === document.querySelectorAll('.clock-widget')[i],
-      ),
+      sameInstances: elements.every((el, i) => el === document.querySelectorAll('.canvas-item')[i]),
       userAgent: navigator.userAgent,
       cores: navigator.hardwareConcurrency,
     }
   })
   expect(sample.sameInstances).toBe(true)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
+  await expect(page.locator('.clock-widget').first()).toBeVisible()
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  await page.getByLabel('画布资源模式').selectOption('full')
+  await expect(page.locator('.clock-widget')).toHaveCount(100)
+  await expect(page.locator('.canvas-item')).toHaveCount(100)
+  expect((await (await request.get(backend + '/api/dashboards')).json()).revision).toBe(
+    before.revision,
+  )
   await testInfo.attach('canvas-100-widget-frame-sample', {
     body: JSON.stringify(sample, null, 2),
     contentType: 'application/json',
