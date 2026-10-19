@@ -109,7 +109,8 @@ for (const scenario of ['dense-clock', 'sparse-clock', 'mixed'] as const)
             p95: p(0.95),
             p99: p(0.99),
             hosts: document.querySelectorAll('.canvas-item').length,
-            details: document.querySelectorAll('.widget-renderer').length,
+            details: document.querySelectorAll('.widget-content > *').length,
+            pendingDetails: document.querySelectorAll('.widget-loading').length,
             iframes: document.querySelectorAll('iframe').length,
           }
         }, mixed),
@@ -157,6 +158,8 @@ for (const scenario of ['dense-clock', 'sparse-clock', 'mixed'] as const)
             .update(readFileSync('tests/performance.spec.ts'))
             .update(readFileSync('tests/helpers/runtimeFixture.ts'))
             .update(readFileSync('tests/helpers/browserTest.ts'))
+            .update(readFileSync('playwright.performance.config.ts'))
+            .update(readFileSync('playwright.config.ts'))
             .digest('hex'),
           date: new Date().toISOString(),
           browser: browser.version(),
@@ -164,6 +167,8 @@ for (const scenario of ['dense-clock', 'sparse-clock', 'mixed'] as const)
           environment,
           stubVersion: 1,
           production: process.env.NAV_TEST_DIST === 'true',
+          instrumentation: { trace: 'off', screenshot: 'off', video: 'off' },
+          detailSelector: '.widget-content > *',
           input:
             '330 RAF per round: 30 warmup + 300 measured; alternating 60 frames ±18px horizontal/±9px vertical pan; mixed jumps +3600px and +1500px vertically at frames 130/230; each round returns to default then settles 1700ms; no frame exclusions',
           requests,
