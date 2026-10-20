@@ -16,7 +16,14 @@ export interface SyncState {
   lastSyncAt: string | null
   pendingChanges: number
   status?:
-    'local-only' | 'pending-sync' | 'syncing' | 'synced' | 'conflict' | 'auth-required' | 'error'
+    | 'upgrade-required'
+    | 'local-only'
+    | 'pending-sync'
+    | 'syncing'
+    | 'synced'
+    | 'conflict'
+    | 'auth-required'
+    | 'error'
   error?: string
 }
 
@@ -29,4 +36,14 @@ export interface StorageAdapter {
   getSyncState(): Promise<SyncState>
   push(changes: Change[]): Promise<void>
   pull(): Promise<Change[]>
+  cached?(): Promise<Dashboard | null>
+  getRecoveryPreview?(): Promise<RecoveryPreview | null>
+  resolveConflict?(useLocal: boolean): Promise<void>
+}
+
+export interface RecoveryPreview {
+  remoteFresh?: boolean
+  localTitle: string
+  remoteTitle: string
+  differences: string[]
 }

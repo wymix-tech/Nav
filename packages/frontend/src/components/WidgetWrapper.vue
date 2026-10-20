@@ -1,24 +1,54 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import CanvasIcon from './canvas/CanvasIcon.vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { useRuntimeContext } from '../runtime/useRuntimeReconciler'
+import type { DisplayLevel } from '../canvas/visibilityPolicy'
+import CanvasWidgetSummary from './canvas/CanvasWidgetSummary.vue'
 import ModalShell from './ModalShell.vue'
 import type { WidgetInstance } from '@nav/shared'
 import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
 import WidgetConfigForm from './WidgetConfigForm.vue'
 
-const props = defineProps<{
-  widget: WidgetInstance
-  editing: boolean
-  editable: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    widget: WidgetInstance
+    editing: boolean
+    editable: boolean
+    canDelete?: boolean
+    mounted?: boolean
+    active?: boolean
+    level?: DisplayLevel
+    label?: string
+  }>(),
+  { canDelete: true, mounted: true, active: true, level: 'full', label: '' },
+)
 
 const emit = defineEmits<{
+  activate: []
   remove: []
   'update-config': [config: Record<string, any>]
 }>()
 
 const widgetStore = useWidgetStore()
 const showConfig = ref(false)
+const runtime = useRuntimeContext()
+let release: (() => void) | undefined
+watch(
+  showConfig,
+  (open) => {
+    release?.()
+    release = open ? runtime.activity.pin(props.widget.id, 'wrapper-config') : undefined
+  },
+  { flush: 'sync' },
+)
+onUnmounted(() => release?.())
+watch(
+  () => props.editable,
+  (allowed) => {
+    if (!allowed && !runtime.hasSession()) showConfig.value = false
+  },
+)
 
 const manifest = computed(() => {
   if (props.widget.source === 'installed') {
@@ -43,22 +73,46 @@ function handleConfigUpdate(config: Record<string, any>) {
         v-if="widgetSchema"
         class="toolbar-btn config-btn"
         title="配置"
+        aria-label="配置"
         @click="showConfig = true"
       >
-        ⚙
+        <CanvasIcon name="settings" />
       </button>
-      <button class="toolbar-btn remove-btn" title="删除" @click="emit('remove')">✕</button>
+      <button
+        :disabled="canDelete === false"
+        :title="canDelete === false ? '布局锁定或属于分组，请先解锁／解组' : '删除'"
+        class="toolbar-btn remove-btn"
+        aria-label="删除组件"
+        @click="emit('remove')"
+      >
+        <CanvasIcon name="close" />
+      </button>
     </div>
-    <div class="widget-content">
+    <div
+      v-show="(active && mounted) || showConfig"
+      class="widget-content"
+      :inert="!active && !showConfig ? true : undefined"
+    >
       <WidgetRenderer
+        v-if="mounted || showConfig"
         :widget="widget"
         :manifest="manifest"
+        :resource-active="active"
         :editing="editing"
         :editable="editable"
         @update:config="(cfg) => emit('update-config', cfg)"
       />
     </div>
 
+    <button
+      v-if="!active || !mounted"
+      class="widget-summary"
+      :class="level"
+      :aria-label="`进入组件 ${label || widget.widgetId}`"
+      @click="emit('activate')"
+    >
+      <CanvasWidgetSummary :widget="widget" :label="label" :level="level" :editable="editable" />
+    </button>
     <!-- 配置弹窗 -->
     <ModalShell v-if="showConfig" label="组件配置" @close="showConfig = false">
       <div class="config-dialog">
@@ -78,6 +132,36 @@ function handleConfigUpdate(config: Record<string, any>) {
 </template>
 
 <style scoped>
+.widget-summary {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4px * var(--canvas-inverse, 1));
+  font-size: calc(12px * var(--canvas-inverse, 1));
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: inherit;
+}
+.widget-summary :deep(strong),
+.widget-summary :deep(small),
+.widget-summary :deep(span) {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.widget-summary.outline :deep(strong),
+.widget-summary.outline :deep(small),
+.widget-summary.outline :deep(span) {
+  display: none;
+}
+
 .widget-wrapper {
   height: 100%;
   background: transparent;
@@ -111,8 +195,8 @@ function handleConfigUpdate(config: Record<string, any>) {
 }
 
 .toolbar-btn {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,5 +301,11 @@ function handleConfigUpdate(config: Record<string, any>) {
 
 .config-actions button:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+@media (hover: none) {
+  .toolbar-btn {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

@@ -1,3 +1,5 @@
+import type { CanvasScene } from '../canvas/scene.js'
+import type { CanvasSettings } from '../canvas/types.js'
 export interface WidgetLayout {
   x: number
   y: number
@@ -51,6 +53,9 @@ export interface DashboardBackground {
 }
 
 export interface Dashboard {
+  documentVersion?: 2 | 3
+  canvasScene?: CanvasScene
+  canvasSettings?: CanvasSettings
   id: string
   name: string
   title: string

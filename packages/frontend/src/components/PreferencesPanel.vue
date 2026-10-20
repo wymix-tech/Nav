@@ -3,7 +3,12 @@ import { ref } from 'vue'
 import ModalShell from './ModalShell.vue'
 import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
-import { migrateDashboard, type LayoutMode, type BackgroundImage } from '@nav/shared'
+import {
+  migrateDashboard,
+  resolveCollisions,
+  type LayoutMode,
+  type BackgroundImage,
+} from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
@@ -90,7 +95,18 @@ async function save() {
     index: 0,
   }
   next.layoutMode = layoutMode.value
-  if (await dashboardStore.commit(migrateDashboard(next))) emit('close')
+  try {
+    if (next.layoutMode === 'grid') {
+      const layouts = resolveCollisions(
+        Object.fromEntries(next.widgets.map((w: any) => [w.id, w.layouts.lg])),
+        next.baseColumns ?? next.columns,
+      )
+      for (const w of next.widgets) w.layouts.lg = layouts[w.id]
+    }
+    if (await dashboardStore.commit(migrateDashboard(next))) emit('close')
+  } catch (e) {
+    dashboardStore.error = (e as Error).message
+  }
 }
 
 function cancel() {

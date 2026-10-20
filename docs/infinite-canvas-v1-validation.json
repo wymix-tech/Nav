@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-18",
+  "baseline": "27e915f1f33692fa8c90b8736974255d0b73eff9",
+  "checks": {
+    "baseline_tests_passed": 35,
+    "v1_tests_passed": 48,
+    "dev_chromium": {
+      "passed": 15,
+      "skipped": 1
+    },
+    "production_matrix_before_checkpoint_fixes": {
+      "passed": 43,
+      "failed": 3,
+      "skipped": 2
+    },
+    "production_targeted_rechecks_after_fixes": {
+      "passed": 6,
+      "failed": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "scenarios": ["canvas wheel", "production shell"]
+    }
+  },
+  "review_fixes": {
+    "baseline": "a33b0892c8b316237683291362bfffc6ab875695",
+    "unit_tests_passed": 54,
+    "typecheck_lint_build_passed": true,
+    "changed_file_formatting_passed": true,
+    "dev_chromium": { "passed": 17, "skipped": 1 },
+    "production_chromium": { "passed": 18, "skipped": 0 },
+    "camera_race_regression_fails_before_fix": true,
+    "firefox_webkit_rerun": false,
+    "performance_remeasured": false
+  },
+  "performance": {
+    "scenario": "100 clock widgets; pan by wheel; preserve mounted instances",
+    "mode": "production",
+    "viewport_css_px": [1280, 720],
+    "browser": "HeadlessChrome/138.0.7204.0",
+    "host_cpu": "AMD EPYC 9V74",
+    "visible_logical_cpus": 9,
+    "environment": "shared Linux container",
+    "renderer_configuration": ["--use-gl=angle", "--use-angle=swiftshader"],
+    "raf_frames_per_run": 60,
+    "warmup_frames_discarded": 6,
+    "p95_frame_intervals_ms": [31.9, 37.1, 58.6],
+    "same_widget_instances": [true, true, true],
+    "target_p95_ms": 33,
+    "target_stably_met": false
+  },
+  "not_verified": [
+    "physical macOS Safari",
+    "physical trackpad",
+    "physical touch screen",
+    "reference PC performance",
+    "production deployment and data migration"
+  ],
+  "release_status": "draft; main not merged; production not deployed"
+}

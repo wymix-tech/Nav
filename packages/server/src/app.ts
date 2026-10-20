@@ -28,7 +28,7 @@ export function createApp() {
     '/api/*',
     cors({
       origin: process.env.NAV_CORS_ORIGIN || 'http://localhost:3000',
-      exposeHeaders: ['ETag'],
+      exposeHeaders: ['ETag', 'X-Nav-State-Schema'],
     }),
   )
   app.use('/api/*', async (c, next) =>

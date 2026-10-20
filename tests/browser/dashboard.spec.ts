@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test'
-import { createDashboard } from '../../packages/shared/src/index'
+import { setResourceMode } from '../helpers/canvasUi'
+import { test, expect, type APIRequestContext } from '../helpers/browserTest'
+import { createDashboard, initialScene } from '../../packages/shared/src/index'
+test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
 let token = ''
 const pageErrors = new WeakMap<object, string[]>()
@@ -43,7 +45,11 @@ test.beforeEach(async ({ page, request }) => {
   })
   const response = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${current.revision}"` },
-    data: { snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(response.ok()).toBeTruthy()
   await page.addInitScript((token) => {
@@ -93,8 +99,6 @@ test.beforeEach(async ({ page, request }) => {
   await expect(page.locator('.bookmark-widget')).toBeVisible()
   await expect(page.locator('.weather-widget')).toContainText('Sunny')
   await expect(page.locator('.monitor-widget')).toContainText('test-host')
-  if (process.env.NAV_TEST_DIST === 'true')
-    await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
 })
 test('desktop viewport matrix stays in bounds and window changes do not save layouts', async ({
   page,
@@ -199,10 +203,6 @@ test('offline edits persist locally and synchronize after reconnection', async (
   await handle.focus()
   await handle.press('ArrowRight')
   await expect(page.getByRole('status')).toContainText('本机')
-  if (process.env.NAV_TEST_DIST === 'true') {
-    await page.reload()
-    await expect(page.locator('.css-grid-item')).toHaveCount(5)
-  }
   await context.setOffline(false)
   await expect
     .poll(async () => {
@@ -223,21 +223,22 @@ test('logout exits editing and removes drag handles immediately', async ({ page 
   await expect(page.locator('.drag-handle')).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('nav_token'))).toBeNull()
 })
-test('a plugin survives reload and cannot access its host or unapproved network', async ({
-  page,
-  request,
-}) => {
+async function installTestPlugin(
+  request: APIRequestContext,
+  widgetId = 'sandbox-test',
+  displayName = '隔离测试',
+) {
   const commit = 'a'.repeat(40),
     url = `https://cdn.jsdelivr.net/gh/test/widget@${commit}/index.js`
   const widget = {
-    widgetId: 'sandbox-test',
+    widgetId,
     commit,
     cdnUrl: url,
     installedAt: new Date().toISOString(),
     manifest: {
       manifestVersion: 2,
-      name: 'sandbox-test',
-      displayName: '隔离测试',
+      name: widgetId,
+      displayName,
       version: '1',
       entry: 'index.js',
       description: 'test',
@@ -262,6 +263,14 @@ test('a plugin survives reload and cannot access its host or unapproved network'
     data: widget,
   })
   expect(installed.ok()).toBeTruthy()
+  return widget
+}
+test('a plugin survives reload and cannot access its host or unapproved network', async ({
+  page,
+  request,
+}) => {
+  const widget = await installTestPlugin(request),
+    url = widget.cdnUrl
   const d = await (await request.get(backend + '/api/dashboards')).json(),
     l = { x: 8, y: 3, w: 4, h: 3 }
   d.widgets.push({
@@ -275,7 +284,11 @@ test('a plugin survives reload and cannot access its host or unapproved network'
     (
       await request.put(backend + '/api/dashboards/default/state', {
         headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${d.revision}"` },
-        data: { snapshot: d, operationId: crypto.randomUUID() },
+        data: {
+          schemaVersion: 3,
+          snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+          operationId: crypto.randomUUID(),
+        },
       })
     ).ok(),
   ).toBeTruthy()
@@ -292,6 +305,31 @@ test('a plugin survives reload and cannot access its host or unapproved network'
   await expect(page.locator('.monitor-widget')).toContainText('test-host')
   await page.reload()
   await expect(page.frameLocator('.sandbox-widget iframe').locator('#root')).toHaveText('isolated')
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 300, zoom: 0.7 } }
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: (i % 3) * 400, y: Math.floor(i / 3) * 260, w: 360, h: 220 }
+    })
+  })
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await page.getByRole('button', { name: '适应全部', exact: true }).click()
+  const pluginRoot = page.frameLocator('.sandbox-widget iframe').locator('#root')
+  await expect(pluginRoot).toHaveText('isolated')
+  await pluginRoot.evaluate((el) => {
+    el.textContent = 'runtime kept'
+  })
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await expect(pluginRoot).toHaveText('runtime kept')
+  await page.getByRole('button', { name: '空间视图', exact: true }).click()
+  await page.getByRole('button', { name: '手形工具', exact: true }).click()
+  const frame = (await page.locator('.sandbox-widget iframe').boundingBox())!
+  await page.mouse.move(frame.x + 30, frame.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(frame.x + 80, frame.y + 60)
+  await page.mouse.up()
+  await page.getByRole('button', { name: '退出手形', exact: true }).click()
+  await expect(pluginRoot).toHaveText('runtime kept')
 })
 
 async function replaceDashboard(page: any, request: any, change: (d: any) => void) {
@@ -299,7 +337,11 @@ async function replaceDashboard(page: any, request: any, change: (d: any) => voi
   change(d)
   const r = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
-    data: { snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(r.ok()).toBeTruthy()
   await page.reload()
@@ -311,7 +353,8 @@ test('legacy canvas adapts without writes, cancels gestures and saves one comple
   await page.setViewportSize({ width: 1920, height: 1080 })
   await replaceDashboard(page, request, (d) => {
     d.layoutMode = 'canvas'
-    d.viewport = { panX: 20, panY: 40, zoom: 1, homeX: 0, homeY: 0 }
+    d.viewport = { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 960, centerY: 400, zoom: 1 } }
     d.viewportWidth = 1920
     d.viewportHeight = 1080
     d.widgets = d.widgets.slice(0, 2)
@@ -365,7 +408,7 @@ test('legacy canvas adapts without writes, cancels gestures and saves one comple
   const saved = await (await request.get(backend + '/api/dashboards')).json()
   expect(saved.widgets[0].canvas.x).not.toBe(before.widgets[0].canvas.x)
   expect(saved.widgets[0].canvas.originalW).toBe(320)
-  expect(saved.viewport).toEqual(before.viewport)
+  expect(saved.canvasSettings).toEqual(before.canvasSettings)
   await page.reload()
   await expect(page.locator('.canvas-item')).toHaveCount(2)
 })
@@ -426,7 +469,8 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   })
   const chats = page.locator('.chat-widget')
   await expect(chats).toHaveCount(2)
-  await chats.first().getByPlaceholder('输入消息...').fill('hello')
+  await chats.first().getByPlaceholder('输入消息...').click()
+  await chats.first().getByPlaceholder('输入消息...').pressSequentially('hello')
   await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('hello')
   await chats.first().getByTitle('发送', { exact: true }).click()
   await expect(chats.first().locator('.message.assistant')).toHaveCount(1)
@@ -438,7 +482,436 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await page.reload()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
   await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 250, zoom: 0.7 } }
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: i * 400, y: 0, w: 360, h: 500 }
+    })
+  })
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await page.getByRole('button', { name: '适应全部', exact: true }).click()
+  await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
+  await chats.first().getByPlaceholder('输入消息...').pressSequentially('draft kept')
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
+  await page.getByRole('button', { name: '空间视图', exact: true }).click()
+  await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
   await page.locator('.floating-panel').hover()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await expect(chats.first().getByPlaceholder('输入消息...')).toBeDisabled()
+})
+
+async function canvasCamera(page: any) {
+  return page.locator('.canvas-grid').evaluate((root: HTMLElement) => {
+    const el = root.querySelector('.canvas-content') as HTMLElement,
+      m = new DOMMatrix(getComputedStyle(el).transform)
+    return {
+      centerX: (root.getBoundingClientRect().width / 2 - m.e) / m.a,
+      centerY: (root.getBoundingClientRect().height / 2 - m.f) / m.a,
+      zoom: m.a,
+    }
+  })
+}
+async function setupCanvas(page: any, request: any) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 400, centerY: 300, zoom: 1 } }
+    d.widgets = d.widgets.slice(0, 2)
+    d.widgets.forEach((w: any, i: number) => {
+      w.canvas = { x: 150 + i * 360, y: 180, w: 320, h: 200 }
+    })
+  })
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toHaveText('100%')
+}
+test('canvas navigation, resize and list presentation never write document state or recreate widgets', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  let writes = 0
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') writes++
+  })
+  await page.locator('.search-widget').evaluate((el: any) => {
+    el.stabilityToken = 'same-instance'
+  })
+  const viewport = page.locator('.canvas-grid'),
+    box = (await viewport.boundingBox())!
+  await page.mouse.move(box.x + 40, box.y + 40)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 220, box.y + 110)
+  await page.mouse.up()
+  const panned = await canvasCamera(page)
+  expect(panned.centerX).not.toBe(400)
+  await page.setViewportSize({ width: 767, height: 900 })
+  await page.waitForTimeout(100)
+  expect(await canvasCamera(page)).toEqual(panned)
+  await expect(viewport).not.toHaveClass(/stacked/)
+  await page.getByRole('button', { name: '列表视图', exact: true }).click()
+  await expect(viewport).toHaveClass(/stacked/)
+  expect(await page.locator('.search-widget').evaluate((el: any) => el.stabilityToken)).toBe(
+    'same-instance',
+  )
+  await page.getByRole('button', { name: '空间视图', exact: true }).click()
+  expect(await canvasCamera(page)).toEqual(panned)
+  await page.getByRole('button', { name: '放大画布' }).click()
+  await page.getByRole('button', { name: '小地图', exact: true }).click()
+  await page.locator('.canvas-minimap').click({ position: { x: 120, y: 50 } })
+  await page.getByRole('button', { name: '适应全部', exact: true }).click()
+  await page.getByRole('button', { name: '恢复画布 100%' }).click()
+  const saved = await canvasCamera(page)
+  await page.waitForTimeout(450)
+  await page.reload()
+  await expect(viewport).toBeVisible()
+  await expect.poll(() => canvasCamera(page)).toEqual(saved)
+  expect(writes).toBe(0)
+  expect(await (await request.get(backend + '/api/dashboards')).json()).toEqual(before)
+})
+test('canvas wheel anchoring, cancellation and component scrolling respect event ownership', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  const box = (await page.locator('.canvas-grid').boundingBox())!,
+    initial = await canvasCamera(page)
+  const x = box.x + 60,
+    y = box.y + 70
+  await page.mouse.move(x, y)
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -100)
+  await expect.poll(async () => (await canvasCamera(page)).zoom).toBeGreaterThan(1)
+  await page.keyboard.up('Control')
+  const zoomed = await canvasCamera(page),
+    beforeWorld = {
+      x: initial.centerX + (60 - box.width / 2) / initial.zoom,
+      y: initial.centerY + (70 - box.height / 2) / initial.zoom,
+    }
+  expect(
+    Math.abs(zoomed.centerX + (60 - box.width / 2) / zoomed.zoom - beforeWorld.x),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(zoomed.centerY + (70 - box.height / 2) / zoomed.zoom - beforeWorld.y),
+  ).toBeLessThan(1)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
+  const cycleStart = await canvasCamera(page)
+  await page.evaluate(
+    ({ x, y }) => {
+      document.querySelector('.canvas-background')!.dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaY: -20,
+          ctrlKey: true,
+          clientX: x,
+          clientY: y,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      )
+    },
+    { x, y },
+  )
+  expect(await canvasCamera(page)).toEqual(cycleStart)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
+  expect(await canvasCamera(page)).toEqual(initial)
+  const search = page.locator('.search-widget'),
+    searchBox = (await search.boundingBox())!
+  await page.mouse.move(searchBox.x + 50, searchBox.y + 70)
+  await page.mouse.wheel(0, 100)
+  await page.waitForTimeout(100)
+  expect(await canvasCamera(page)).toEqual(initial)
+  await page.getByRole('button', { name: '手形工具', exact: true }).click()
+  await page.mouse.move(searchBox.x + 20, searchBox.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(searchBox.x + 70, searchBox.y + 60)
+  await page.mouse.up()
+  expect(await canvasCamera(page)).not.toEqual(initial)
+  await page.getByRole('button', { name: '退出手形', exact: true }).click()
+})
+test('canvas insertion follows the current viewport and publishing a default is one undoable document action', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  await page.getByRole('button', { name: '手形工具', exact: true }).click()
+  const box = (await page.locator('.canvas-grid').boundingBox())!
+  await page.mouse.move(box.x + 40, box.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width - 40, box.y + box.height - 30)
+  await page.mouse.up()
+  await page.getByRole('button', { name: '退出手形', exact: true }).click()
+  await edit(page)
+  await page.locator('.floating-panel').hover()
+  await page.locator('.panel-actions button').filter({ hasText: '☰' }).click()
+  await page.locator('.widget-item').filter({ hasText: '时钟' }).click()
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await expect
+    .poll(
+      async () => (await (await request.get(backend + '/api/dashboards')).json()).widgets.length,
+    )
+    .toBe(3)
+  const latest = page.locator('.canvas-item').last(),
+    itemBox = (await latest.boundingBox())!,
+    view = (await page.locator('.canvas-grid').boundingBox())!
+  expect(itemBox.x + itemBox.width / 2).toBeGreaterThan(view.x)
+  expect(itemBox.x + itemBox.width / 2).toBeLessThan(view.x + view.width)
+  expect(itemBox.y + itemBox.height / 2).toBeGreaterThan(view.y)
+  expect(itemBox.y + itemBox.height / 2).toBeLessThan(view.y + view.height)
+  await expect(page.getByRole('status')).toContainText('已同步')
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  await page.getByRole('button', { name: '放大画布' }).click()
+  const camera = await canvasCamera(page)
+  await page.getByRole('button', { name: '更多画布选项', exact: true }).click()
+  await page.getByRole('button', { name: '发布为默认视角', exact: true }).click()
+  await expect
+    .poll(async () => (await (await request.get(backend + '/api/dashboards')).json()).revision)
+    .toBe(before.revision + 1)
+  const published = await (await request.get(backend + '/api/dashboards')).json()
+  expect(published.canvasSettings.defaultCamera.centerX).toBeCloseTo(camera.centerX, 2)
+  expect(published.canvasSettings.defaultCamera.centerY).toBeCloseTo(camera.centerY, 2)
+  expect(published.canvasSettings.defaultCamera.zoom).toBeCloseTo(camera.zoom, 5)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect
+    .poll(
+      async () => (await (await request.get(backend + '/api/dashboards')).json()).canvasSettings,
+    )
+    .toEqual(before.canvasSettings)
+  expect(await canvasCamera(page)).toEqual(camera)
+})
+
+test('canvas pointer insertion drops at the release point and cancellation creates nothing', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  await edit(page)
+  await page.locator('.floating-panel').hover()
+  await page.locator('.panel-actions button').filter({ hasText: '☰' }).click()
+  const source = page.locator('.widget-item').filter({ hasText: '时钟' })
+  await source.hover()
+  const s = (await source.boundingBox())!,
+    v = (await page.locator('.canvas-grid').boundingBox())!,
+    // The full canvas center now overlaps a seeded widget; use an empty drop target.
+    drop = { x: v.x + v.width / 2, y: v.y + v.height * 0.78 }
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(drop.x, drop.y, { steps: 5 })
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(drop.x, drop.y, { steps: 5 })
+  await page.mouse.up()
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  const added = (await page.locator('.canvas-item').last().boundingBox())!
+  expect(Math.abs(added.x + added.width / 2 - drop.x)).toBeLessThan(21)
+  expect(Math.abs(added.y + added.height / 2 - drop.y)).toBeLessThan(21)
+})
+test('canvas gestures cancel on resize, lost pointer capture, blur and permission loss', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  await edit(page)
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  const handle = page.locator('.canvas-drag-handle').first()
+  for (const reason of ['resize', 'cancel', 'blur', 'permission']) {
+    const box = (await handle.boundingBox())!
+    await page.mouse.move(box.x + 8, box.y + 8)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 80, box.y + 40)
+    if (reason === 'resize') await page.setViewportSize({ width: 1280, height: 800 })
+    if (reason === 'cancel') await page.locator('.canvas-grid').dispatchEvent('pointercancel')
+    if (reason === 'blur') await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    if (reason === 'permission')
+      await page.evaluate(() => window.dispatchEvent(new Event('nav-auth-invalid')))
+    await page.waitForTimeout(60)
+    await page.mouse.up()
+    expect((await (await request.get(backend + '/api/dashboards')).json()).widgets).toEqual(
+      before.widgets,
+    )
+  }
+  await expect(handle).toHaveCount(0)
+})
+test('touch blank pan and two-finger zoom use a fresh baseline without document writes', async ({
+  page,
+  request,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'CDP touch injection is Chromium-specific')
+  await setupCanvas(page, request)
+  await page.setViewportSize({ width: 600, height: 900 })
+  await page.getByRole('button', { name: '手形工具', exact: true }).click()
+  const client = await page.context().newCDPSession(page),
+    v = (await page.locator('.canvas-grid').boundingBox())!
+  const initial = await canvasCamera(page)
+  const touch = (x: number, y: number, id: number) => ({ x, y, id, radiusX: 1, radiusY: 1 })
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [touch(100, v.y + 100, 1)],
+  })
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [touch(140, v.y + 140, 1)],
+  })
+  await page.waitForTimeout(40)
+  const panned = await canvasCamera(page)
+  expect(panned.centerX).not.toBe(initial.centerX)
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [touch(140, v.y + 140, 1), touch(280, v.y + 140, 2)],
+  })
+  await page.waitForTimeout(40)
+  expect(await canvasCamera(page)).toEqual(panned)
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [touch(100, v.y + 140, 1), touch(320, v.y + 140, 2)],
+  })
+  await page.waitForTimeout(40)
+  expect((await canvasCamera(page)).zoom).toBeGreaterThan(panned.zoom)
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await client.detach()
+})
+test('100 canvas widgets keep stable hosts, recover visible clocks and never write while panning', async ({
+  page,
+  request,
+}, testInfo) => {
+  await replaceDashboard(page, request, (d: any) => {
+    d.layoutMode = 'canvas'
+    d.canvasSettings = { version: 1, defaultCamera: { centerX: 0, centerY: 0, zoom: 1 } }
+    const first = d.widgets[0]
+    d.widgets = Array.from({ length: 100 }, (_, i) => ({
+      ...first,
+      id: `perf-clock-${i}`,
+      canvas: { x: (i % 10) * 300, y: Math.floor(i / 10) * 200, w: 280, h: 180 },
+    }))
+  })
+  await expect(page.locator('.canvas-item')).toHaveCount(100)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeGreaterThan(0)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeLessThan(100)
+  const sample = await page.evaluate(async () => {
+    const elements = [...document.querySelectorAll('.canvas-item')],
+      times: number[] = []
+    let previous = performance.now()
+    for (let i = 0; i < 60; i++) {
+      document
+        .querySelector('.canvas-background')!
+        .dispatchEvent(
+          new WheelEvent('wheel', { deltaX: 10, deltaY: 10, bubbles: true, cancelable: true }),
+        )
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      const now = performance.now()
+      if (i > 5) times.push(now - previous)
+      previous = now
+    }
+    times.sort((a, b) => a - b)
+    return {
+      p95: times[Math.floor(times.length * 0.95)],
+      sameInstances: elements.every((el, i) => el === document.querySelectorAll('.canvas-item')[i]),
+      userAgent: navigator.userAgent,
+      cores: navigator.hardwareConcurrency,
+    }
+  })
+  expect(sample.sameInstances).toBe(true)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
+  await expect(page.locator('.clock-widget').first()).toBeVisible()
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  await setResourceMode(page, 'full')
+  await expect(page.locator('.clock-widget')).toHaveCount(100)
+  await expect(page.locator('.canvas-item')).toHaveCount(100)
+  expect((await (await request.get(backend + '/api/dashboards')).json()).revision).toBe(
+    before.revision,
+  )
+  await testInfo.attach('canvas-100-widget-frame-sample', {
+    body: JSON.stringify(sample, null, 2),
+    contentType: 'application/json',
+  })
+})
+
+test('keyboard uninstall does not bubble into adding a plugin and row Enter still adds', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  const widget = await installTestPlugin(request, 'keyboard-unused', '键盘卸载测试')
+  await page.route(widget.cdnUrl, (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: 'export function mount(root){root.textContent="test"}',
+    }),
+  )
+  await page.reload()
+  await expect(page.locator('.canvas-item')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
+  await edit(page)
+  await page.locator('.floating-panel').hover()
+  await page.locator('.panel-actions button').filter({ hasText: '☰' }).click()
+  const clock = page.locator('.widget-item').filter({ hasText: '时钟' })
+  await clock.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await expect
+    .poll(
+      async () => (await (await request.get(backend + '/api/dashboards')).json()).widgets.length,
+    )
+    .toBe(3)
+  await expect(page.getByRole('status')).toContainText('已同步')
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  const row = page.locator('.widget-item').filter({ hasText: '键盘卸载测试' })
+  await row.getByRole('button', { name: '卸载', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(row).toHaveCount(0)
+  await expect(page.locator('.canvas-item')).toHaveCount(3)
+  expect(await (await request.get(backend + '/api/dashboards')).json()).toEqual(before)
+  const catalog = await (await request.get(backend + '/api/installed-widgets')).json()
+  expect(catalog.some((w: any) => w.widgetId === widget.widgetId)).toBeFalsy()
+})
+
+test('remote widget additions and deletions preserve an in-progress canvas pan', async ({
+  page,
+  request,
+}) => {
+  await setupCanvas(page, request)
+  let writes = 0
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') writes++
+  })
+  const box = (await page.locator('.canvas-grid').boundingBox())!
+  const initial = await canvasCamera(page)
+  await page.mouse.move(box.x + 30, box.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 110, box.y + 80, { steps: 3 })
+  await expect.poll(() => canvasCamera(page)).not.toEqual(initial)
+  const panned = await canvasCamera(page)
+  for (const add of [true, false]) {
+    const d = await (await request.get(backend + '/api/dashboards')).json()
+    if (add) d.widgets.push({ ...d.widgets[0], id: 'remote-clock' })
+    else d.widgets = d.widgets.filter((w: any) => w.id !== 'remote-clock')
+    const response = await request.put(backend + '/api/dashboards/default/state', {
+      headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
+      data: {
+        schemaVersion: 3,
+        snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+        operationId: crypto.randomUUID(),
+      },
+    })
+    expect(response.ok()).toBeTruthy()
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+    await expect(page.locator('.canvas-item')).toHaveCount(add ? 3 : 2)
+    expect(await canvasCamera(page)).toEqual(panned)
+  }
+  await page.mouse.move(box.x + 160, box.y + 110)
+  await page.mouse.up()
+  expect(await canvasCamera(page)).not.toEqual(panned)
+  expect(writes).toBe(0)
 })

@@ -1,0 +1,1000 @@
+{
+  "date": "2026-10-19",
+  "branch": "feat/infinite-canvas-v3",
+  "base": {
+    "sha": "899b4561b6faec0f4d8b0c5a2871a800ae1b29d2",
+    "ciRun": 39183970021,
+    "ciConclusion": "success",
+    "pr": 3,
+    "prBase": "feat/infinite-canvas-v1"
+  },
+  "implementation": {
+    "documentVersion": 3,
+    "schemaVersion": 3,
+    "dexieVersion": 4,
+    "manifestVersion": 2,
+    "widgetLimit": 100,
+    "databaseMigrationAdded": false,
+    "merged": false,
+    "deployed": false
+  },
+  "checks": {
+    "check": {
+      "status": "passed",
+      "modules": 115,
+      "typecheck": "passed",
+      "eslint": "passed",
+      "build": "passed",
+      "resumedVerification": "passed again on frozen product sources; 115 tests, typecheck, ESLint and build",
+      "productSourcesUnchangedSince": "7eed296",
+      "finalTestLint": "passed after both strengthened browser test changes"
+    },
+    "browserDevelopment": {
+      "fullPreFinal": {
+        "passed": 89,
+        "failed": 2,
+        "skipped": 5,
+        "failure": "Firefox outgoing dynamic imports during reload; explicit initial readiness added. Pageerror assertions retained."
+      },
+      "finalTargeted": {
+        "passed": 27,
+        "failed": 0,
+        "browsers": ["chromium", "firefox", "webkit"],
+        "scope": "V3 lifecycle, V2 list navigation and chat/Docker; final sampler concurrency is additionally covered by module tests; full final CI pending"
+      },
+      "resumedFullRuns": {
+        "chromium": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 1
+        },
+        "firefoxAndWebkitFirst": {
+          "passed": 59,
+          "failed": 1,
+          "skipped": 4,
+          "failure": "V3-WK-UNDO-01"
+        },
+        "webkitFinal": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2
+        },
+        "strengthenedUndoChromiumFirefox": {
+          "passed": 2,
+          "failed": 0,
+          "cyclesPerCase": 20
+        }
+      },
+      "latestPerBrowserCoverage": {
+        "chromium": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 1,
+          "log": "checks/browser-chromium.log"
+        },
+        "firefox": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2,
+          "log": "checks/browser-firefox-webkit.log"
+        },
+        "webkit": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 2,
+          "log": "checks/browser-webkit-final.log"
+        },
+        "aggregate": {
+          "passed": 91,
+          "failed": 0,
+          "skipped": 5,
+          "note": "Assembled from separate per-browser runs on identical product sources. One earlier WebKit failure remains an unresolved intermittent observation."
+        }
+      },
+      "skipReasons": [
+        "Three production-only offline-shell cases skipped in development; production Chromium runs the shell case separately.",
+        "Two CDP-specific touch cases are Chromium-only; skipped in Firefox and WebKit."
+      ]
+    },
+    "browserProduction": {
+      "fullBeforeLeaseAwareClock": {
+        "passed": 31,
+        "failed": 1,
+        "log": "checks/browser-production.log",
+        "failure": "Offline online-event/reload race can retain a valid 20s lease; the previous assertion expected recovery within 10s."
+      },
+      "shellFinal": {
+        "passed": 1,
+        "failed": 0,
+        "log": "checks/browser-production-shell-final.log",
+        "testChange": "Install Playwright clock, preserve offline reload/cache/camera assertions, advance 31s after online reload through the existing 30s heartbeat. Product sync code, lease and assertion timeout unchanged."
+      },
+      "latestScenarioCoverage": {
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "note": "Assembled from 31 unchanged suite cases plus the final lease-aware shell case; not a single final 32-case command."
+      }
+    },
+    "docker": "not-installed-locally; V3 CI not run because push is awaiting explicit authorization",
+    "performance": {
+      "status": "formal-capture-complete; release-acceptance-open",
+      "instrumentation": {
+        "trace": "off",
+        "screenshot": "off",
+        "video": "off"
+      },
+      "detailSelector": ".widget-content > *",
+      "formalExpectedScenarios": 12,
+      "formalExpectedFrames": 10800,
+      "exploratory": {
+        "completedScenarios": 9,
+        "instrumentation": "inherited retain-on-failure trace",
+        "includedInFormalComparison": false,
+        "fullRun": "intentionally interrupted before completion"
+      },
+      "releaseAcceptance": "open; reference PC and real Safari not executed",
+      "harnessResults": {
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "rounds": 36,
+        "formalFrames": 10800,
+        "warmupFrames": 1080
+      },
+      "harnessHash": "a6ef62c70611324ed3f9b83f33d34888d9fde2b1694b71e758d8b50e620311c1",
+      "allProductSourcesClean": true,
+      "allFinalLoadingCountsZero": false,
+      "sharedRoundsOver33ms": 29,
+      "report": "docs/infinite-canvas-v3-performance.md",
+      "rawData": "docs/performance/",
+      "referenceDevice": "not-tested",
+      "hostLoad": "shared host load uncontrolled; logged once per mode in checks/performance-environment.log",
+      "pendingDetailSnapshots": [
+        {
+          "scenario": "safe-dense-clock",
+          "round": 1,
+          "count": 1,
+          "note": "Root count includes an async loading placeholder at the end of the camera sequence; other 35 round snapshots have zero placeholders. Not a ready-latency acceptance claim."
+        }
+      ]
+    }
+  },
+  "testIsolation": {
+    "defaultExternalRequests": "blocked in tests/helpers/browserTest.ts",
+    "realNetwork": "isolated local application only",
+    "services": "fixed synthetic weather/AI/system/plugin fixtures",
+    "credentials": "test database credentials only",
+    "autoReviewInterruption": "Initial browser validation stopped because favicon requests could disclose bookmark domains; replaced with default-deny external request boundary before reruns.",
+    "browserEnvironment": "Chromium 153.0.8010.0, Firefox 157.0, WebKit 27.2. Test-only Firefox sandbox flags and extracted host dependencies; product plugin isolation unchanged."
+  },
+  "negativeControls": [
+    {
+      "scenario": "cached sampler snapshot treated as fresh resume baseline",
+      "resultBeforeFix": "failed",
+      "test": "a resumed consumer distinguishes cached display data from a fresh rate baseline"
+    },
+    {
+      "scenario": "legacy binding quota failure leaves partial imported private record",
+      "resultBeforeFix": "failed",
+      "test": "legacy binding storage failure cannot partially import the same private record into two spaces"
+    }
+  ],
+  "inheritedReleaseGates": ["V2 真机和参考性能验收", "生产部署副本的升级/回滚验证"],
+  "releaseStatus": "draft; not release-accepted: intermittent WebKit mount observation, dense safe performance and partial/manual release gates remain open",
+  "acceptance": [
+    {
+      "id": "A01",
+      "scenario": "同空间同 widget 多次 attach、并发初始化",
+      "required": "只有一个 owner 和一个源任务，detach 不重复 dispose",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "A02",
+      "scenario": "相同 widget ID 跨空间、相同 widgetId 跨 source",
+      "required": "状态/适配器/名称/缓存不串用",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "A03",
+      "scenario": "A→B→A 快切、迟到初始化和 View ready",
+      "required": "serial/generation 有效，旧结果不写新空间",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "A04",
+      "scenario": "离开/返回视口、低倍率、hidden",
+      "required": "Runtime/View/任务按不同规则变化，不混为删除",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "A05",
+      "scenario": "删除/清空被拒绝和真实接受",
+      "required": "拒绝不先中断流；接受使旧回调失效并清理",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "锁拒绝与运行清理分别有回归，尚无持续流中每种拒绝入口的完整交叉矩阵。"
+    },
+    {
+      "id": "A06",
+      "scenario": "撤销删除、类型替换、tombstone 过期",
+      "required": "文档恢复，禁止自动重发副作用；私有状态边界明确",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "20 次删除/undo 恢复回归已增强；V3-WK-UNDO-01 的间歇挂载停滞根因未确定；5 分钟 TTL 浏览器长时间实测待补。"
+    },
+    {
+      "id": "A07",
+      "scenario": "空间切换、登出、页面关闭",
+      "required": "授权任务/Key/订阅正确结束，checkpoint 不承诺续流",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "A08",
+      "scenario": "重复 dispose、加载失败、软预算超出",
+      "required": "无孤儿 owner，保留重要状态，回退可解释",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/runtime-reconciler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "重复释放、加载空值、配额故障已覆盖；超软预算长时间真实堆趋势仍待参考设备。"
+    },
+    {
+      "id": "B01",
+      "scenario": "流离屏/摘要/返回、View detach",
+      "required": "一次发送，片段连续，不因裁剪 abort",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "B02",
+      "scenario": "流中配置改动、停止、新会话、401",
+      "required": "请求快照稳定，旧请求不能写入新会话",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "请求配置快照、停止、新会话及授权 epoch 已覆盖，流中全部 401 交叉时序仍需扩展。"
+    },
+    {
+      "id": "B03",
+      "scenario": "删除流后 undo、迟到 chunk",
+      "required": "不复活旧网络请求，不污染恢复后的新 generation",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "B04",
+      "scenario": "input 草稿、焦点、composition",
+      "required": "保护 View，输入法不丢字，释放后可恢复",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "B05",
+      "scenario": "Wrapper/组件配置弹窗、未保存表单",
+      "required": "不回收未提交状态，取消/关闭后正确释放 pin",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "书签未提交表单和统一保护已验，全部内置配置/插件 schema 表单的组合矩阵未穷举。"
+    },
+    {
+      "id": "B06",
+      "scenario": "旧 session key、跨空间绑定、坏/未来记录",
+      "required": "原记录保留，显式绑定不串空间，不能静默丢弃",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "B07",
+      "scenario": "刷新/配额失败/中断记录",
+      "required": "已收片段可恢复，loading 不假持续，Key 不落盘",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "B08",
+      "scenario": "隐藏后返回的 Markdown 和滚动",
+      "required": "仍净化，无每 token 隐藏重渲染，不强拉阅读位置",
+      "evidence": [
+        "tests/runtime.test.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "离屏片段和净化已验，长聊天的精确阅读锚点仍需真机体验验收。"
+    },
+    {
+      "id": "C01",
+      "scenario": "100 时钟 full/summary/outline/hidden",
+      "required": "单共享调度器、按需通知、返回是真实当前时间",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C02",
+      "scenario": "相同/不同磁盘 Monitor 需求",
+      "required": "复用现有服务，同 key 不重复采样，不同授权隔离",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C03",
+      "scenario": "相同城市并发天气、一个订阅取消",
+      "required": "同源请求去重，不因一人取消损坏其他消费者",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C04",
+      "scenario": "快速换城市、旧回包/超时",
+      "required": "错误和数据归属于正确 key/requestId，保留最近有效数据",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "同城市去重、不同城市结果及取消已验，全部 UI 换城/超时组合未穷举。"
+    },
+    {
+      "id": "C05",
+      "scenario": "多 Docker 实例/不同刷新周期",
+      "required": "共享数据源，次数由有效需求决定，不按挂载数倍增",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C06",
+      "scenario": "Docker 暂停/恢复、重启、计数回退",
+      "required": "首次速度为空基线，不显示错误突增/补偿速率",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C07",
+      "scenario": "登出、公共/私有数据、迟到授权响应",
+      "required": "缓存不泄露、不回填，服务端认证保持",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "C08",
+      "scenario": "快速视角跳转、hidden 后恢复",
+      "required": "取消过期预取，去重/抖动，无错过轮询补发风暴",
+      "evidence": [
+        "tests/runtime-services.test.ts",
+        "tests/runtime.test.ts",
+        "tests/browser/dashboard.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D01",
+      "scenario": "旧插件离屏/返回/缩放摘要",
+      "required": "同 iframe、父级、srcdoc、secret 和通道",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D02",
+      "scenario": "分组/解组/改层序/锁定/空间列表",
+      "required": "不搬宿主 DOM，不重 mount iframe",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D03",
+      "scenario": "iframe 内输入、焦点、宿主手形",
+      "required": "内容/工具事件边界不变，退出后可交互",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D04",
+      "scenario": "目录刷新、配置改变、真实安装身份改变",
+      "required": "前两者不误重启，真实替换按生命周期结束旧实例",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "partial",
+      "remaining": "目录对象刷新/权限变更的 owner 身份回归；真实安装替换 runner 的浏览器组合仍待扩展。"
+    },
+    {
+      "id": "D05",
+      "scenario": "隐藏 retained 内容和键盘导航",
+      "required": "不把焦点藏掉，不 Tab 入不可见内容，CSS 兼容可回退",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "partial",
+      "remaining": "三浏览器保留同 iframe 和隐藏内容，跨 iframe 的完整键盘遍历还需真机验收。"
+    },
+    {
+      "id": "D06",
+      "scenario": "超时、错误、显式重试和 dispose",
+      "required": "原隔离错误流程有效，优化不自动刷新丢状态",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D07",
+      "scenario": "CSP、来源/secret、配置速率/权限",
+      "required": "无 allow-same-origin、无父 token/DOM 访问扩大",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "D08",
+      "scenario": "全盘旧插件超软预算、未知生命周期",
+      "required": "保守存活与正确诊断，不强制回收或伪报收益",
+      "evidence": [
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/browser/dashboard.spec.ts",
+        "tests/runtime.test.ts"
+      ],
+      "status": "partial",
+      "remaining": "opaque 默认保留与软预算提示已实现；全盘 100 个任意真实旧插件不保证参考性能。"
+    },
+    {
+      "id": "E01",
+      "scenario": "1%/100%/800%、负坐标、不同 CSS 视口",
+      "required": "相机/世界几何不变，级别按投影尺寸判断",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E02",
+      "scenario": "进入/退出 160/320px 范围与 1.5s 迟滞",
+      "required": "返回取消回收，无边界挂载抖动",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E03",
+      "scenario": "full/summary/outline 阈值来回",
+      "required": "迟滞稳定，首次分类与强制激活规则一致",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E04",
+      "scenario": "大量同时可见和保护项",
+      "required": "正确性优先、软预算可超，无隐藏强制销毁",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "软预算和保护优先已实现，受保护对象全部超预算的参考设备压力验收待补。"
+    },
+    {
+      "id": "E05",
+      "scenario": "快速跨区/连续导航",
+      "required": "旧计划失效，目标摘要先出现，挂载队列有优先级",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E06",
+      "scenario": "观察/full/safe 互切和单组件回退",
+      "required": "不重建 Registry，不重复流，故障限定适配器",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E07",
+      "scenario": "轻宿主/详情/iframe/runtime 指标",
+      "required": "分类计数正确，不能用减少详情偷换为模型减少",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "E08",
+      "scenario": "相机每帧变化、v-memo 和计划更新",
+      "required": "不每帧 clone 文档/整盘重建子组件，不漏真实依赖",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/render-scheduler.test.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "稳定宿主、计划差量发布已验，尚未对全部帧的 clone/组件重渲染给出独立 profiler 样本。"
+    },
+    {
+      "id": "F01",
+      "scenario": "随机矩形/负坐标/边界接触/极端倍率",
+      "required": "树候选精查结果与完整线性参考一致",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "F02",
+      "scenario": "巨型区域/跨视口组/所有对象重叠",
+      "required": "不按 tile 爆炸，不漏范围，最坏 O(n) 可解释",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "F03",
+      "scenario": "本机同 revision 连续编辑、ack、改名",
+      "required": "geometryEpoch 正确，状态/名字不乱重建几何",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "F04",
+      "scenario": "新增/删除/成员变更/undo/恢复/外部更新",
+      "required": "三索引和关系/rank 原子一致，无幽灵条目",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "F05",
+      "scenario": "草稿移动/resize/区域、候选排除",
+      "required": "base＋draft 与精确 V2 结果一致，不吸附自身成员",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "候选排除和既有草稿/吸附回归已验，完整随机手势回放矩阵未穷举。"
+    },
+    {
+      "id": "F06",
+      "scenario": "屏幕外成员组移动/锁/删除、全选",
+      "required": "全量语义和整批原子性保留，不按 DOM 过滤",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "partial",
+      "remaining": "完整模型命令/组锁回归保留；所有离屏组几何组合尚未穷举。"
+    },
+    {
+      "id": "F07",
+      "scenario": "搜索未挂载目标、命名视角、列表返回",
+      "required": "等待正确目标 ready，scroll/presentation/serial 正确，零文档写入",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "F08",
+      "scenario": "索引失效/损坏/旧异步结果",
+      "required": "回退精确遍历，不能提交基于不完整数据的命令",
+      "evidence": [
+        "tests/visibility-index.test.ts",
+        "tests/canvas-session.test.ts",
+        "tests/canvas-scene.test.ts",
+        "tests/browser/canvas-v2.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G01",
+      "scenario": "平移/LOD/运行摘要/裁剪循环",
+      "required": "文档、revision、历史、同步 pending 不变",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G02",
+      "scenario": "普通状态/ack/旧 key 广播、真实外部草稿",
+      "required": "R1 规则保持，旧编辑基线 generation 不被通知推进",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G03",
+      "scenario": "慢 undo/redo＋新命令＋外部替换",
+      "required": "R2 历史事务无迟到污染，失败保留未保存状态",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G04",
+      "scenario": "版本 3、旧队列、未知未来文档",
+      "required": "当前精确校验不放宽，隔离/备份/停写保护不退化",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G05",
+      "scenario": "离线刷新/重连、scene 恢复和 region 层序",
+      "required": "完整文档和恢复预览不漏字段，私有运行记录分离",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G06",
+      "scenario": "导出/备份/搜索/性能日志",
+      "required": "无临时 Key、聊天私有输入、插件快照或控制器泄入",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G07",
+      "scenario": "服务实例变化/空间 UUID/命名视角",
+      "required": "原身份与记录保留，不为 runtime 重新生成空间 UUID",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "G08",
+      "scenario": "删除/锁/网格/恢复各入口",
+      "required": "统一服务端转换与认证，不因新资源层绕过",
+      "evidence": [
+        "tests/storage.test.ts",
+        "tests/dashboard-history.test.ts",
+        "tests/server.test.ts",
+        "tests/browser/offline-shell.spec.ts",
+        "tests/browser/canvas-v3.spec.ts"
+      ],
+      "status": "automated-covered"
+    },
+    {
+      "id": "H01",
+      "scenario": "同设备 V2/V3，三轮≥300 有效 RAF",
+      "required": "原始样本与环境完整，p95 结论可复核",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "partial",
+      "remaining": "12 个同工具生产场景、10800 个正式帧已归档；共享宿主后台负载不受严格控制，参考 PC 性能门槛未验。"
+    },
+    {
+      "id": "H02",
+      "scenario": "100 时钟/合法混合样本/强保护样本",
+      "required": "分别记录收益与边界，不将非法组合当产品支持",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "partial",
+      "remaining": "时钟/合法混合性能与强保护正确性分别验证；尚无强保护集合正式性能档案。"
+    },
+    {
+      "id": "H03",
+      "scenario": "20 轮跨区/缩放/定位/进入退出",
+      "required": "owner/订阅/端口/缓存回落，无持续泄漏",
+      "evidence": [
+        "tests/browser/canvas-v3.spec.ts",
+        "tests/runtime.test.ts",
+        "tests/runtime-services.test.ts"
+      ],
+      "status": "partial",
+      "remaining": "owner/View/时钟订阅和 iframe 身份的 20 轮回归通过；真实 MessagePort 与浏览器堆的长期趋势未独立采集。"
+    },
+    {
+      "id": "H04",
+      "scenario": "mount 长任务、查询/命令/网络成本",
+      "required": "分项定位，无凭空加速结论，超预算可观测",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "partial",
+      "remaining": "密集 safe 长任务 101、observe 9，需独立 profiler 定位贡献；真实 IndexedDB 写入与发送链路分项尚未完整采集。"
+    },
+    {
+      "id": "H05",
+      "scenario": "三浏览器开发＋生产 Chromium＋Docker",
+      "required": "实际运行通过，跳过原因独立记录",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "partial",
+      "remaining": "逐浏览器最终覆盖 91 通过/5 跳过，生产场景覆盖 32 项（全套31＋修正后离线壳定向1）；Docker 未安装，V3 远端 CI 未运行。"
+    },
+    {
+      "id": "H06",
+      "scenario": "真 Safari/触控板/触屏/系统缩放",
+      "required": "操作、焦点/iframe、手势和性能有实机记录",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "manual-pending",
+      "remaining": "需要真实 Safari、触控板、触屏和系统缩放设备，当前环境不可执行。"
+    },
+    {
+      "id": "H07",
+      "scenario": "生产副本/V3 回退/已有 V2 数据",
+      "required": "无无意义迁移，状态保留，full 开关和原恢复路径有效",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "manual-pending",
+      "remaining": "本轮未访问生产部署副本，不执行生产迁移/回滚。"
+    },
+    {
+      "id": "H08",
+      "scenario": "300/1000、增量/分块研究结论",
+      "required": "明确限制/预算/协议闸门；未启用不声称生产支持",
+      "evidence": [
+        "tests/performance.spec.ts",
+        "scripts/benchmark-spatial.ts",
+        "docs/performance/",
+        "docs/infinite-canvas-v3.md"
+      ],
+      "status": "automated-covered"
+    }
+  ],
+  "delivery": {
+    "localBranch": "feat/infinite-canvas-v3",
+    "productCommit": "7eed296263a2184f46cc95f229c7e922c3043177",
+    "pushed": false,
+    "pullRequestCreated": false,
+    "remoteCI": "not-run",
+    "pushBlock": "Automatic approval review rejected disclosure of new source and commit history to GitHub without explicit authorization.",
+    "testCommits": ["9402d82", "0c9a403", "068897a"]
+  },
+  "knownIssues": [
+    {
+      "id": "V3-WK-UNDO-01",
+      "status": "intermittent-unresolved",
+      "observed": "One WebKit full-suite run restored the chat document after undo, but its detail remained in a pending mount state and the input was absent after 10 seconds. No wrong draft value was observed.",
+      "investigation": "Original trace retained locally. A diagnostic repeat command announced 15 cases but only four completion lines were captured; not counted as 15 passes. A single 20-cycle delete/undo case passed with diagnostics, then passed again without diagnostics. The strengthened 20-cycle case subsequently passed in Chromium and Firefox, and the complete WebKit rerun passed 30 cases with 2 expected skips.",
+      "change": "Strengthened the regression to 20 delete/undo cycles and an explicit zero-chat-request assertion. No speculative product fix or timeout relaxation.",
+      "remaining": "Confirm cause of the intermittent pending mount. Passing reruns alone do not prove resolution."
+    },
+    {
+      "id": "V3-PERF-DENSE-01",
+      "status": "open",
+      "observed": "Formal capture-off dense-clock safe has 101 long tasks across the three full 330-frame windows; observe has 9. Safe reduces end-of-round detail roots to 65/64/76 but does not establish stable frame-time improvement.",
+      "remaining": "Profile mount scheduling, clock updates and main-thread/GPU rendering separately; shared-host noise prevents causal attribution. Reference PC p95 acceptance remains open.",
+      "evidence": [
+        "docs/infinite-canvas-v3-performance.md",
+        "docs/performance/safe-dense-clock.json",
+        "docs/performance/observe-dense-clock.json"
+      ]
+    }
+  ],
+  "phaseStatus": {
+    "P0": "fixed V2 SHA and CI; same-harness shared-container production baseline and all four modes captured; reference-device/stable-load acceptance pending",
+    "P1-P5": "core implementation delivered; automated coverage and partial acceptance recorded per item",
+    "P6": "partial: intermittent WebKit mount observation, dense safe long tasks, Docker/reference-device/manual/production-copy gates remain",
+    "P7": "Rect[] and document cost research plus expansion protocol design; production expansion disabled"
+  },
+  "acceptanceSummary": {
+    "automated-covered": 43,
+    "partial": 19,
+    "manual-pending": 2
+  }
+}

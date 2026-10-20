@@ -18,7 +18,12 @@
     "format:check": "prettier --check packages tests *.ts *.mjs *.json",
     "test:browser": "playwright test",
     "db:preflight": "node packages/server/dist/maintenance.js preflight",
-    "db:backup": "node packages/server/dist/maintenance.js backup"
+    "canvas-v2-preflight": "node packages/server/dist/maintenance.js canvas-v2-preflight",
+    "canvas-v2-dry-run": "node packages/server/dist/maintenance.js canvas-v2-dry-run",
+    "canvas-v2-migrate": "node packages/server/dist/maintenance.js canvas-v2-migrate",
+    "db:backup": "node packages/server/dist/maintenance.js backup",
+    "test:performance": "playwright test -c playwright.performance.config.ts",
+    "benchmark:spatial": "node --import tsx scripts/benchmark-spatial.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

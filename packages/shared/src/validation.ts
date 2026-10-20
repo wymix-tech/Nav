@@ -1,3 +1,6 @@
+import { validateScene } from './canvas/scene.js'
+import { CANVAS } from './canvas/constants.js'
+import { validCamera } from './canvas/geometry.js'
 import type { Dashboard, WidgetLayout } from './types/dashboard.js'
 import type { InstalledWidget } from './types/widget.js'
 
@@ -48,6 +51,17 @@ export function validateLayout(l: unknown, cols = 24): asserts l is WidgetLayout
 export function validateDashboard(d: unknown): asserts d is Dashboard {
   assert(record(d), '仪表盘必须是对象')
   checkStructure(d)
+  assert(
+    d.documentVersion === undefined || [2, 3].includes(d.documentVersion),
+    '文档版本需要更新客户端',
+  )
+  if (d.canvasSettings !== undefined || [2, 3].includes(d.documentVersion))
+    assert(
+      record(d.canvasSettings) &&
+        d.canvasSettings.version === 1 &&
+        validCamera(d.canvasSettings.defaultCamera),
+      '默认相机无效',
+    )
   assert(typeof d.id === 'string' && /^[\w-]{1,80}$/.test(d.id), '仪表盘 ID 无效')
   assert(
     typeof d.name === 'string' &&
@@ -125,11 +139,16 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
     if (w.canvas !== undefined) {
       assert(record(w.canvas), '画布布局必须是对象')
       for (const key of ['x', 'y'])
-        assert(Number.isFinite(w.canvas[key]) && Math.abs(w.canvas[key]) <= 1000000, '画布坐标无效')
+        assert(
+          Number.isFinite(w.canvas[key]) && Math.abs(w.canvas[key]) <= CANVAS.positionLimit,
+          '画布坐标无效',
+        )
       for (const key of ['w', 'h', 'originalW', 'originalH'])
         assert(
           (key.startsWith('original') && w.canvas[key] === undefined) ||
-            (Number.isFinite(w.canvas[key]) && w.canvas[key] >= 1 && w.canvas[key] <= 16384),
+            (Number.isFinite(w.canvas[key]) &&
+              w.canvas[key] >= 1 &&
+              w.canvas[key] <= CANVAS.maxSize),
           '画布尺寸无效',
         )
     }
@@ -138,6 +157,8 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
     assert(record(w.layouts), '缺少组件布局')
     validateLayout(w.layouts.lg, d.baseColumns ?? d.columns)
   }
+  if (d.documentVersion === 3) validateScene(d.canvasScene, [...ids])
+  else assert(d.canvasScene === undefined, '旧版本不能包含 canvasScene')
   assert(
     record(d.background) && ['color', 'image', 'slideshow'].includes(d.background.mode),
     '背景格式无效',
@@ -189,6 +210,10 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
       }
     }
   }
+}
+export function validateCurrentDashboard(d: unknown): asserts d is Dashboard {
+  validateDashboard(d)
+  assert(d.documentVersion === 3, '写入需要文档版本 3')
 }
 export function validateInstalled(widget: unknown): asserts widget is InstalledWidget {
   assert(record(widget) && record(widget.manifest), '缺少插件 manifest')

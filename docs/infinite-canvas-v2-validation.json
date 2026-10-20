@@ -1,0 +1,497 @@
+{
+  "date": "2026-10-18",
+  "timezone": "Asia/Shanghai",
+  "baseline": {
+    "branch": "feat/infinite-canvas-v1",
+    "commit": "d79ac926857418b901c885a55377438beaeae398",
+    "main": "27e915f1f33692fa8c90b8736974255d0b73eff9",
+    "pr": 2,
+    "merged": false
+  },
+  "implementation": {
+    "branch": "feat/infinite-canvas-v2",
+    "pr": 3,
+    "latest_source_commit": "32027e944cceaec94d167fbbe5bbd43372867d24",
+    "documentVersion": 3,
+    "schemaVersion": 3,
+    "dexieSchema": 4,
+    "deployed": false,
+    "productionDataTouched": false,
+    "followup_scope": "documentation-only evidence for 2026-10-19 review fixes"
+  },
+  "local": {
+    "environment": "shared Linux x86_64",
+    "node": "24.19.0",
+    "available_pnpm": "11.25.0",
+    "project_and_ci_node": "22",
+    "project_and_ci_pnpm": "9.15.0",
+    "pnpm_check": {
+      "typecheck": "passed",
+      "eslint": "passed",
+      "unit_route_storage_tests": 92,
+      "failed": 0,
+      "production_build": "passed"
+    },
+    "browser_execution": "unavailable: Playwright browser ZIP downloads were truncated/invalid",
+    "docker": "unavailable",
+    "adapter_initialization_regression": {
+      "original_factory_created_adapters": 3,
+      "original_factory_failed": true,
+      "shared_task_factory_created_adapters": 1,
+      "fixed_factory_passed": true
+    },
+    "changed_file_formatting": "passed",
+    "git_diff_check": "passed"
+  },
+  "ci_runs": [
+    {
+      "id": 39135113874,
+      "commit": "9c8a5935732468c831b884bababb19ab145c1d26",
+      "stage": "development three-browser",
+      "passed": 59,
+      "failed": 2,
+      "skipped": 5,
+      "failure": "auth addInitScript incorrectly ran in sandboxed iframe; fixed by top-frame guard",
+      "v1_webkit_docker_and_fractional_camera_cases": "passed",
+      "production_and_docker": "skipped after browser failure"
+    },
+    {
+      "id": 39135649923,
+      "commit": "ecf3497b6d06392cc33e8b3a92eef12301413873",
+      "stage": "development three-browser",
+      "passed": 52,
+      "failed": 12,
+      "skipped": 5,
+      "failure": "optional Boolean geometryTools defaulted to false in Vue; corrected with explicit withDefaults",
+      "production_and_docker": "skipped after browser failure"
+    },
+    {
+      "id": 39136273337,
+      "commit": "39fe8fe47452b548593ceec569ce50d351926878",
+      "stage": "development three-browser",
+      "passed": 58,
+      "failed": 6,
+      "skipped": 5,
+      "failure": "undo history cleared by duplicate same-page SyncAdapters; fixed with shared initialization promise",
+      "production_and_docker": "skipped after browser failure"
+    },
+    {
+      "id": 39137354365,
+      "commit": "d4fefca8c94b1f5301c9849e076c54ffb3716b1b",
+      "conclusion": "success",
+      "unit_route_storage_tests": 79,
+      "development": {
+        "passed": 64,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"]
+      },
+      "production": {
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": "passed"
+    },
+    {
+      "id": 39137566142,
+      "url": "https://github.com/wymix-tech/Nav/actions/runs/39137566142",
+      "commit": "09e61fd67011c1d04e539208b49ab57980e007e3",
+      "conclusion": "success",
+      "node": "22",
+      "pnpm": "9.15.0",
+      "playwright": "1.64.1",
+      "unit_route_storage_tests": 80,
+      "development": {
+        "passed": 64,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"],
+        "skip_reasons": {
+          "production_only_service_worker_cases": 3,
+          "CDP_touch_only_chromium": 2
+        }
+      },
+      "production": {
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": {
+        "status": "passed",
+        "image_sha256": "c544bc3e8f1119d1a89ae390bbb3cc7ee28f0e0db986bd03c4f14d5b9c37c2f9",
+        "deployed": false
+      }
+    }
+  ],
+  "synthetic_sqlite_rehearsal": {
+    "syntheticFixture": true,
+    "node": "v24.19.0",
+    "sourceDocumentVersion": 2,
+    "sourceRevision": 7,
+    "preflight": [
+      {
+        "id": "default",
+        "status": "pending",
+        "revision": 8
+      }
+    ],
+    "dryRun": [
+      {
+        "id": "default",
+        "status": "pending",
+        "revision": 8
+      }
+    ],
+    "apply": [
+      {
+        "id": "default",
+        "status": "migrated",
+        "revision": 8
+      }
+    ],
+    "again": [
+      {
+        "id": "default",
+        "status": "current"
+      }
+    ],
+    "rollback": [
+      {
+        "id": "default",
+        "status": "pending",
+        "revision": 8
+      }
+    ],
+    "geometryAndCameraPreserved": true,
+    "compatibilityMirrorVerified": true,
+    "dryRunNoWrites": true,
+    "backupContainsExactSourceRow": true,
+    "restoredDatabaseMatchesSource": true,
+    "productionDataTouched": false
+  },
+  "acceptance": [
+    {
+      "id": "A01",
+      "status": "unit",
+      "evidence_or_remaining": "canvas-scene: positive-area marquee; canvas-session: marquee; physical/scale browser matrix pending"
+    },
+    {
+      "id": "A02",
+      "status": "partial",
+      "evidence_or_remaining": "session Shift and selection normalization; browser Ctrl+A added"
+    },
+    {
+      "id": "A03",
+      "status": "partial",
+      "evidence_or_remaining": "session ownership and inherited V1 navigation browser tests"
+    },
+    {
+      "id": "A04",
+      "status": "partial",
+      "evidence_or_remaining": "host shortcut guards; sandbox lifecycle browser assertions; full input shortcut matrix pending"
+    },
+    {
+      "id": "A05",
+      "status": "partial",
+      "evidence_or_remaining": "synthetic second-touch cancellation; physical multi-touch pending"
+    },
+    {
+      "id": "A06",
+      "status": "partial",
+      "evidence_or_remaining": "session cancellation plus inherited V1 resize/blur/capture/permission tests"
+    },
+    {
+      "id": "B01",
+      "status": "partial",
+      "evidence_or_remaining": "common delta unit; multi-move browser case"
+    },
+    {
+      "id": "B02",
+      "status": "unit",
+      "evidence_or_remaining": "irregular offsets and world bounds"
+    },
+    {
+      "id": "B03",
+      "status": "unit",
+      "evidence_or_remaining": "pointerup before RAF for whole group"
+    },
+    {
+      "id": "B04",
+      "status": "unit",
+      "evidence_or_remaining": "lock/member/geometry invalidation and atomic command rejection"
+    },
+    {
+      "id": "B05",
+      "status": "partial",
+      "evidence_or_remaining": "fingerprint and inherited remote pan regressions"
+    },
+    {
+      "id": "B06",
+      "status": "partial",
+      "evidence_or_remaining": "No-op/storage failure unit tests and three-browser batch undo/redo passed; full exceptional failure matrix still requires review"
+    },
+    {
+      "id": "C01",
+      "status": "unit",
+      "evidence_or_remaining": "nonadjacent group anchor/order; browser host identity"
+    },
+    {
+      "id": "C02",
+      "status": "unit",
+      "evidence_or_remaining": "join/remove/dissolve in one command"
+    },
+    {
+      "id": "C03",
+      "status": "unit",
+      "evidence_or_remaining": "group/region deletion and clear reference cleanup"
+    },
+    {
+      "id": "C04",
+      "status": "partial",
+      "evidence_or_remaining": "independent region unit; browser gesture added"
+    },
+    {
+      "id": "C05",
+      "status": "unit",
+      "evidence_or_remaining": "stable reorder and mixed-plane rejection"
+    },
+    {
+      "id": "C06",
+      "status": "partial",
+      "evidence_or_remaining": "scene persistence and existing spatial/list instance tests"
+    },
+    {
+      "id": "D01",
+      "status": "unit",
+      "evidence_or_remaining": "self/group/member locks and expanded layout protection"
+    },
+    {
+      "id": "D02",
+      "status": "partial",
+      "evidence_or_remaining": "shared commands/store/UI and server; full entry-point browser matrix pending"
+    },
+    {
+      "id": "D03",
+      "status": "unit",
+      "evidence_or_remaining": "content/name/order allowed under locks; original auth maintained"
+    },
+    {
+      "id": "D04",
+      "status": "partial",
+      "evidence_or_remaining": "grid-profile transition rejection and UI guards; full grid browser matrix pending"
+    },
+    {
+      "id": "D05",
+      "status": "partial",
+      "evidence_or_remaining": "permission invalidation session; inherited browser logout and server auth"
+    },
+    {
+      "id": "D06",
+      "status": "unit",
+      "evidence_or_remaining": "server same-request unlock/move rejected; successful operation retry deduplicated"
+    },
+    {
+      "id": "E01",
+      "status": "unit",
+      "evidence_or_remaining": "CSS px thresholds at .01/1/8 zoom"
+    },
+    {
+      "id": "E02",
+      "status": "partial",
+      "evidence_or_remaining": "deterministic holds, priority and visibility unit; Alt UI matrix pending"
+    },
+    {
+      "id": "E03",
+      "status": "partial",
+      "evidence_or_remaining": "common geometry unit; smart resize active edge test"
+    },
+    {
+      "id": "E04",
+      "status": "unit",
+      "evidence_or_remaining": "all six align actions preserve group shape"
+    },
+    {
+      "id": "E05",
+      "status": "unit",
+      "evidence_or_remaining": "true edge gaps, fixed endpoints and negative-gap rejection"
+    },
+    {
+      "id": "E06",
+      "status": "partial",
+      "evidence_or_remaining": "bounded near-candidate generation and guide cleanup; dense browser samples pending"
+    },
+    {
+      "id": "F01",
+      "status": "unit",
+      "evidence_or_remaining": "whitelist, normalization, title priority and bookmark aggregation"
+    },
+    {
+      "id": "F02",
+      "status": "partial",
+      "evidence_or_remaining": "latest-ID navigation, mode-aware handling; full stale-result matrix pending"
+    },
+    {
+      "id": "F03",
+      "status": "partial",
+      "evidence_or_remaining": "named CRUD and independent writes unit/browser"
+    },
+    {
+      "id": "F04",
+      "status": "unit",
+      "evidence_or_remaining": "duplicates, 50-record limit, invalid cameras and future record retention"
+    },
+    {
+      "id": "F05",
+      "status": "unit",
+      "evidence_or_remaining": "row CAS and delayed viewPreferences independence"
+    },
+    {
+      "id": "F06",
+      "status": "partial",
+      "evidence_or_remaining": "space key reuse and private-table separation; visitor/browser-instance matrix pending"
+    },
+    {
+      "id": "G01",
+      "status": "passed_synthetic",
+      "evidence_or_remaining": "unit plus compiled CLI SQLite rehearsal 2 -> 3, revision 7 -> 8 and idempotence"
+    },
+    {
+      "id": "G02",
+      "status": "partial",
+      "evidence_or_remaining": "missing-path and transactional invalid-source tests; production plugin inventory pending"
+    },
+    {
+      "id": "G03",
+      "status": "unit",
+      "evidence_or_remaining": "426, exact capability, current-write validation, future queue retention"
+    },
+    {
+      "id": "G04",
+      "status": "unit",
+      "evidence_or_remaining": "old immutable operations isolated; recovery creates new ID"
+    },
+    {
+      "id": "G05",
+      "status": "unit",
+      "evidence_or_remaining": "canonical ID differences, fresh remote recheck and generation/CAS preservation"
+    },
+    {
+      "id": "G06",
+      "status": "unit",
+      "evidence_or_remaining": "scene validation invalid references, duplicate members, limits and reserved IDs"
+    },
+    {
+      "id": "H01",
+      "status": "passed_browser_development",
+      "evidence_or_remaining": "All three browser lifecycle cases passed in run 39137566142; chat draft, stable DOM marker and sandbox runtime retained"
+    },
+    {
+      "id": "H02",
+      "status": "passed_browser_development",
+      "evidence_or_remaining": "All three browser navigation/list/search/named-view lifecycle cases passed in run 39137566142"
+    },
+    {
+      "id": "H03",
+      "status": "partial",
+      "evidence_or_remaining": "memo dependencies include selected/lock/rank/draft/tool; performance matrix pending"
+    },
+    {
+      "id": "H04",
+      "status": "partial",
+      "evidence_or_remaining": "storage scene serialization and existing offline shell; new scene offline organization scenario pending"
+    },
+    {
+      "id": "H05",
+      "status": "partial",
+      "evidence_or_remaining": "Production Chromium offline shell passed; physical upgrade and expanded old-client/SW matrix not fully exercised"
+    },
+    {
+      "id": "H06",
+      "status": "not_complete",
+      "evidence_or_remaining": "Development three-browser, production Chromium and Docker passed; physical devices, reference performance and production replica rehearsal not run"
+    }
+  ],
+  "not_verified": [
+    "physical macOS Safari",
+    "physical trackpad and system display scaling",
+    "physical touch screen",
+    "V1/V2 reference-device performance comparison: three runs >=300 valid RAF each",
+    "production deployment replica migration and rollback",
+    "all 48 acceptance items across every applicable environment"
+  ],
+  "performance": {
+    "widgets_limit": 100,
+    "v2_p95_measured": false,
+    "target_p95_ms": 33,
+    "target_claimed_met": false
+  },
+  "release_status": "draft; implementation, available CI and synthetic database rehearsal passed; no merge/deployment/production migration; physical-device, reference-performance and production-replica release gates remain",
+  "review_fixes_2026_10_19": {
+    "reviewed_commit": "75bdd9c2ce45bdf2acfa9f5c5ca92de520e9a027",
+    "findings": ["R1", "R2", "R3", "R4", "R5", "R6"],
+    "cleanup": [
+      "shared selection transition",
+      "stable text normalization",
+      "JSON clone utility",
+      "unused gesture fields and method removed"
+    ],
+    "local": {
+      "pnpm_check": "passed",
+      "tests": 92,
+      "failed": 0,
+      "typecheck": "passed",
+      "eslint": "passed",
+      "production_build": "passed",
+      "formatting": "passed",
+      "git_diff_check": "passed"
+    },
+    "negative_proof": {
+      "original_R1_R2_tests_failed": 2,
+      "fixed_R1_R2_tests_passed": true
+    },
+    "browser_regressions_added": 2,
+    "ci": {
+      "run_id": 39183401596,
+      "job_id": 117840735907,
+      "url": "https://github.com/wymix-tech/Nav/actions/runs/39183401596",
+      "conclusion": "success",
+      "unit_route_storage_tests": 92,
+      "development": {
+        "passed": 70,
+        "failed": 0,
+        "skipped": 5,
+        "browsers": ["chromium", "firefox", "webkit"],
+        "skip_reasons": {
+          "production_only_service_worker_cases": 3,
+          "CDP_touch_only_chromium": 2
+        }
+      },
+      "production": {
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "browsers": ["chromium"]
+      },
+      "docker": {
+        "result": "passed",
+        "image": "sha256:ee353cc0eebb018b33d38a87e58a92bd726f375432a068951beba103774392ce"
+      }
+    },
+    "production_data_touched": false,
+    "implementation_commit": "b387876b05bbf2547d59b71b6873d0ddcbfef92c",
+    "validated_commit": "32027e944cceaec94d167fbbe5bbd43372867d24",
+    "previous_ci": {
+      "run_id": 39182871004,
+      "commit": "b387876b05bbf2547d59b71b6873d0ddcbfef92c",
+      "passed": 67,
+      "failed": 3,
+      "skipped": 5,
+      "reason": "New list navigation test clicked the previous single result before query debounce completed; added target-name wait without removing assertions.",
+      "idle_companion_undo": "passed in Chromium, Firefox and WebKit",
+      "production_and_docker": "skipped after browser failure"
+    }
+  }
+}

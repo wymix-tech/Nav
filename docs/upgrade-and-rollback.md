@@ -4,6 +4,14 @@
 
 旧画布 / AI 聊天 / Docker 监控用户请先阅读 [main 合并兼容修复](merge-repair-2026-10-17.md)。已被旧合并版本清空的坐标需要从部署前备份提取。
 
+## 无限画布 V2 的当前升级步骤
+
+本分支当前文档/写入协议为 **3**。以 [V2 操作说明](infinite-canvas-v2.md) 为准，先停写并备份数据库、uploads、配置和未同步草稿，再在隔离副本依次执行 `pnpm canvas-v2-preflight`、`pnpm canvas-v2-dry-run`、`pnpm canvas-v2-migrate`。数据库路径必须已经存在；普通 GET 不升级旧文档，全部文档迁移成功前停写。
+
+写入要求 `schemaVersion: 3`、`snapshot.documentVersion: 3`、精确能力头、If-Match、稳定 operationId 和原认证。组、区域、名称、锁与层序保存在完整 state_json 的 canvasScene。默认相机仍为 canvasSettings.defaultCamera，本机相机和独立 namedViews 表不进入文档同步/导出。旧 pending 的操作 ID 和内容不能原地改写。
+
+V1 的版本 2 和 `canvas-*` 命令仅是旧版本历史。本分支统一使用真实实现的 `canvas-v2-*` 命令，它能从更老网格/相机文档完整升级到 3，无须先部署 V1 再部署 V2。旧 V1 不能接管 V2 写入，也不能通过把版本号改回 2 来回滚；有 V2 编辑时先保留组织元数据，在副本核对后决定恢复方案。Dexie 4 不保证可由旧浏览器客户端降级打开。
+
 ## 部署前
 
 1. 使用 Node.js 22 或更高版本与项目声明的 pnpm 9。执行 `pnpm install --frozen-lockfile`、`pnpm check`。

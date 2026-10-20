@@ -4,21 +4,29 @@ import { authMiddleware } from '../middleware/auth.js'
 import { readSnapshot, commitSnapshot } from '../db/state.js'
 import db from '../db/database.js'
 const dashboards = new Hono()
+dashboards.use('*', async (c, next) => {
+  c.header('X-Nav-State-Schema', '3')
+  await next()
+})
 dashboards.get('/', (c) => {
   const d = readSnapshot()
   c.header('ETag', `"${d.revision}"`)
   return c.json(d)
 })
 dashboards.get('/:id/backup', authMiddleware, (c) => {
-  const rows = db
-    .prepare(
-      'SELECT backup_key,payload,created_at FROM migration_backups WHERE backup_key IN (?,?,?)',
-    )
-    .all(
-      `layout-v1:${c.req.param('id')}`,
-      `legacy-main-v1:${c.req.param('id')}`,
-      `chat-credentials-v1:${c.req.param('id')}`,
-    )
+  const id = c.req.param('id')
+  const rows = (
+    db.prepare('SELECT backup_key,payload,created_at FROM migration_backups').all() as {
+      backup_key: string
+    }[]
+  ).filter(
+    (r) =>
+      r.backup_key === `layout-v1:${id}` ||
+      r.backup_key === `legacy-main-v1:${id}` ||
+      r.backup_key === `chat-credentials-v1:${id}` ||
+      r.backup_key.startsWith(`canvas-camera-v1:${id}:`) ||
+      r.backup_key.startsWith(`canvas-scene-v2:${id}:`),
+  )
   return c.json({ backups: rows })
 })
 dashboards.put('/:id/state', authMiddleware, async (c) => {
@@ -31,6 +39,11 @@ dashboards.put('/:id/state', authMiddleware, async (c) => {
   )
   const body = await c.req.json()
   assert(record(body), '请求必须为 JSON 对象')
+  if (body.schemaVersion !== 3 || body.snapshot?.documentVersion !== 3)
+    return c.json(
+      { error: { code: 'UPGRADE_REQUIRED', message: '请更新客户端使用文档版本 3' } },
+      426,
+    )
   const { snapshot, operationId } = body
   assert(
     snapshot?.id === c.req.param('id') && /^[\w-]{1,80}$/.test(snapshot.id),

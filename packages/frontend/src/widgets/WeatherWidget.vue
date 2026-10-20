@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { useFormProtection } from '../runtime/useFormProtection'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { getWeather } from '../services/weatherService'
+import { getWeather, subscribeWeatherRefresh } from '../services/weatherService'
 
 const props = defineProps<{
   config: Record<string, any>
   editing: boolean
   editable: boolean
+  resourceActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -28,15 +30,16 @@ const weather = ref<WeatherData | null>(null)
 const updatedAt = ref(0)
 let controller: AbortController | undefined,
   requestId = 0,
-  timer: ReturnType<typeof setInterval>
+  releaseRefresh: (() => void) | undefined
 const error = ref('')
 const loading = ref(false)
 const showConfig = ref(false)
+useFormProtection(() => props.editable, showConfig)
 
 const city = ref(props.config.city ?? 'Beijing')
 const unit = ref(props.config.unit ?? 'metric')
 
-const unitLabel = computed(() => (unit.value === 'imperial' ? 'F' : 'C'))
+const unitLabel = computed(() => (props.config.unit === 'imperial' ? 'F' : 'C'))
 const uid = Math.random().toString(36).slice(2, 8)
 
 const weatherCode = computed(() => {
@@ -55,6 +58,7 @@ async function fetchWeather() {
   controller = new AbortController()
   const id = ++requestId
   const c = props.config.city ?? 'Beijing'
+  const acceptedUnit = props.config.unit ?? 'metric'
   loading.value = true
   error.value = ''
   try {
@@ -66,16 +70,16 @@ async function fetchWeather() {
     if (!current) throw new Error('天气数据格式异常')
     weather.value = {
       temp:
-        unit.value === 'imperial'
+        acceptedUnit === 'imperial'
           ? Math.round(Number(current.temp_F))
           : Math.round(Number(current.temp_C)),
       feelsLike:
-        unit.value === 'imperial'
+        acceptedUnit === 'imperial'
           ? Math.round(Number(current.FeelsLikeF))
           : Math.round(Number(current.FeelsLikeC)),
       description: current.weatherDesc[0].value,
       humidity: current.humidity,
-      windSpeed: unit.value === 'imperial' ? current.windspeedMiles : current.windspeedKmph,
+      windSpeed: acceptedUnit === 'imperial' ? current.windspeedMiles : current.windspeedKmph,
       windDir: current.winddir16Point,
       uvIndex: current.uvIndex,
       pressure: current.pressure,
@@ -94,17 +98,16 @@ function saveConfig() {
 }
 
 function refreshVisible() {
-  if (!document.hidden && Date.now() - updatedAt.value >= 600000) void fetchWeather()
+  if (props.resourceActive !== false && !document.hidden && Date.now() - updatedAt.value >= 600000)
+    void fetchWeather()
 }
 onMounted(() => {
-  void fetchWeather()
-  timer = setInterval(refreshVisible, 60000)
-  document.addEventListener('visibilitychange', refreshVisible)
+  refreshVisible()
+  if (props.resourceActive !== false) releaseRefresh = subscribeWeatherRefresh(refreshVisible)
 })
 onBeforeUnmount(() => {
   controller?.abort()
-  clearInterval(timer)
-  document.removeEventListener('visibilitychange', refreshVisible)
+  releaseRefresh?.()
 })
 watch(
   () => [props.config.city, props.config.unit],
@@ -112,6 +115,17 @@ watch(
     city.value = props.config.city ?? 'Beijing'
     unit.value = props.config.unit ?? 'metric'
     void fetchWeather()
+  },
+)
+watch(
+  () => props.resourceActive,
+  () => {
+    releaseRefresh?.()
+    releaseRefresh = undefined
+    if (props.resourceActive !== false) {
+      releaseRefresh = subscribeWeatherRefresh(refreshVisible)
+      refreshVisible()
+    }
   },
 )
 </script>

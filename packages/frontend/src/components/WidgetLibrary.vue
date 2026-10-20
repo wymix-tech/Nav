@@ -1,59 +1,104 @@
 <script setup lang="ts">
+import { builtinWidgets } from '../canvas/useCanvasLabels'
 import { useWidgetStore } from '../stores/widgetStore'
-import { useDashboardStore } from '../stores/dashboardStore'
-import { constraints, findPlacement, migrateDashboard } from '@nav/shared'
+import { onUnmounted, ref } from 'vue'
+import type { AddWidgetRequest } from '../canvas/useCanvasInsertion'
 
 const widgetStore = useWidgetStore()
-const dashboardStore = useDashboardStore()
 
 const emit = defineEmits<{
+  'request-add-widget': [request: AddWidgetRequest]
   'show-install': []
   'toggle-library': []
 }>()
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
+  spatial: boolean
+  top?: number
 }>()
 
-function addToDashboard(widgetId: string, source: 'builtin' | 'installed') {
-  const dashboard = dashboardStore.dashboard
-  if (!dashboard) return
-  try {
-    const cols = dashboard.baseColumns ?? dashboard.columns
-    const size = constraints[widgetId] ??
-      widgetStore.getWidget(widgetId)?.manifest.size ?? { w: 4, h: 3 }
-    const placed = Object.fromEntries(dashboard.widgets.map((w) => [w.id, w.layouts.lg]))
-    const layout = findPlacement(placed, Math.min(size.w, cols), size.h, cols)
-    const id = crypto.randomUUID()
-    const instance = {
-      id,
-      widgetId,
-      source,
-      config: {},
-      layouts: { lg: layout, md: layout, sm: layout, xs: layout },
-    }
-    if (dashboard.layoutMode === 'canvas') {
-      const d = migrateDashboard({ ...dashboard, widgets: [...dashboard.widgets, instance] })
-      const added = d.widgets[d.widgets.length - 1]
-      const existing = dashboard.widgets.flatMap((w) => (w.canvas ? [w.canvas] : []))
-      if (existing.length && added.canvas)
-        added.canvas.y = Math.max(...existing.map((c) => c.y + c.h)) + 20
-      void dashboardStore.addWidget(added)
-    } else void dashboardStore.addWidget(instance)
-  } catch (e) {
-    dashboardStore.error = (e as Error).message
+function addToDashboard(widgetId: string, source: 'builtin' | 'installed', keyboard = false) {
+  if (suppress && !keyboard) {
+    suppress = false
+    return
+  }
+  emit('request-add-widget', { widgetId, source })
+}
+const ghost = ref<{ x: number; y: number } | null>(null)
+let drag: {
+  id: number
+  x: number
+  y: number
+  widgetId: string
+  source: 'builtin' | 'installed'
+  moved: boolean
+  target: HTMLElement
+} | null = null
+let suppress = false
+function start(e: PointerEvent, widgetId: string, source: 'builtin' | 'installed') {
+  suppress = false
+  if (
+    !props.spatial ||
+    e.button !== 0 ||
+    e.pointerType === 'touch' ||
+    (e.target as Element).closest('button')
+  )
+    return
+  drag = {
+    id: e.pointerId,
+    x: e.clientX,
+    y: e.clientY,
+    widgetId,
+    source,
+    moved: false,
+    target: e.currentTarget as HTMLElement,
+  }
+  drag.target.setPointerCapture(e.pointerId)
+  e.preventDefault()
+  document.addEventListener('pointermove', move)
+  document.addEventListener('pointerup', finish)
+  document.addEventListener('pointercancel', cancel)
+  document.addEventListener('keydown', escape)
+  window.addEventListener('blur', cancel)
+}
+function move(e: PointerEvent) {
+  if (!drag || e.pointerId !== drag.id) return
+  if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) drag.moved = true
+  if (drag.moved) {
+    e.preventDefault()
+    ghost.value = { x: e.clientX, y: e.clientY }
   }
 }
+function cancel() {
+  const previous = drag
+  suppress = !!drag?.moved
+  drag = null
+  if (previous?.target.hasPointerCapture(previous.id))
+    previous.target.releasePointerCapture(previous.id)
+  ghost.value = null
+  document.removeEventListener('pointermove', move)
+  document.removeEventListener('pointerup', finish)
+  document.removeEventListener('pointercancel', cancel)
+  document.removeEventListener('keydown', escape)
+  window.removeEventListener('blur', cancel)
+}
+function escape(e: KeyboardEvent) {
+  if (e.key === 'Escape') cancel()
+}
+function finish(e: PointerEvent) {
+  if (!drag || e.pointerId !== drag.id) return
+  const d = drag
+  cancel()
+  if (d.moved && props.visible)
+    emit('request-add-widget', {
+      widgetId: d.widgetId,
+      source: d.source,
+      client: { x: e.clientX, y: e.clientY },
+    })
+}
+onUnmounted(cancel)
 
-const builtinWidgets = [
-  { id: 'search', name: '搜索框', icon: '🔍' },
-  { id: 'clock', name: '时钟', icon: '🕐' },
-  { id: 'weather', name: '天气', icon: '🌤️' },
-  { id: 'bookmark', name: '书签', icon: '📑' },
-  { id: 'monitor', name: '监控', icon: '📊' },
-  { id: 'docker', name: 'Docker 监控', icon: '🐳' },
-  { id: 'chat', name: 'AI 助手', icon: '✦' },
-]
 async function uninstall(id: string) {
   try {
     await widgetStore.uninstall(id)
@@ -65,7 +110,11 @@ async function uninstall(id: string) {
 </script>
 
 <template>
-  <div class="library-wrapper" :class="{ visible }">
+  <div
+    class="library-wrapper"
+    :class="{ visible, spatial }"
+    :style="{ '--canvas-library-top': (top ?? 24) + 'px' }"
+  >
     <div class="library-panel">
       <div class="library-header">
         <h3>组件库</h3>
@@ -84,7 +133,8 @@ async function uninstall(id: string) {
             class="widget-item"
             role="button"
             tabindex="0"
-            @keydown.enter="addToDashboard(w.id, 'builtin')"
+            @pointerdown="start($event, w.id, 'builtin')"
+            @keydown.enter.self="addToDashboard(w.id, 'builtin', true)"
             @click="addToDashboard(w.id, 'builtin')"
           >
             <span class="widget-icon">{{ w.icon }}</span>
@@ -101,6 +151,10 @@ async function uninstall(id: string) {
             v-for="w in widgetStore.installedWidgets"
             :key="w.widgetId"
             class="widget-item"
+            role="button"
+            tabindex="0"
+            @pointerdown="start($event, w.widgetId, 'installed')"
+            @keydown.enter.self="addToDashboard(w.widgetId, 'installed', true)"
             @click="addToDashboard(w.widgetId, 'installed')"
           >
             <span class="widget-icon">{{ w.manifest.icon }}</span>
@@ -111,6 +165,15 @@ async function uninstall(id: string) {
       </div>
     </div>
   </div>
+  <Teleport to="body"
+    ><div
+      v-if="ghost"
+      class="insertion-ghost"
+      :style="{ left: ghost.x + 'px', top: ghost.y + 'px' }"
+    >
+      ＋ 释放以添加组件
+    </div></Teleport
+  >
 </template>
 
 <style scoped>
@@ -270,6 +333,46 @@ async function uninstall(id: string) {
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     max-height: 50vh;
     overflow-y: auto;
+  }
+}
+</style>
+
+<style scoped>
+.insertion-ghost {
+  position: fixed;
+  z-index: 500;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+}
+@media (max-width: 1099px) {
+  .library-wrapper.spatial {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 220px;
+  }
+  .spatial .library-panel {
+    width: 100%;
+    height: 220px;
+    max-height: 220px;
+    border-radius: 12px 12px 0 0;
+    padding: 12px;
+  }
+}
+</style>
+
+<style scoped>
+@media (min-width: 1100px) {
+  .library-wrapper.spatial {
+    top: var(--canvas-library-top, 24px);
+  }
+  .spatial .library-panel {
+    max-height: 100%;
   }
 }
 </style>

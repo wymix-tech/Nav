@@ -1,434 +1,687 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
-  constraints,
-  type WidgetInstance,
+  CANVAS,
+  layoutProtected,
+  groupFor,
+  normalizeSelection,
+  sceneRanks,
+  refKey,
+  selectionRect,
+  resolveCanvasLabel,
+  worldToScreen,
+  zoomAt,
+  fitBounds,
+  visibleBounds,
+  contentBounds,
+  validCamera,
+  clamp,
+  type Dashboard,
+  type CanvasCamera,
   type CanvasLayout,
-  type DashboardViewport,
+  type WidgetInstance,
+  type Point,
+  type Rect,
+  type Size,
 } from '@nav/shared'
+import { useCanvasRenderPlan } from '../canvas/useCanvasRenderPlan'
+import { useCanvasWorkspace } from '../canvas/useCanvasWorkspace'
+import { useCanvasLabels } from '../canvas/useCanvasLabels'
+import { useCanvasSelection } from '../canvas/useCanvasSelection'
+import type { CanvasTool } from '../canvas/useCanvasInteraction'
+import CanvasSelectionOverlay from './canvas/CanvasSelectionOverlay.vue'
+import CanvasRegionLayer from './canvas/CanvasRegionLayer.vue'
+import CanvasLayersPanel from './canvas/CanvasLayersPanel.vue'
+import CanvasSearchPanel from './canvas/CanvasSearchPanel.vue'
+import CanvasViewsPanel from './canvas/CanvasViewsPanel.vue'
+import CanvasEditTools from './canvas/CanvasEditTools.vue'
 import WidgetWrapper from './WidgetWrapper.vue'
-const props = defineProps<{
-  widgets: WidgetInstance[]
-  editing: boolean
-  editable: boolean
-  viewport?: DashboardViewport
-  viewportWidth?: number
-  viewportHeight?: number
-}>()
+import CanvasControls from './canvas/CanvasControls.vue'
+import CanvasMinimap from './canvas/CanvasMinimap.vue'
+import CanvasWorkspaceToolbar from './canvas/CanvasWorkspaceToolbar.vue'
+import { useCanvasCamera } from '../canvas/useCanvasCamera'
+import { useCanvasInteraction } from '../canvas/useCanvasInteraction'
+import { createCanvasWidget, type AddWidgetRequest } from '../canvas/useCanvasInsertion'
+import { widgetCanvas, resolveWidgetSize } from '../canvas/resolveWidgetSize'
+const props = defineProps<{ dashboard: Dashboard; editing: boolean; editable: boolean }>()
 const emit = defineEmits<{
   'update-canvas': [id: string, canvas: CanvasLayout]
-  'update-viewport': [viewport: DashboardViewport]
+  'set-default-camera': [camera: CanvasCamera]
+  'add-widget': [widget: WidgetInstance]
   'remove-widget': [id: string]
   'update-config': [id: string, config: Record<string, any>]
-  interaction: [active: boolean]
 }>()
-const root = ref<HTMLElement | null>(null)
-const width = ref(1200),
-  height = ref(800)
-const view = ref<DashboardViewport>({ panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 })
-const draft = ref<{ id: string; canvas: CanvasLayout } | null>(null)
-const minimap = ref(false)
-const canEdit = computed(() => props.editing && props.editable)
-const stacked = computed(() => width.value < 768)
-// Adapt the view only. Canonical widget coordinates and reference dimensions never change on resize.
-const ratio = computed(() =>
-  Math.max(
-    0.01,
-    Math.min(
-      width.value / (props.viewportWidth ?? 1920),
-      height.value / (props.viewportHeight ?? 1080),
-    ),
+const tool = ref<CanvasTool>('interact'),
+  snapping = ref(true),
+  panel = ref<'' | 'layers' | 'search' | 'views'>('')
+const { selected, additive, choose } = useCanvasSelection(() => props.dashboard)
+const ranks = computed(() => sceneRanks(props.dashboard))
+const names = useCanvasLabels()
+const root = ref<HTMLElement | null>(null),
+  size = ref<Size>({ width: 0, height: 0 })
+const hand = ref(false),
+  minimap = ref(false),
+  notice = ref(''),
+  highlight = ref<string[]>([])
+const rects = computed(() => [
+  ...props.dashboard.widgets.map(widgetCanvas),
+  ...(props.dashboard.canvasScene?.regions ?? []),
+])
+const { camera, presentation, ready, error } = useCanvasCamera(
+  () => props.dashboard,
+  size,
+  () => contentBounds(rects.value),
+)
+const list = computed(() => presentation.value === 'list'),
+  canEdit = computed(() => props.editing && props.editable)
+const interaction = useCanvasInteraction({
+  root,
+  camera,
+  size,
+  hand,
+  enabled: () => ready.value && !list.value,
+  canEdit: () => canEdit.value,
+  tool,
+  selected,
+  additive,
+  snapping,
+  dashboard: () => props.dashboard,
+  commit: (command) => {
+    void commandAction(command, false)
+  },
+  notice: (message) => {
+    notice.value = message
+  },
+})
+const { draft, space, marquee, regionDraft, guides } = interaction
+function canvas(w: WidgetInstance) {
+  return draft.value?.widgets[w.id] ?? widgetCanvas(w)
+}
+const renderPlan = useCanvasRenderPlan({
+  dashboard: () => props.dashboard,
+  camera,
+  size,
+  root,
+  list,
+  rect: (id) => canvas(props.dashboard.widgets.find((w) => w.id === id)!),
+})
+watch(draft, renderPlan.schedule, { deep: true })
+async function enterWidget(w: WidgetInstance) {
+  settleNavigation()
+  if (!list.value) fit(canvas(w))
+  if (await renderPlan.activate(w.id)) {
+    await nextTick()
+    root.value
+      ?.querySelector<HTMLElement>(
+        `[data-widget-id="${w.id}"] .widget-content input, [data-widget-id="${w.id}"] .widget-content textarea, [data-widget-id="${w.id}"] .widget-content button`,
+      )
+      ?.focus({ preventScroll: true })
+  }
+}
+const ordered = computed(() =>
+  [...props.dashboard.widgets].sort(
+    (a, b) =>
+      widgetCanvas(a).y - widgetCanvas(b).y ||
+      widgetCanvas(a).x - widgetCanvas(b).x ||
+      a.id.localeCompare(b.id),
   ),
 )
-const scale = computed(() => view.value.zoom * ratio.value)
-const transform = computed(
-  () =>
-    `translate(${view.value.panX * ratio.value}px,${view.value.panY * ratio.value}px) scale(${scale.value})`,
-)
-function canvas(w: WidgetInstance): CanvasLayout {
-  return draft.value?.id === w.id
-    ? draft.value.canvas
-    : (w.canvas ?? {
-        x: w.layouts.lg.x * 120,
-        y: w.layouts.lg.y * 90,
-        w: w.layouts.lg.w * 120 - 10,
-        h: w.layouts.lg.h * 90 - 10,
-      })
-}
 function style(w: WidgetInstance) {
   const c = canvas(w)
-  return stacked.value
-    ? { minHeight: `${Math.max(constraints[w.widgetId]?.minHeight ?? 160, Math.min(c.h, 600))}px` }
-    : { left: `${c.x}px`, top: `${c.y}px`, width: `${c.w}px`, height: `${c.h}px` }
+  return list.value
+    ? {
+        height: `${Math.max(resolveWidgetSize(w.widgetId, w.source).minHeight, Math.min(c.h, 600))}px`,
+        order: ordered.value.findIndex((v) => v.id === w.id),
+      }
+    : {
+        left: `${c.x}px`,
+        top: `${c.y}px`,
+        width: `${c.w}px`,
+        height: `${c.h}px`,
+        zIndex: ranks.value[w.id] ?? 0,
+      }
 }
-let active: {
-  pointer: number
-  target: HTMLElement
-  mode: 'pan' | 'move' | 'resize'
-  id?: string
-  x: number
-  y: number
-  view: DashboardViewport
-  canvas?: CanvasLayout
-  scale: number
-  ratio: number
-} | null = null
-let observer: ResizeObserver | undefined,
-  frame = 0,
-  measureFrame = 0,
-  wheelTimer: ReturnType<typeof setTimeout> | undefined
-let pendingSize: { width: number; height: number } | undefined
-watch(
-  () => props.viewport,
-  (v) => {
-    if (!active) view.value = { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0, ...v }
-  },
-  { immediate: true, deep: true },
+const transform = computed(
+  () =>
+    `translate(${size.value.width / 2 - camera.value.centerX * camera.value.zoom}px,${size.value.height / 2 - camera.value.centerY * camera.value.zoom}px) scale(${camera.value.zoom})`,
 )
-watch(canEdit, () => cancel())
-watch(
-  () => props.widgets.map((w) => w.id).join(','),
-  () => cancel(),
-)
-function applyPendingSize() {
-  if (pendingSize) {
-    width.value = pendingSize.width
-    height.value = pendingSize.height
-    pendingSize = undefined
-  }
-}
-function saveView() {
-  if (canEdit.value) emit('update-viewport', { ...view.value })
-}
-function flushWheel(save: boolean) {
-  if (wheelTimer) {
-    clearTimeout(wheelTimer)
-    wheelTimer = undefined
-    if (save) saveView()
-  }
-}
-function cancel() {
-  cancelAnimationFrame(frame)
-  const state = active
-  active = null
-  if (state) {
-    view.value = state.view
-    if (state.target.hasPointerCapture(state.pointer))
-      state.target.releasePointerCapture(state.pointer)
-  }
-  draft.value = null
-  emit('interaction', false)
-  applyPendingSize()
-}
-function start(e: PointerEvent, mode: 'pan' | 'move' | 'resize', w?: WidgetInstance) {
-  if (stacked.value || (mode !== 'pan' && !canEdit.value) || ![0, 1].includes(e.button) || active)
-    return
-  if (
-    mode === 'pan' &&
-    e.target !== root.value &&
-    !(e.target as Element).classList.contains('canvas-content')
-  )
-    return
-  flushWheel(true)
-  e.preventDefault()
-  e.stopPropagation()
-  const target = e.currentTarget as HTMLElement
-  target.setPointerCapture(e.pointerId)
-  active = {
-    pointer: e.pointerId,
-    target,
-    mode,
-    id: w?.id,
-    x: e.clientX,
-    y: e.clientY,
-    view: { ...view.value },
-    canvas: w ? { ...canvas(w) } : undefined,
-    scale: scale.value,
-    ratio: ratio.value,
-  }
-  emit('interaction', true)
-}
-function preview(e: PointerEvent) {
-  const a = active
-  if (!a || a.pointer !== e.pointerId) return
-  const dx = e.clientX - a.x,
-    dy = e.clientY - a.y
-  if (a.mode === 'pan')
-    view.value = { ...a.view, panX: a.view.panX + dx / a.ratio, panY: a.view.panY + dy / a.ratio }
-  else {
-    const c = a.canvas!,
-      w = props.widgets.find((w) => w.id === a.id)!,
-      min = constraints[w.widgetId]
-    const snap = (n: number) => Math.round(n / 20) * 20
-    const bound = (n: number) => Math.max(-1000000, Math.min(1000000, n))
-    draft.value = {
-      id: a.id!,
-      canvas:
-        a.mode === 'move'
-          ? { ...c, x: bound(snap(c.x + dx / a.scale)), y: bound(snap(c.y + dy / a.scale)) }
-          : {
-              ...c,
-              w: Math.min(16384, Math.max(min?.minWidth ?? 160, snap(c.w + dx / a.scale))),
-              h: Math.min(16384, Math.max(min?.minHeight ?? 120, snap(c.h + dy / a.scale))),
-            },
-    }
-  }
-}
-function move(e: PointerEvent) {
-  cancelAnimationFrame(frame)
-  frame = requestAnimationFrame(() => preview(e))
-}
-function finish(e: PointerEvent) {
-  if (!active || e.pointerId !== active.pointer) return
-  cancelAnimationFrame(frame)
-  preview(e)
-  const a = active,
-    result = draft.value,
-    next = { ...view.value }
-  active = null
-  draft.value = null
-  if (a.target.hasPointerCapture(a.pointer)) a.target.releasePointerCapture(a.pointer)
-  if (a.mode === 'pan') {
-    if (JSON.stringify(next) !== JSON.stringify(a.view)) saveView()
-  } else if (result && JSON.stringify(result.canvas) !== JSON.stringify(a.canvas))
-    emit('update-canvas', result.id, result.canvas)
-  emit('interaction', false)
-  applyPendingSize()
-}
-function escape(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    cancel()
-    flushWheel(false)
-  }
-}
-function zoomAt(x: number, y: number, zoom: number) {
-  const old = view.value.zoom,
-    z = Math.max(0.1, Math.min(3, zoom))
-  view.value = {
-    ...view.value,
-    zoom: z,
-    panX: x - ((x - view.value.panX) * z) / old,
-    panY: y - ((y - view.value.panY) * z) / old,
-  }
-}
-function zoom(delta: number) {
-  flushWheel(false)
-  zoomAt(width.value / ratio.value / 2, height.value / ratio.value / 2, view.value.zoom + delta)
-  saveView()
-}
-function wheel(e: WheelEvent) {
-  if (!(e.ctrlKey || e.metaKey) || stacked.value || active) return
-  e.preventDefault()
-  const r = root.value!.getBoundingClientRect()
-  zoomAt(
-    (e.clientX - r.left) / ratio.value,
-    (e.clientY - r.top) / ratio.value,
-    view.value.zoom - e.deltaY * 0.002,
-  )
-  if (wheelTimer) clearTimeout(wheelTimer)
-  wheelTimer = setTimeout(() => {
-    wheelTimer = undefined
-    saveView()
-  }, 250)
-}
-const bounds = computed(() => {
-  const all = props.widgets.map(canvas)
-  const x = Math.min(0, ...all.map((c) => c.x)),
-    y = Math.min(0, ...all.map((c) => c.y))
+const dots = computed(() => {
+  const gap = CANVAS.snap * 2 ** Math.ceil(Math.log2(24 / (CANVAS.snap * camera.value.zoom)))
+  const spacing = gap * camera.value.zoom,
+    origin = worldToScreen({ x: 0, y: 0 }, camera.value, size.value)
   return {
-    x,
-    y,
-    w: Math.max(1, ...all.map((c) => c.x + c.w)) - x,
-    h: Math.max(1, ...all.map((c) => c.y + c.h)) - y,
+    backgroundSize: `${spacing}px ${spacing}px`,
+    backgroundPosition: `${(origin.x - spacing / 2) % spacing}px ${(origin.y - spacing / 2) % spacing}px`,
   }
 })
-function fit() {
-  const b = bounds.value
-  const z = Math.max(
-    0.1,
-    Math.min(1, (width.value - 80) / ratio.value / b.w, (height.value - 80) / ratio.value / b.h),
-  )
-  view.value = {
-    ...view.value,
-    zoom: z,
-    panX: width.value / ratio.value / 2 - (b.x + b.w / 2) * z,
-    panY: height.value / ratio.value / 2 - (b.y + b.h / 2) * z,
+// Canvas chrome occupies a dedicated dock below this measured viewport; library occupies its own slot.
+function area(): Rect {
+  return { x: 0, y: 0, w: size.value.width, h: size.value.height }
+}
+function fit(bounds = contentBounds(rects.value)) {
+  settleNavigation()
+  const result = fitBounds(bounds, size.value, area())
+  if (result) {
+    camera.value = result.camera
+    notice.value = result.limited ? '已达到最小缩放，可通过小地图定位' : ''
   }
-  saveView()
+}
+function settleNavigation() {
+  renderPlan.cancelActivation()
+  interaction.endWheel()
+  interaction.cancel()
+}
+function publishDefault() {
+  settleNavigation()
+  emit('set-default-camera', { ...camera.value })
+}
+function zoom(value: number) {
+  if (!ready.value || size.value.width <= 0 || size.value.height <= 0) return
+  settleNavigation()
+  const a = area()
+  camera.value = zoomAt(camera.value, { x: a.x + a.w / 2, y: a.y + a.h / 2 }, size.value, value)
+}
+function toggleHand() {
+  const next = !hand.value
+  settleNavigation()
+  hand.value = next
 }
 function home() {
-  flushWheel(false)
-  view.value = { ...view.value, panX: view.value.homeX, panY: view.value.homeY, zoom: 1 }
-  saveView()
+  settleNavigation()
+  if (validCamera(props.dashboard.canvasSettings?.defaultCamera))
+    camera.value = { ...props.dashboard.canvasSettings!.defaultCamera }
 }
-function setHome() {
-  view.value = { ...view.value, homeX: view.value.panX, homeY: view.value.panY }
-  saveView()
-}
-function navigateMap(e: MouseEvent) {
-  const rect = e.currentTarget instanceof Element ? e.currentTarget.getBoundingClientRect() : null
-  if (!rect) return
-  const b = bounds.value
-  view.value = {
-    ...view.value,
-    panX:
-      width.value / ratio.value / 2 -
-      (b.x + ((e.clientX - rect.left) / rect.width) * b.w) * view.value.zoom,
-    panY:
-      height.value / ratio.value / 2 -
-      (b.y + ((e.clientY - rect.top) / rect.height) * b.h) * view.value.zoom,
+function navigate(p: Point) {
+  settleNavigation()
+  camera.value = {
+    ...camera.value,
+    centerX: clamp(p.x, -CANVAS.cameraLimit, CANVAS.cameraLimit),
+    centerY: clamp(p.y, -CANVAS.cameraLimit, CANVAS.cameraLimit),
   }
-  saveView()
 }
 function keyboard(e: KeyboardEvent, w: WidgetInstance) {
   if (
     !canEdit.value ||
-    stacked.value ||
+    list.value ||
     !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)
   )
     return
   e.preventDefault()
-  const c = { ...canvas(w) },
-    dx = e.key === 'ArrowLeft' ? -20 : e.key === 'ArrowRight' ? 20 : 0,
-    dy = e.key === 'ArrowUp' ? -20 : e.key === 'ArrowDown' ? 20 : 0
+  e.stopPropagation()
+  if (layoutProtected(props.dashboard, w.id)) {
+    notice.value = '组件布局已锁定'
+    return
+  }
+  const c = { ...widgetCanvas(w) },
+    min = resolveWidgetSize(w.widgetId, w.source),
+    dx = e.key === 'ArrowLeft' ? -CANVAS.snap : e.key === 'ArrowRight' ? CANVAS.snap : 0,
+    dy = e.key === 'ArrowUp' ? -CANVAS.snap : e.key === 'ArrowDown' ? CANVAS.snap : 0
   if (e.shiftKey) {
-    c.w = Math.max(constraints[w.widgetId]?.minWidth ?? 160, Math.min(16384, c.w + dx))
-    c.h = Math.max(constraints[w.widgetId]?.minHeight ?? 120, Math.min(16384, c.h + dy))
+    c.w = clamp(c.w + dx, min.minWidth, CANVAS.maxSize)
+    c.h = clamp(c.h + dy, min.minHeight, CANVAS.maxSize)
   } else {
-    c.x = Math.max(-1000000, Math.min(1000000, c.x + dx))
-    c.y = Math.max(-1000000, Math.min(1000000, c.y + dy))
+    c.x = clamp(c.x + dx, -CANVAS.positionLimit, CANVAS.positionLimit)
+    c.y = clamp(c.y + dy, -CANVAS.positionLimit, CANVAS.positionLimit)
+  }
+  if (!e.shiftKey) {
+    void commandAction({
+      type: 'move',
+      refs: normalizeSelection(props.dashboard, [{ kind: 'widget', id: w.id }]),
+      delta: { x: dx, y: dy },
+    })
+    return
+  }
+  if (groupFor(props.dashboard, w.id)) {
+    notice.value = '请先解组再调整大小'
+    return
   }
   emit('update-canvas', w.id, c)
 }
+async function addWidget(request: AddWidgetRequest) {
+  if (!canEdit.value || !ready.value || !size.value.width || !size.value.height || !root.value)
+    return
+  if (request.client) {
+    const r = root.value.getBoundingClientRect(),
+      p = request.client
+    if (p.x < r.left || p.x > r.right || p.y < r.top || p.y > r.bottom) return
+  }
+  const w = createCanvasWidget(
+    request,
+    camera.value,
+    size.value,
+    root.value.getBoundingClientRect(),
+    area(),
+    rects.value,
+    props.dashboard.baseColumns ?? props.dashboard.columns,
+  )
+  emit('add-widget', w)
+  highlight.value = [w.id]
+  selected.value = [{ kind: 'widget', id: w.id }]
+  const c = w.canvas!
+  if (
+    c.w * camera.value.zoom > size.value.width - 64 ||
+    c.h * camera.value.zoom > size.value.height - 64
+  )
+    fit(c)
+  await nextTick()
+  root.value
+    .querySelector<HTMLElement>(`[data-widget-id="${w.id}"]`)
+    ?.focus({ preventScroll: !list.value })
+}
+const selectedBoxes = computed(() =>
+  normalizeSelection(props.dashboard, selected.value).map((r) => ({
+    ref: r,
+    rect:
+      r.kind === 'widget' && draft.value?.widgets[r.id]
+        ? draft.value.widgets[r.id]
+        : r.kind === 'region' && draft.value?.regions[r.id]
+          ? draft.value.regions[r.id]
+          : r.kind === 'group' && draft.value
+            ? contentBounds(
+                props.dashboard
+                  .canvasScene!.groups.find((g) => g.id === r.id)!
+                  .memberIds.map(
+                    (id) =>
+                      draft.value?.widgets[id] ??
+                      widgetCanvas(props.dashboard.widgets.find((w) => w.id === id)!),
+                  ),
+              )!
+            : selectionRect(props.dashboard, r),
+  })),
+)
+const renderedRegions = computed(() =>
+  (props.dashboard.canvasScene?.regions ?? []).map((r) => draft.value?.regions[r.id] ?? r),
+)
+const isSelected = (id: string) =>
+  normalizeSelection(props.dashboard, [{ kind: 'widget', id }]).some((r) =>
+    selected.value.some((s) => refKey(s) === refKey(r)),
+  )
+const locked = (id: string) => layoutProtected(props.dashboard, id)
+const {
+  commandAction,
+  changeTool,
+  selectFromPanel,
+  openPanel,
+  closePanel,
+  locate,
+  back,
+  namedNavigate,
+  located,
+} = useCanvasWorkspace({
+  dashboard: () => props.dashboard,
+  canEdit,
+  root,
+  tool,
+  hand,
+  selected,
+  additive,
+  panel,
+  notice,
+  highlight,
+  camera,
+  list,
+  presentation,
+  names,
+  ordered,
+  interaction,
+  fit,
+  settleNavigation,
+  choose,
+  ensureReady: (id) => renderPlan.activate(id),
+})
+const overlayBoxes = computed(() => {
+  if (!located.value) return selectedBoxes.value
+  try {
+    return [
+      ...selectedBoxes.value,
+      { ref: located.value, rect: selectionRect(props.dashboard, located.value) },
+    ]
+  } catch {
+    return selectedBoxes.value
+  }
+})
+defineExpose({ addWidget })
+let observer: ResizeObserver | undefined,
+  frame = 0
+watch(canEdit, () => {
+  interaction.cancel()
+  if (!canEdit.value) {
+    tool.value = 'interact'
+    selected.value = []
+  }
+})
+watch([() => props.dashboard.id, () => props.dashboard.instanceId], () => interaction.cancel())
+watch(presentation, () => {
+  interaction.cancel()
+  hand.value = false
+})
 onMounted(() => {
   observer = new ResizeObserver(([entry]) => {
-    const size = { width: entry.contentRect.width, height: entry.contentRect.height }
-    cancelAnimationFrame(measureFrame)
-    measureFrame = requestAnimationFrame(() => {
-      if (active) pendingSize = size
-      else {
-        width.value = size.width
-        height.value = size.height
+    const next = { width: entry.contentRect.width, height: entry.contentRect.height }
+    cancelAnimationFrame(frame)
+    frame = requestAnimationFrame(() => {
+      if (next.width !== size.value.width || next.height !== size.value.height) {
+        interaction.cancel()
+        size.value = next
       }
     })
   })
-  if (root.value) observer.observe(root.value)
-  window.addEventListener('keydown', escape)
+  if (root.value) {
+    observer.observe(root.value)
+    root.value.addEventListener('wheel', interaction.wheel, { passive: false })
+  }
 })
 onUnmounted(() => {
   observer?.disconnect()
-  cancelAnimationFrame(measureFrame)
-  cancel()
-  flushWheel(false)
-  window.removeEventListener('keydown', escape)
+  cancelAnimationFrame(frame)
+  root.value?.removeEventListener('wheel', interaction.wheel)
 })
 </script>
 <template>
-  <section
-    ref="root"
-    class="canvas-grid"
-    :class="{ stacked }"
-    aria-label="无限画布"
-    @pointerdown="start($event, 'pan')"
-    @pointermove="move"
-    @pointerup="finish"
-    @pointercancel="cancel"
-    @lostpointercapture="cancel"
-    @wheel="wheel"
-    @dblclick.self="home"
-  >
-    <div class="canvas-content" :style="stacked ? {} : { transform }">
-      <div
-        v-for="w in widgets"
-        :key="w.id"
-        class="canvas-item"
-        :data-widget-id="w.id"
-        :style="style(w)"
+  <div class="canvas-stage" :class="{ 'is-editing': canEdit }">
+    <CanvasWorkspaceToolbar
+      class="canvas-ui canvas-navigation"
+      :panel="panel"
+      panel-id="canvas-workspace-panel"
+      spatial
+      @open="openPanel"
+    />
+    <div class="canvas-workspace">
+      <section
+        ref="root"
+        class="canvas-grid"
+        :class="{ stacked: list, 'hand-active': hand || space }"
+        :style="list ? {} : dots"
+        tabindex="0"
+        aria-label="无限画布"
+        @pointerdown="interaction.start($event)"
+        @pointermove="interaction.move"
+        @pointerup="interaction.finish"
+        @pointercancel="interaction.cancel"
+        @lostpointercapture="interaction.lost"
       >
-        <button
-          v-if="canEdit && !stacked"
-          class="canvas-drag-handle"
-          :aria-label="`移动 ${w.widgetId}`"
-          @pointerdown="start($event, 'move', w)"
-          @keydown="keyboard($event, w)"
-        >
-          ⠿
-        </button>
-        <WidgetWrapper
-          :widget="w"
-          :editing="editing"
-          :editable="editable"
-          @remove="emit('remove-widget', w.id)"
-          @update-config="emit('update-config', w.id, $event)"
+        <div v-if="!list" class="canvas-background" aria-hidden="true"></div>
+        <CanvasRegionLayer
+          v-if="!list"
+          :regions="renderedRegions"
+          :camera="camera"
+          :size="size"
+          :editable="canEdit"
+          @start="interaction.start"
         />
-        <button
-          v-if="canEdit && !stacked"
-          class="canvas-resize-handle"
-          :aria-label="`调整 ${w.widgetId} 大小`"
-          @pointerdown="start($event, 'resize', w)"
-          @keydown="keyboard($event, w)"
+        <div
+          class="canvas-content"
+          :style="{
+            ...(list ? {} : { transform, '--canvas-inverse': 1 / camera.zoom }),
+            visibility: ready ? 'visible' : 'hidden',
+          }"
         >
-          ↘
-        </button>
-      </div>
-    </div>
-    <div v-if="!stacked" class="canvas-controls" aria-label="画布控制">
-      <button aria-label="缩小画布" @click="zoom(-0.1)">−</button
-      ><span>{{ Math.round(view.zoom * 100) }}%</span
-      ><button aria-label="放大画布" @click="zoom(0.1)">+</button>
-      <button @click="fit">适应全部</button><button @click="home">回到中心</button
-      ><button v-if="canEdit" @click="setHome">设为默认</button
-      ><button :aria-expanded="minimap" @click="minimap = !minimap">小地图</button>
-      <svg
-        v-if="minimap"
-        class="canvas-minimap"
-        :viewBox="`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="画布小地图，点击定位"
-        @click="navigateMap"
+          <div
+            v-for="w in dashboard.widgets"
+            :key="w.id"
+            v-memo="[
+              w,
+              editing,
+              editable,
+              list,
+              canEdit,
+              highlight.includes(w.id),
+              draft?.widgets[w.id] ?? null,
+              isSelected(w.id),
+              locked(w.id),
+              ranks[w.id],
+              tool,
+              names,
+              renderPlan.get(w.id),
+              list ? ordered : null,
+            ]"
+            class="canvas-item"
+            :class="{ highlight: highlight.includes(w.id), selected: isSelected(w.id) }"
+            :data-widget-id="w.id"
+            :data-display-level="renderPlan.get(w.id).level"
+            :data-view-mounted="renderPlan.get(w.id).mounted"
+            :style="style(w)"
+            tabindex="-1"
+          >
+            <button
+              v-if="canEdit && !list && !locked(w.id)"
+              class="canvas-drag-handle"
+              :aria-label="`移动 ${w.widgetId}`"
+              @pointerdown="interaction.start($event, 'move', { kind: 'widget', id: w.id })"
+              @keydown="keyboard($event, w)"
+            >
+              ⠿
+            </button>
+            <button
+              v-if="canEdit && tool === 'select' && !list"
+              class="widget-select-cover"
+              :aria-label="`选择 ${resolveCanvasLabel(dashboard, { kind: 'widget', id: w.id }, names)}`"
+              @pointerdown="interaction.start($event, 'move', { kind: 'widget', id: w.id })"
+              @dblclick="changeTool('interact')"
+            ></button>
+            <button
+              v-if="canEdit && list"
+              class="list-select"
+              @click="choose({ kind: 'widget', id: w.id }, $event.shiftKey || additive)"
+            >
+              选择 {{ resolveCanvasLabel(dashboard, { kind: 'widget', id: w.id }, names) }}
+            </button>
+            <WidgetWrapper
+              :mounted="renderPlan.get(w.id).mounted"
+              :active="renderPlan.get(w.id).active"
+              :level="renderPlan.get(w.id).level"
+              :label="resolveCanvasLabel(dashboard, { kind: 'widget', id: w.id }, names)"
+              @activate="enterWidget(w)"
+              :widget="w"
+              :editing="editing"
+              :editable="editable"
+              :can-delete="!locked(w.id) && !groupFor(dashboard, w.id)"
+              @remove="emit('remove-widget', w.id)"
+              @update-config="emit('update-config', w.id, $event)"
+            />
+            <button
+              v-if="canEdit && !list && !locked(w.id) && !groupFor(dashboard, w.id)"
+              class="canvas-resize-handle"
+              :aria-label="`调整 ${w.widgetId} 大小`"
+              @pointerdown="interaction.start($event, 'resize', { kind: 'widget', id: w.id })"
+              @keydown="keyboard($event, w)"
+            >
+              ↘
+            </button>
+          </div>
+        </div>
+        <div
+          v-if="(hand || space || tool === 'region') && !list"
+          class="canvas-gesture-layer"
+          aria-hidden="true"
+        ></div>
+        <CanvasSelectionOverlay
+          v-if="!list"
+          :boxes="overlayBoxes"
+          :camera="camera"
+          :size="size"
+          :marquee="marquee"
+          :preview="regionDraft"
+          :guides="guides"
+        />
+        <CanvasMinimap
+          v-if="minimap && !list && size.width > 0 && size.height > 0"
+          v-show="!panel"
+          class="canvas-ui map"
+          :rects="rects"
+          :viewport="visibleBounds(camera, size)"
+          @navigate="navigate"
+        />
+      </section>
+      <aside
+        v-if="panel"
+        id="canvas-workspace-panel"
+        class="canvas-ui workspace-panel canvas-chrome"
+        :aria-label="{ layers: '图层面板', search: '搜索面板', views: '我的视角' }[panel]"
       >
-        <rect
-          v-for="w in widgets"
-          :key="w.id"
-          :x="canvas(w).x"
-          :y="canvas(w).y"
-          :width="canvas(w).w"
-          :height="canvas(w).h"
-          fill="currentColor"
-          opacity="0.4"
+        <button @click="closePanel">关闭面板</button>
+        <CanvasLayersPanel
+          v-if="panel === 'layers'"
+          :dashboard="dashboard"
+          :selected="selected"
+          :editable="canEdit"
+          :names="names"
+          @select="selectFromPanel"
+          @command="commandAction"
+          @locate="locate"
         />
-        <rect
-          :x="-view.panX / view.zoom"
-          :y="-view.panY / view.zoom"
-          :width="width / scale"
-          :height="height / scale"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="5"
+        <CanvasSearchPanel
+          v-else-if="panel === 'search'"
+          :dashboard="dashboard"
+          :names="names"
+          @locate="locate"
+          @back="back"
+          @close="closePanel"
         />
-      </svg>
+        <CanvasViewsPanel
+          v-else
+          :dashboard="dashboard"
+          :camera="camera"
+          @navigate="namedNavigate"
+        />
+      </aside>
     </div>
-  </section>
+    <div class="canvas-ui dock">
+      <CanvasEditTools
+        v-if="canEdit"
+        :dashboard="dashboard"
+        :selected="selected"
+        :tool="tool"
+        :additive="additive"
+        :snapping="snapping"
+        :list="list"
+        @tool="changeTool"
+        @additive="additive = !additive"
+        @snapping="snapping = !snapping"
+        @command="commandAction"
+        @clear="selected = []"
+      />
+      <p v-if="error || notice" class="canvas-chrome canvas-message" aria-live="polite">
+        {{ error || notice }}
+      </p>
+      <CanvasControls
+        :style="{ visibility: ready ? 'visible' : 'hidden' }"
+        :zoom="camera.zoom"
+        :hand="hand"
+        :list="list"
+        :editable="canEdit"
+        :minimap="minimap"
+        @zoom="zoom(camera.zoom * $event)"
+        @hundred="zoom(1)"
+        @fit="fit()"
+        @home="home"
+        @publish="publishDefault"
+        @hand="toggleHand"
+        @list="presentation = list ? 'spatial' : 'list'"
+        @minimap="minimap = !minimap"
+      >
+        <template #options>
+          <label class="resource-mode"
+            >资源模式
+            <select v-model="renderPlan.mode.value" aria-label="画布资源模式">
+              <option value="safe">自动</option>
+              <option value="observe">仅观测</option>
+              <option value="full">完整显示</option>
+            </select></label
+          >
+          <span
+            class="resource-counts"
+            :data-hosts="renderPlan.diagnostics.value.hosts"
+            :data-mounted="renderPlan.diagnostics.value.mounted"
+            >详情 {{ renderPlan.diagnostics.value.mounted }}/{{
+              renderPlan.diagnostics.value.hosts
+            }}</span
+          >
+          <small v-if="renderPlan.diagnostics.value.overBudget"
+            >当前详情较多，已优先保留正在使用的组件</small
+          >
+        </template>
+      </CanvasControls>
+    </div>
+  </div>
 </template>
 <style scoped>
-.canvas-grid {
-  position: relative;
-  height: calc(100dvh - 64px);
-  min-height: 400px;
-  overflow: hidden;
+.canvas-workspace {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+.canvas-navigation {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 45;
+}
+.workspace-panel {
+  position: absolute;
+  top: 76px;
+  right: 16px;
+  bottom: var(--dock-clearance);
+  width: min(310px, calc(100% - 32px));
+  overflow: auto;
+  padding: 12px;
+  z-index: 35;
+}
+.widget-select-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  background: transparent;
+  border: 0;
   touch-action: none;
+}
+.list-select {
+  position: absolute;
+  z-index: 18;
+  top: 0;
+  left: 0;
+}
+.canvas-stage {
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  isolation: isolate;
+  --dock-clearance: 88px;
+}
+.canvas-stage.is-editing {
+  --dock-clearance: 148px;
+}
+.canvas-grid {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: auto;
   background-image: radial-gradient(circle, #94a3b84d 1px, transparent 1px);
-  background-size: 24px 24px;
+  outline-offset: -2px;
+}
+.canvas-background {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
 }
 .canvas-content {
   position: absolute;
   inset: 0;
   transform-origin: 0 0;
+  pointer-events: none;
+  z-index: 2;
+  isolation: isolate;
 }
 .canvas-item {
   position: absolute;
   container-type: inline-size;
+  pointer-events: auto;
+  touch-action: auto;
+}
+.canvas-item.highlight,
+.canvas-item.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 .canvas-drag-handle,
 .canvas-resize-handle {
@@ -440,53 +693,111 @@ onUnmounted(() => {
   padding: 4px 10px;
 }
 .canvas-drag-handle {
+  transform: scale(var(--canvas-inverse));
+  transform-origin: top left;
   top: 0;
   left: 0;
   cursor: grab;
 }
 .canvas-resize-handle {
+  z-index: 19;
+  transform: scale(var(--canvas-inverse));
+  transform-origin: bottom right;
   bottom: 0;
   right: 0;
   cursor: nwse-resize;
 }
-.canvas-controls {
+.canvas-gesture-layer {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  inset: 0;
+  z-index: 20;
+  touch-action: none;
+  cursor: grab;
+}
+.hand-active {
+  cursor: grab;
+}
+.map {
+  position: absolute;
+  right: 16px;
+  bottom: var(--dock-clearance);
+  z-index: 30;
+}
+.resource-counts {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.resource-mode {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-  padding: 8px;
-  max-width: calc(100% - 24px);
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  border-radius: 12px;
+  justify-content: space-between;
+  gap: 12px;
 }
-.canvas-controls button {
-  padding: 5px;
+.dock {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  z-index: 40;
+  pointer-events: none;
 }
-.canvas-minimap {
-  width: 160px;
-  height: 90px;
-  border: 1px solid var(--glass-border);
-  cursor: crosshair;
+.dock > * {
+  pointer-events: auto;
+}
+.canvas-message {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  font-size: 12px;
 }
 .stacked {
-  height: auto;
-  min-height: 0;
-  overflow: visible;
+  overflow: auto;
   touch-action: auto;
   background: none;
 }
 .stacked .canvas-content {
   position: static;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  padding: 80px 12px var(--dock-clearance);
 }
 .stacked .canvas-item {
   position: relative;
   min-width: 0;
+  flex: none;
+}
+@media (max-width: 768px) {
+  .dock {
+    bottom: max(80px, calc(env(safe-area-inset-bottom) + 64px));
+  }
+  .canvas-stage {
+    --dock-clearance: 144px;
+  }
+  .canvas-stage.is-editing {
+    --dock-clearance: 204px;
+  }
+  .canvas-navigation {
+    top: 12px;
+    right: 12px;
+  }
+  .workspace-panel {
+    top: 72px;
+    right: 12px;
+    width: min(310px, calc(100% - 24px));
+  }
+  .map {
+    right: 12px;
+  }
 }
 </style>
