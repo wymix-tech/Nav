@@ -3,7 +3,7 @@ import test, { after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { setTimeout as delay } from 'node:timers/promises'
-import { createDashboard } from '../packages/shared/src/index.ts'
+import { createDashboard, initialScene } from '../packages/shared/src/index.ts'
 
 const frontendRequire = createRequire(new URL('../packages/frontend/package.json', import.meta.url))
 const { createRenderer, ref, nextTick } = frontendRequire('vue')
@@ -122,7 +122,11 @@ test('a stale camera switch cannot hide a ready session after A -> B -> A during
   }
 })
 
-function pointer(clientX: number, clientY: number): PointerEvent {
+function pointer(
+  clientX: number,
+  clientY: number,
+  extra: Partial<PointerEvent> = {},
+): PointerEvent {
   return {
     button: 0,
     pointerId: 1,
@@ -132,6 +136,7 @@ function pointer(clientX: number, clientY: number): PointerEvent {
     target: { closest: () => null },
     preventDefault() {},
     stopPropagation() {},
+    ...extra,
   } as unknown as PointerEvent
 }
 function interactionHarness() {
@@ -155,6 +160,12 @@ function interactionHarness() {
     setPointerCapture: (id: number) => captures.add(id),
     releasePointerCapture: (id: number) => captures.delete(id),
   }
+  const tool = ref('interact'),
+    selected = ref([]),
+    additive = ref(false),
+    snapping = ref(true),
+    allowed = ref(true),
+    scene = ref(initialScene(['active-clock']))
   const mounted = mount(() =>
     useCanvasInteraction({
       root: ref(root),
@@ -162,12 +173,29 @@ function interactionHarness() {
       size: ref({ width: 1000, height: 600 }),
       hand: ref(false),
       enabled: () => true,
-      canEdit: () => true,
-      widgets: () => widgets.value,
-      commit: (id, canvas) => commits.push({ id, canvas }),
+      canEdit: () => allowed.value,
+      dashboard: () => ({ ...createDashboard(), widgets: widgets.value, canvasScene: scene.value }),
+      tool,
+      selected,
+      additive,
+      snapping,
+      notice: () => {},
+      commit: (command) => commits.push(command),
     }),
   )
-  return { ...mounted, camera, widgets, captures, commits }
+  return {
+    ...mounted,
+    camera,
+    widgets,
+    captures,
+    commits,
+    tool,
+    selected,
+    additive,
+    snapping,
+    allowed,
+    scene,
+  }
 }
 test('remote widget additions and removals preserve active pan and wheel navigation', async (t) => {
   const h = interactionHarness()
@@ -201,22 +229,24 @@ test('remote widget additions and removals preserve active pan and wheel navigat
 test('unrelated widget changes preserve a geometry draft and pointerup commits once', async (t) => {
   const h = interactionHarness()
   t.after(h.unmount)
-  h.value.start(pointer(30, 30), 'move', h.widgets.value[0])
+  h.value.start(pointer(30, 30), 'move', { kind: 'widget', id: h.widgets.value[0].id })
   h.value.move(pointer(70, 50))
   flushFrames()
   h.widgets.value.push({ ...h.widgets.value[0], id: 'remote-clock' })
   await nextTick()
-  assert.equal(h.value.draft.value?.canvas.x, 40)
+  assert.equal(h.value.draft.value?.widgets['active-clock'].x, 40)
   h.widgets.value.pop()
   await nextTick()
   h.value.finish(pointer(90, 70))
-  assert.deepEqual(h.commits, [{ id: 'active-clock', canvas: { x: 60, y: 40, w: 300, h: 200 } }])
+  assert.deepEqual(h.commits, [
+    { type: 'move', refs: [{ kind: 'widget', id: 'active-clock' }], delta: { x: 60, y: 40 } },
+  ])
 })
 test('deleting the active widget cancels move and resize without a commit or pointer capture', async (t) => {
   for (const mode of ['move', 'resize'] as const) {
     const h = interactionHarness()
     t.after(h.unmount)
-    h.value.start(pointer(30, 30), mode, h.widgets.value[0])
+    h.value.start(pointer(30, 30), mode, { kind: 'widget', id: h.widgets.value[0].id })
     h.value.move(pointer(70, 50))
     flushFrames()
     assert.ok(h.value.draft.value)
@@ -225,6 +255,168 @@ test('deleting the active widget cancels move and resize without a commit or poi
     assert.equal(h.value.draft.value, null)
     assert.equal(h.captures.size, 0)
     h.value.finish(pointer(90, 70))
+    assert.equal(h.commits.length, 0)
+  }
+})
+
+test('V2 marquee intersects consistently and Shift uses the start selection; cancel restores it without writes', async (t) => {
+  const h = interactionHarness()
+  t.after(h.unmount)
+  h.tool.value = 'select'
+  h.value.start(pointer(50, 10))
+  h.value.move(pointer(150, 100))
+  flushFrames()
+  assert.deepEqual(h.selected.value, [{ kind: 'widget', id: 'active-clock' }])
+  h.value.cancel()
+  assert.deepEqual(h.selected.value, [])
+  assert.equal(h.commits.length, 0)
+  h.selected.value = [{ kind: 'widget', id: 'active-clock' }]
+  h.value.start(pointer(500, 400, { shiftKey: true }))
+  h.value.move(pointer(600, 500, { shiftKey: true }))
+  flushFrames()
+  assert.equal(h.selected.value.length, 1)
+  h.value.finish(pointer(500, 400, { shiftKey: true }))
+  assert.equal(h.selected.value.length, 1)
+  assert.equal(h.commits.length, 0)
+})
+test('V2 selection drag commits final pointer once for a whole group and cancels when any member changes', async (t) => {
+  const h = interactionHarness()
+  t.after(h.unmount)
+  h.widgets.value.push({
+    ...h.widgets.value[0],
+    id: 'member',
+    canvas: { x: 333, y: 17, w: 100, h: 200 },
+  })
+  h.scene.value = initialScene(['active-clock', 'member'])
+  h.scene.value.groups = [
+    { id: 'g', title: 'Group', locked: false, memberIds: ['active-clock', 'member'] },
+  ]
+  h.scene.value.layers = [{ kind: 'group', id: 'g' }]
+  h.tool.value = 'select'
+  h.selected.value = [{ kind: 'group', id: 'g' }]
+  h.snapping.value = false
+  h.value.start(pointer(100, 100), 'move', { kind: 'widget', id: 'active-clock' })
+  h.value.move(pointer(145, 120))
+  h.value.finish(pointer(161, 143))
+  assert.deepEqual(h.commits, [
+    { type: 'move', refs: [{ kind: 'group', id: 'g' }], delta: { x: 61, y: 43 } },
+  ])
+  h.value.start(pointer(100, 100), 'move', { kind: 'widget', id: 'active-clock' })
+  h.value.move(pointer(150, 130))
+  flushFrames()
+  assert.equal(h.value.draft.value!.widgets.member.x, 383)
+  h.widgets.value[1].canvas.x++
+  await nextTick()
+  assert.equal(h.value.draft.value, null)
+  assert.equal(h.captures.size, 0)
+  h.value.finish(pointer(180, 150))
+  assert.equal(h.commits.length, 1)
+})
+test('V2 Shift removal does not drag, lock and permission invalidation cancel geometry, and second touch cancels region creation before pinch', async (t) => {
+  const h = interactionHarness()
+  t.after(h.unmount)
+  h.tool.value = 'select'
+  h.selected.value = [{ kind: 'widget', id: 'active-clock' }]
+  h.value.start(pointer(100, 100, { shiftKey: true }), 'move', {
+    kind: 'widget',
+    id: 'active-clock',
+  })
+  h.value.move(pointer(180, 150))
+  h.value.finish(pointer(180, 150))
+  assert.equal(h.selected.value.length, 0)
+  assert.equal(h.commits.length, 0)
+  h.value.start(pointer(100, 100), 'move', { kind: 'widget', id: 'active-clock' })
+  h.value.move(pointer(180, 150))
+  flushFrames()
+  h.scene.value.widgetMeta['active-clock'].locked = true
+  await nextTick()
+  assert.equal(h.value.draft.value, null)
+  assert.equal(h.captures.size, 0)
+  h.scene.value.widgetMeta['active-clock'].locked = false
+  h.value.start(pointer(100, 100), 'move', { kind: 'widget', id: 'active-clock' })
+  h.allowed.value = false
+  h.value.finish(pointer(180, 150))
+  assert.equal(h.commits.length, 0)
+  h.allowed.value = true
+  h.tool.value = 'region'
+  h.value.start(pointer(500, 300, { pointerType: 'touch' }))
+  h.value.move(pointer(600, 400, { pointerType: 'touch' }))
+  flushFrames()
+  assert.ok(h.value.regionDraft.value)
+  h.value.start(pointer(700, 400, { pointerType: 'touch', pointerId: 2 }))
+  assert.equal(h.value.regionDraft.value, null)
+  h.value.finish(pointer(750, 430, { pointerType: 'touch', pointerId: 2 }))
+  assert.equal(h.commits.length, 0)
+  assert.equal(h.captures.size, 0)
+})
+
+test('region rename and color changes preserve a drag and the final patch keeps latest metadata', async (t) => {
+  const { applyCanvasCommand } = await import('../packages/shared/src/index.ts')
+  const h = interactionHarness()
+  t.after(h.unmount)
+  h.scene.value.regions.push({
+    id: 'region',
+    title: 'before',
+    color: 'blue',
+    locked: false,
+    x: 0,
+    y: 0,
+    w: 300,
+    h: 200,
+  })
+  h.snapping.value = false
+  h.value.start(pointer(10, 10), 'move', { kind: 'region', id: 'region' })
+  h.value.move(pointer(80, 60))
+  flushFrames()
+  assert.ok(h.value.draft.value)
+  h.scene.value.regions[0].title = 'remote rename'
+  h.scene.value.regions[0].color = 'rose'
+  await nextTick()
+  assert.ok(h.value.draft.value)
+  assert.equal(h.captures.size, 1)
+  h.value.finish(pointer(100, 80))
+  assert.equal(h.commits.length, 1)
+  const latest = { ...createDashboard(), widgets: h.widgets.value, canvasScene: h.scene.value }
+  const result = applyCanvasCommand(
+    latest,
+    h.commits[0] as Parameters<typeof applyCanvasCommand>[1],
+  )
+  assert.deepEqual(result.canvasScene!.regions[0], {
+    id: 'region',
+    title: 'remote rename',
+    color: 'rose',
+    locked: false,
+    x: 90,
+    y: 70,
+    w: 300,
+    h: 200,
+  })
+})
+
+test('region lock and geometry changes still cancel the whole active drag', async (t) => {
+  for (const change of ['locked', 'x'] as const) {
+    const h = interactionHarness()
+    t.after(h.unmount)
+    h.scene.value.regions.push({
+      id: 'region',
+      title: 'before',
+      color: 'blue',
+      locked: false,
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+    })
+    h.value.start(pointer(10, 10), 'move', { kind: 'region', id: 'region' })
+    h.value.move(pointer(80, 60))
+    flushFrames()
+    assert.ok(h.value.draft.value)
+    if (change === 'locked') h.scene.value.regions[0].locked = true
+    else h.scene.value.regions[0].x++
+    await nextTick()
+    assert.equal(h.value.draft.value, null)
+    assert.equal(h.captures.size, 0)
+    h.value.finish(pointer(100, 80))
     assert.equal(h.commits.length, 0)
   }
 })

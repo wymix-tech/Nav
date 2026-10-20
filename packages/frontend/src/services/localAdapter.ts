@@ -2,7 +2,8 @@ import {
   createDashboard,
   migrateDashboard,
   migrateCanvasDocument,
-  validateDashboard,
+  validateCurrentDashboard,
+  validateCanvasTransition,
   type Dashboard,
   type InstalledWidget,
   type StorageAdapter,
@@ -14,7 +15,7 @@ export class LocalAdapter implements StorageAdapter {
     return db.transaction('rw', db.dashboards, db.backups, async () => {
       const row = await db.dashboards.get('default')
       const raw = row ? JSON.parse(row.data) : createDashboard()
-      const oldCanvas = raw.documentVersion !== 2
+      const oldCanvas = raw.documentVersion !== 3
       const legacy = raw.layoutVersion !== 2
       const credentials = raw.widgets?.some(
         (w: any) => w.source === 'builtin' && w.widgetId === 'chat' && w.config?.apiKey,
@@ -24,9 +25,9 @@ export class LocalAdapter implements StorageAdapter {
           ? 'layout-v1:standalone'
           : credentials
             ? 'chat-credentials-v1:standalone'
-            : `canvas-camera-v1:${raw.id}:${raw.revision ?? 0}`
+            : `canvas-scene-v2:${raw.id}:${raw.revision ?? 0}`
         if (!(await db.backups.get(key))) await db.backups.add({ key, data: row.data })
-        if (oldCanvas)
+        if (oldCanvas && raw.documentVersion !== 2)
           await db.backups.put({ key: `canvas-seed:standalone:${raw.id}`, data: row.data })
       }
       const d = migrateCanvasDocument(migrateDashboard(raw))
@@ -36,11 +37,23 @@ export class LocalAdapter implements StorageAdapter {
   }
 
   async saveDashboard(dashboard: Dashboard): Promise<void> {
-    validateDashboard(dashboard)
-    await db.dashboards.put({
-      id: dashboard.id,
-      data: JSON.stringify(dashboard),
-      updatedAt: new Date().toISOString(),
+    validateCurrentDashboard(dashboard)
+    await db.transaction('rw', db.dashboards, async () => {
+      const previous = await db.dashboards.get(dashboard.id)
+      if (previous) {
+        const raw = JSON.parse(previous.data)
+        if (raw.documentVersion !== undefined && ![2, 3].includes(raw.documentVersion))
+          throw new Error('未来或未知文档版本，已停止写入并保留原始数据')
+        if (raw.documentVersion === 3) {
+          validateCurrentDashboard(raw)
+          validateCanvasTransition(raw, dashboard)
+        }
+      }
+      await db.dashboards.put({
+        id: dashboard.id,
+        data: JSON.stringify(dashboard),
+        updatedAt: new Date().toISOString(),
+      })
     })
   }
   async getInstalledWidgets(): Promise<InstalledWidget[]> {

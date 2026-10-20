@@ -14,13 +14,4 @@ export function resolveWidgetSize(widgetId: string, source: WidgetInstance['sour
     minHeight,
   }
 }
-export function widgetCanvas(w: WidgetInstance) {
-  return (
-    w.canvas ?? {
-      x: w.layouts.lg.x * CANVAS.column,
-      y: w.layouts.lg.y * CANVAS.row,
-      w: w.layouts.lg.w * CANVAS.column - CANVAS.gap,
-      h: w.layouts.lg.h * CANVAS.row - CANVAS.gap,
-    }
-  )
-}
+export { canvasForWidget as widgetCanvas } from '@nav/shared'

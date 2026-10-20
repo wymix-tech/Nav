@@ -22,3 +22,5 @@ packages/server/public/
 .claude/settings.local.json
 .claude/
 .DS_Store
+
+performance-results/

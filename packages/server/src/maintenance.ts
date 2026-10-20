@@ -4,19 +4,19 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 const [command, target] = process.argv.slice(2)
 const databasePath = process.env.NAV_DB_PATH ?? resolve('nav.db')
-if (['canvas-preflight', 'canvas-dry-run', 'canvas-migrate'].includes(command)) {
+if (['canvas-v2-preflight', 'canvas-v2-dry-run', 'canvas-v2-migrate'].includes(command)) {
   // Importing the application database initializes its schema, so reject typos first.
   if (!existsSync(databasePath)) throw new Error(`数据库不存在：${databasePath}`)
   const { migrateCanvasDatabase } = await import('./db/state.js')
   const { default: stateDb } = await import('./db/database.js')
   try {
-    console.log(JSON.stringify(migrateCanvasDatabase(command === 'canvas-migrate'), null, 2))
+    console.log(JSON.stringify(migrateCanvasDatabase(command === 'canvas-v2-migrate'), null, 2))
   } finally {
     stateDb.close()
   }
 } else if (!['backup', 'preflight'].includes(command)) {
   console.error(
-    'Usage: node dist/maintenance.js preflight | backup /absolute/path/backup.db | canvas-preflight | canvas-dry-run | canvas-migrate',
+    'Usage: node dist/maintenance.js preflight | backup /absolute/path/backup.db | canvas-v2-preflight | canvas-v2-dry-run | canvas-v2-migrate',
   )
   process.exitCode = 1
 } else {

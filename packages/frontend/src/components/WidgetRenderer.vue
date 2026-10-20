@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, computed } from 'vue'
+import { defineAsyncComponent, computed, provide, ref, watch, onUnmounted } from 'vue'
 import { useWidgetStore } from '../stores/widgetStore'
 import SandboxWidget from './SandboxWidget.vue'
 import type { WidgetInstance, WidgetManifest } from '@nav/shared'
@@ -9,6 +9,7 @@ const props = defineProps<{
   manifest?: WidgetManifest
   editing: boolean
   editable: boolean
+  resourceActive?: boolean
 }>()
 
 defineEmits<{
@@ -26,6 +27,23 @@ const builtinComponents: Record<string, any> = {
   docker: defineAsyncComponent(() => import('../widgets/DockerWidget.vue')),
 }
 
+import { useRuntimeContext } from '../runtime/useRuntimeReconciler'
+import { widgetOwnerKey } from '../runtime/widgetOwner'
+const runtime = useRuntimeContext()
+const owner = computed(() => runtime.registry.owners.get(props.widget.id))
+provide(widgetOwnerKey, owner)
+const viewReady = ref(false)
+let detach: (() => void) | undefined
+watch(
+  () => owner.value?.generation,
+  () => {
+    detach?.()
+    detach = runtime.registry.attach(props.widget.id)
+    viewReady.value = false
+  },
+  { immediate: true, flush: 'sync' },
+)
+onUnmounted(() => detach?.())
 const store = useWidgetStore()
 const installed = computed(() => store.getWidget(props.widget.widgetId))
 const component = computed(() =>
@@ -34,34 +52,44 @@ const component = computed(() =>
 </script>
 
 <template>
-  <template v-if="widget.source === 'installed'">
-    <SandboxWidget
-      v-if="installed?.manifest.manifestVersion === 2"
-      :installed="installed"
-      :config="widget.config"
-      :editable="editable"
-      @update:config="$emit('update:config', $event)"
-    />
-    <p v-else class="widget-loading">旧插件需要升级到隔离协议 v2；配置和位置已保留。</p>
-  </template>
-  <Suspense v-else>
-    <component
-      v-if="component"
-      :is="component"
-      :config="widget.config"
-      :instance-id="widget.id"
-      :editing="editing"
-      :editable="editable"
-      @update:config="$emit('update:config', $event)"
-    />
-    <p v-else class="widget-loading">此组件暂不可用，配置和位置已保留。</p>
-    <template #fallback>
-      <div class="widget-loading">加载中...</div>
+  <div class="widget-renderer" :data-view-ready="viewReady">
+    <template v-if="widget.source === 'installed'">
+      <SandboxWidget
+        v-if="installed?.manifest.manifestVersion === 2"
+        :installed="installed"
+        @vue:mounted="viewReady = true"
+        :config="widget.config"
+        :editable="editable"
+        @update:config="$emit('update:config', $event)"
+      />
+      <p v-else class="widget-loading">旧插件需要升级到隔离协议 v2；配置和位置已保留。</p>
     </template>
-  </Suspense>
+    <Suspense v-else>
+      <component
+        v-if="component"
+        :is="component"
+        :key="owner?.typeIdentity"
+        @vue:mounted="viewReady = true"
+        :config="widget.config"
+        :resource-active="resourceActive ?? true"
+        :instance-id="widget.id"
+        :editing="editing"
+        :editable="editable"
+        @update:config="$emit('update:config', $event)"
+      />
+      <p v-else class="widget-loading">此组件暂不可用，配置和位置已保留。</p>
+      <template #fallback>
+        <div class="widget-loading">加载中...</div>
+      </template>
+    </Suspense>
+  </div>
 </template>
 
 <style scoped>
+.widget-renderer {
+  height: 100%;
+  min-height: 0;
+}
 .widget-loading {
   display: flex;
   align-items: center;

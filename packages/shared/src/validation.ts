@@ -1,3 +1,4 @@
+import { validateScene } from './canvas/scene.js'
 import { CANVAS } from './canvas/constants.js'
 import { validCamera } from './canvas/geometry.js'
 import type { Dashboard, WidgetLayout } from './types/dashboard.js'
@@ -50,8 +51,11 @@ export function validateLayout(l: unknown, cols = 24): asserts l is WidgetLayout
 export function validateDashboard(d: unknown): asserts d is Dashboard {
   assert(record(d), '仪表盘必须是对象')
   checkStructure(d)
-  assert(d.documentVersion === undefined || d.documentVersion === 2, '文档版本需要更新客户端')
-  if (d.canvasSettings !== undefined || d.documentVersion === 2)
+  assert(
+    d.documentVersion === undefined || [2, 3].includes(d.documentVersion),
+    '文档版本需要更新客户端',
+  )
+  if (d.canvasSettings !== undefined || [2, 3].includes(d.documentVersion))
     assert(
       record(d.canvasSettings) &&
         d.canvasSettings.version === 1 &&
@@ -153,6 +157,8 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
     assert(record(w.layouts), '缺少组件布局')
     validateLayout(w.layouts.lg, d.baseColumns ?? d.columns)
   }
+  if (d.documentVersion === 3) validateScene(d.canvasScene, [...ids])
+  else assert(d.canvasScene === undefined, '旧版本不能包含 canvasScene')
   assert(
     record(d.background) && ['color', 'image', 'slideshow'].includes(d.background.mode),
     '背景格式无效',
@@ -204,6 +210,10 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
       }
     }
   }
+}
+export function validateCurrentDashboard(d: unknown): asserts d is Dashboard {
+  validateDashboard(d)
+  assert(d.documentVersion === 3, '写入需要文档版本 3')
 }
 export function validateInstalled(widget: unknown): asserts widget is InstalledWidget {
   assert(record(widget) && record(widget.manifest), '缺少插件 manifest')

@@ -78,7 +78,7 @@ test('content sniffing rejects SVG disguised as PNG and re-encodes a real raster
 test('snapshot commits are conditional, atomic and idempotent after lost responses', async () => {
   const initial = await (await app.request('/api/dashboards')).json()
   const snapshot = { ...initial, title: 'updated' }
-  const body = JSON.stringify({ schemaVersion: 2, snapshot, operationId: 'operation-0123456789' })
+  const body = JSON.stringify({ schemaVersion: 3, snapshot, operationId: 'operation-0123456789' })
   const save = () =>
     app.request('/api/dashboards/default/state', {
       method: 'PUT',
@@ -92,7 +92,7 @@ test('snapshot commits are conditional, atomic and idempotent after lost respons
     method: 'PUT',
     headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': '"0"' },
     body: JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       snapshot: { ...snapshot, title: 'stale' },
       operationId: 'different-operation-0123',
     }),
@@ -111,7 +111,7 @@ test('bad snapshots, missing conditions and old blind-write clients are rejected
       await app.request('/api/dashboards/default/state', {
         method: 'PUT',
         headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': '"1"' },
-        body: JSON.stringify({ schemaVersion: 2, snapshot, operationId: 'invalid-operation-0123' }),
+        body: JSON.stringify({ schemaVersion: 3, snapshot, operationId: 'invalid-operation-0123' }),
       })
     ).status,
     400,
@@ -167,7 +167,7 @@ test('snapshot requests from a replaced server instance cannot overwrite the new
     method: 'PUT',
     headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': String(d.revision) },
     body: JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       snapshot: d,
       operationId: 'different-server-operation',
     }),
@@ -202,9 +202,10 @@ test('restored Docker stays authenticated even with public stats and version met
 test('schema capability is explicit and old protocol writes cannot remove canvas settings', async () => {
   const r = await app.request('/api/dashboards'),
     d = await r.json()
-  assert.equal(r.headers.get('X-Nav-State-Schema'), '2')
+  assert.equal(r.headers.get('X-Nav-State-Schema'), '3')
   const old = structuredClone(d)
   delete old.documentVersion
+  delete old.canvasScene
   delete old.canvasSettings
   const rejected = await app.request('/api/dashboards/default/state', {
     method: 'PUT',
@@ -217,8 +218,71 @@ test('schema capability is explicit and old protocol writes cannot remove canvas
     d.canvasSettings,
   )
 })
+test('V2 server enforces layout locks after revision and operation deduplication and rejects V1 writes', async () => {
+  const { initialScene, applyCanvasCommand } = await import('../packages/shared/src/index.ts')
+  const initial = await (await app.request('/api/dashboards')).json(),
+    l = { x: 0, y: 0, w: 2, h: 3 }
+  let d = { ...createDashboard(), instanceId: initial.instanceId, revision: initial.revision }
+  d.widgets = ['lock-a', 'lock-b'].map((id, i) => ({
+    id,
+    widgetId: 'clock',
+    source: 'builtin',
+    config: {},
+    layouts: { lg: l, md: l, sm: l, xs: l },
+    canvas: { x: i * 200, y: 0, w: 100, h: 100 },
+  }))
+  d.canvasScene = initialScene(['lock-a', 'lock-b'])
+  d = applyCanvasCommand(d, {
+    type: 'group',
+    id: 'lock-g',
+    title: 'Locked group',
+    widgetIds: ['lock-a', 'lock-b'],
+  })
+  const put = (snapshot: any, id: string, expected = snapshot.revision, schemaVersion = 3) =>
+    app.request('/api/dashboards/default/state', {
+      method: 'PUT',
+      headers: { ...auth, 'Content-Type': 'application/json', 'If-Match': String(expected) },
+      body: JSON.stringify({ schemaVersion, operationId: id, snapshot }),
+    })
+  let response = await put(d, 'v2-group-setup-operation')
+  assert.equal(response.status, 200)
+  d = await response.json()
+  const locked = applyCanvasCommand(d, {
+    type: 'set-lock',
+    refs: [{ kind: 'widget', id: 'lock-a' }],
+    locked: true,
+  })
+  response = await put(locked, 'v2-lock-save-operation')
+  assert.equal(response.status, 200)
+  const saved = await response.json()
+  const bypass = structuredClone(saved)
+  bypass.canvasScene.widgetMeta['lock-a'].locked = false
+  bypass.widgets[1].canvas.x += 20
+  assert.equal((await put(bypass, 'v2-lock-bypass-operation')).status, 400)
+  const content = structuredClone(saved)
+  content.widgets[0].config = { text: 'permitted' }
+  response = await put(content, 'v2-content-save-operation')
+  assert.equal(response.status, 200)
+  assert.equal((await put(locked, 'v2-lock-save-operation', locked.revision)).status, 200)
+  assert.equal(
+    (await (await app.request('/api/dashboards')).json()).widgets[0].config.text,
+    'permitted',
+  )
+  assert.equal(
+    (
+      await put(
+        { ...saved, documentVersion: 2, canvasScene: undefined },
+        'v1-write-test-operation',
+        saved.revision,
+        2,
+      )
+    ).status,
+    426,
+  )
+})
+
 test('all canvas maintenance commands reject a missing database without creating any files', async () => {
-  const commands = ['canvas-preflight', 'canvas-dry-run', 'canvas-migrate']
+  const commands = ['canvas-v2-preflight', 'canvas-v2-dry-run', 'canvas-v2-migrate']
   for (const command of commands) {
     const path = join(dir, `${command}-missing.db`)
     const result = spawnSync(
@@ -242,6 +306,7 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
   const { migrateCanvasDatabase } = await import('../packages/server/src/db/state.ts')
   const old: any = createDashboard()
   delete old.documentVersion
+  delete old.canvasScene
   delete old.canvasSettings
   const layout = { x: 0, y: 0, w: 4, h: 3 }
   old.widgets = [
@@ -271,7 +336,7 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
   migrateCanvasDatabase(true)
   const row = db.prepare('SELECT * FROM dashboards WHERE id=?').get(old.id) as any
   assert.equal(row.revision, 8)
-  assert.equal(JSON.parse(row.state_json).documentVersion, 2)
+  assert.equal(JSON.parse(row.state_json).documentVersion, 3)
   const mirrored = db
     .prepare('SELECT canvas,config FROM widget_instances WHERE id=?')
     .get('migration-clock') as any
@@ -281,7 +346,7 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
     (
       db
         .prepare('SELECT payload FROM migration_backups WHERE backup_key=?')
-        .get('canvas-camera-v1:migration-fixture:7') as any
+        .get('canvas-scene-v2:migration-fixture:7') as any
     ).payload,
   )
   assert.deepEqual(backup.dashboard, before)
@@ -313,7 +378,7 @@ test('camera migration dry-run, backup, idempotence and rollback protect the ori
   assert.equal(
     db
       .prepare('SELECT 1 FROM migration_backups WHERE backup_key=?')
-      .get('canvas-camera-v1:invalid-migration:0'),
+      .get('canvas-scene-v2:invalid-migration:0'),
     undefined,
   )
 })

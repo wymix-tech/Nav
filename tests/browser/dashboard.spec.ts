@@ -1,5 +1,6 @@
-import { test, expect, type APIRequestContext } from '@playwright/test'
-import { createDashboard } from '../../packages/shared/src/index'
+import { setResourceMode } from '../helpers/canvasUi'
+import { test, expect, type APIRequestContext } from '../helpers/browserTest'
+import { createDashboard, initialScene } from '../../packages/shared/src/index'
 test.use({ serviceWorkers: 'block' })
 const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
 let token = ''
@@ -44,7 +45,11 @@ test.beforeEach(async ({ page, request }) => {
   })
   const response = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${current.revision}"` },
-    data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(response.ok()).toBeTruthy()
   await page.addInitScript((token) => {
@@ -279,7 +284,11 @@ test('a plugin survives reload and cannot access its host or unapproved network'
     (
       await request.put(backend + '/api/dashboards/default/state', {
         headers: { Authorization: `Bearer ${token}`, 'If-Match': `"${d.revision}"` },
-        data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+        data: {
+          schemaVersion: 3,
+          snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+          operationId: crypto.randomUUID(),
+        },
       })
     ).ok(),
   ).toBeTruthy()
@@ -328,7 +337,11 @@ async function replaceDashboard(page: any, request: any, change: (d: any) => voi
   change(d)
   const r = await request.put(backend + '/api/dashboards/default/state', {
     headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
-    data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+    data: {
+      schemaVersion: 3,
+      snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+      operationId: crypto.randomUUID(),
+    },
   })
   expect(r.ok()).toBeTruthy()
   await page.reload()
@@ -469,6 +482,7 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await page.reload()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
   await expect(chats.nth(1).locator('.message')).toHaveCount(0)
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
   await replaceDashboard(page, request, (d: any) => {
     d.layoutMode = 'canvas'
     d.canvasSettings = { version: 1, defaultCamera: { centerX: 600, centerY: 250, zoom: 0.7 } }
@@ -479,6 +493,7 @@ test('restored chat streams a single reply, sanitizes markdown, isolates history
   await expect(page.getByRole('button', { name: '恢复画布 100%' })).toBeVisible()
   await page.getByRole('button', { name: '适应全部', exact: true }).click()
   await expect(chats.first().locator('.message.assistant strong')).toHaveText('安全回复')
+  await expect(page.locator('.docker-widget')).toContainText('nav-test')
   await chats.first().getByPlaceholder('输入消息...').pressSequentially('draft kept')
   await page.getByRole('button', { name: '列表视图', exact: true }).click()
   await expect(chats.first().getByPlaceholder('输入消息...')).toHaveValue('draft kept')
@@ -494,8 +509,8 @@ async function canvasCamera(page: any) {
     const el = root.querySelector('.canvas-content') as HTMLElement,
       m = new DOMMatrix(getComputedStyle(el).transform)
     return {
-      centerX: (root.clientWidth / 2 - m.e) / m.a,
-      centerY: (root.clientHeight / 2 - m.f) / m.a,
+      centerX: (root.getBoundingClientRect().width / 2 - m.e) / m.a,
+      centerY: (root.getBoundingClientRect().height / 2 - m.f) / m.a,
       zoom: m.a,
     }
   })
@@ -654,6 +669,7 @@ test('canvas insertion follows the current viewport and publishing a default is 
   const before = await (await request.get(backend + '/api/dashboards')).json()
   await page.getByRole('button', { name: '放大画布' }).click()
   const camera = await canvasCamera(page)
+  await page.getByRole('button', { name: '更多画布选项', exact: true }).click()
   await page.getByRole('button', { name: '发布为默认视角', exact: true }).click()
   await expect
     .poll(async () => (await (await request.get(backend + '/api/dashboards')).json()).revision)
@@ -682,21 +698,23 @@ test('canvas pointer insertion drops at the release point and cancellation creat
   const source = page.locator('.widget-item').filter({ hasText: '时钟' })
   await source.hover()
   const s = (await source.boundingBox())!,
-    v = (await page.locator('.canvas-grid').boundingBox())!
+    v = (await page.locator('.canvas-grid').boundingBox())!,
+    // The full canvas center now overlaps a seeded widget; use an empty drop target.
+    drop = { x: v.x + v.width / 2, y: v.y + v.height * 0.78 }
   await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2)
   await page.mouse.down()
-  await page.mouse.move(v.x + v.width / 2, v.y + v.height / 2, { steps: 5 })
+  await page.mouse.move(drop.x, drop.y, { steps: 5 })
   await page.keyboard.press('Escape')
   await page.mouse.up()
   await expect(page.locator('.canvas-item')).toHaveCount(2)
   await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2)
   await page.mouse.down()
-  await page.mouse.move(v.x + v.width / 2, v.y + v.height / 2, { steps: 5 })
+  await page.mouse.move(drop.x, drop.y, { steps: 5 })
   await page.mouse.up()
   await expect(page.locator('.canvas-item')).toHaveCount(3)
   const added = (await page.locator('.canvas-item').last().boundingBox())!
-  expect(Math.abs(added.x + added.width / 2 - (v.x + v.width / 2))).toBeLessThan(21)
-  expect(Math.abs(added.y + added.height / 2 - (v.y + v.height / 2))).toBeLessThan(21)
+  expect(Math.abs(added.x + added.width / 2 - drop.x)).toBeLessThan(21)
+  expect(Math.abs(added.y + added.height / 2 - drop.y)).toBeLessThan(21)
 })
 test('canvas gestures cancel on resize, lost pointer capture, blur and permission loss', async ({
   page,
@@ -763,7 +781,7 @@ test('touch blank pan and two-finger zoom use a fresh baseline without document 
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await client.detach()
 })
-test('100 lightweight canvas widgets keep their instances while panning and zooming', async ({
+test('100 canvas widgets keep stable hosts, recover visible clocks and never write while panning', async ({
   page,
   request,
 }, testInfo) => {
@@ -778,9 +796,10 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     }))
   })
   await expect(page.locator('.canvas-item')).toHaveCount(100)
-  await expect(page.locator('.clock-widget')).toHaveCount(100)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeGreaterThan(0)
+  await expect.poll(() => page.locator('.clock-widget').count()).toBeLessThan(100)
   const sample = await page.evaluate(async () => {
-    const elements = [...document.querySelectorAll('.clock-widget')],
+    const elements = [...document.querySelectorAll('.canvas-item')],
       times: number[] = []
     let previous = performance.now()
     for (let i = 0; i < 60; i++) {
@@ -797,14 +816,21 @@ test('100 lightweight canvas widgets keep their instances while panning and zoom
     times.sort((a, b) => a - b)
     return {
       p95: times[Math.floor(times.length * 0.95)],
-      sameInstances: elements.every(
-        (el, i) => el === document.querySelectorAll('.clock-widget')[i],
-      ),
+      sameInstances: elements.every((el, i) => el === document.querySelectorAll('.canvas-item')[i]),
       userAgent: navigator.userAgent,
       cores: navigator.hardwareConcurrency,
     }
   })
   expect(sample.sameInstances).toBe(true)
+  await page.getByRole('button', { name: '回到默认', exact: true }).click()
+  await expect(page.locator('.clock-widget').first()).toBeVisible()
+  const before = await (await request.get(backend + '/api/dashboards')).json()
+  await setResourceMode(page, 'full')
+  await expect(page.locator('.clock-widget')).toHaveCount(100)
+  await expect(page.locator('.canvas-item')).toHaveCount(100)
+  expect((await (await request.get(backend + '/api/dashboards')).json()).revision).toBe(
+    before.revision,
+  )
   await testInfo.attach('canvas-100-widget-frame-sample', {
     body: JSON.stringify(sample, null, 2),
     contentType: 'application/json',
@@ -873,7 +899,11 @@ test('remote widget additions and deletions preserve an in-progress canvas pan',
     else d.widgets = d.widgets.filter((w: any) => w.id !== 'remote-clock')
     const response = await request.put(backend + '/api/dashboards/default/state', {
       headers: { Authorization: `Bearer ${token}`, 'If-Match': String(d.revision) },
-      data: { schemaVersion: 2, snapshot: d, operationId: crypto.randomUUID() },
+      data: {
+        schemaVersion: 3,
+        snapshot: { ...d, canvasScene: initialScene(d.widgets.map((w: any) => w.id)) },
+        operationId: crypto.randomUUID(),
+      },
     })
     expect(response.ok()).toBeTruthy()
     await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
