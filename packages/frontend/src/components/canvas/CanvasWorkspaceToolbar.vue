@@ -46,32 +46,34 @@ const emit = defineEmits<{ open: [panel: 'layers' | 'search' | 'views'] }>()
 </template>
 
 <style scoped>
-.workspace-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px;
-}
-.workspace-label {
-  margin-inline: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.workspace-actions {
-  display: flex;
-  gap: 2px;
-}
-.spatial .workspace-label {
-  display: none;
-}
-@media (max-width: 480px) {
-  .spatial button {
-    width: 36px;
-    padding: 0;
+@layer nav-components {
+  .workspace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px;
   }
-  .spatial button span {
+  .workspace-label {
+    margin-inline: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .workspace-actions {
+    display: flex;
+    gap: 2px;
+  }
+  .spatial .workspace-label {
     display: none;
+  }
+  @media (max-width: 480px) {
+    .spatial button {
+      width: 36px;
+      padding: 0;
+    }
+    .spatial button span {
+      display: none;
+    }
   }
 }
 </style>

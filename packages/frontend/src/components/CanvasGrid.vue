@@ -606,198 +606,200 @@ onUnmounted(() => {
   </div>
 </template>
 <style scoped>
-.canvas-workspace {
-  position: absolute;
-  inset: 0;
-  min-height: 0;
-}
-.canvas-navigation {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 45;
-}
-.workspace-panel {
-  position: absolute;
-  top: 76px;
-  right: 16px;
-  bottom: var(--dock-clearance);
-  width: min(310px, calc(100% - 32px));
-  overflow: auto;
-  padding: 12px;
-  z-index: 35;
-}
-.widget-select-cover {
-  position: absolute;
-  inset: 0;
-  z-index: 18;
-  background: transparent;
-  border: 0;
-  touch-action: none;
-}
-.list-select {
-  position: absolute;
-  z-index: 18;
-  top: 0;
-  left: 0;
-}
-.canvas-stage {
-  height: 100%;
-  min-height: 0;
-  position: relative;
-  isolation: isolate;
-  --dock-clearance: 88px;
-}
-.canvas-stage.is-editing {
-  --dock-clearance: 148px;
-}
-.canvas-grid {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  touch-action: auto;
-  background-image: radial-gradient(circle, #94a3b84d 1px, transparent 1px);
-  outline-offset: -2px;
-}
-.canvas-background {
-  position: absolute;
-  inset: 0;
-  touch-action: none;
-}
-.canvas-content {
-  position: absolute;
-  inset: 0;
-  transform-origin: 0 0;
-  pointer-events: none;
-  z-index: 2;
-  isolation: isolate;
-}
-.canvas-item {
-  position: absolute;
-  container-type: inline-size;
-  pointer-events: auto;
-  touch-action: auto;
-}
-.canvas-item.highlight,
-.canvas-item.selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-.canvas-drag-handle,
-.canvas-resize-handle {
-  position: absolute;
-  z-index: 15;
-  touch-action: none;
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  padding: 4px 10px;
-}
-.canvas-drag-handle {
-  transform: scale(var(--canvas-inverse));
-  transform-origin: top left;
-  top: 0;
-  left: 0;
-  cursor: grab;
-}
-.canvas-resize-handle {
-  z-index: 19;
-  transform: scale(var(--canvas-inverse));
-  transform-origin: bottom right;
-  bottom: 0;
-  right: 0;
-  cursor: nwse-resize;
-}
-.canvas-gesture-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  touch-action: none;
-  cursor: grab;
-}
-.hand-active {
-  cursor: grab;
-}
-.map {
-  position: absolute;
-  right: 16px;
-  bottom: var(--dock-clearance);
-  z-index: 30;
-}
-.resource-counts {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.resource-mode {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.dock {
-  position: absolute;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: max-content;
-  max-width: calc(100% - 32px);
-  z-index: 40;
-  pointer-events: none;
-}
-.dock > * {
-  pointer-events: auto;
-}
-.canvas-message {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 8px 12px;
-  width: max-content;
-  max-width: min(420px, calc(100vw - 32px));
-  font-size: 12px;
-}
-.stacked {
-  overflow: auto;
-  touch-action: auto;
-  background: none;
-}
-.stacked .canvas-content {
-  position: static;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 80px 12px var(--dock-clearance);
-}
-.stacked .canvas-item {
-  position: relative;
-  min-width: 0;
-  flex: none;
-}
-@media (max-width: 768px) {
-  .dock {
-    bottom: max(80px, calc(env(safe-area-inset-bottom) + 64px));
-  }
-  .canvas-stage {
-    --dock-clearance: 144px;
-  }
-  .canvas-stage.is-editing {
-    --dock-clearance: 204px;
+@layer nav-components {
+  .canvas-workspace {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
   }
   .canvas-navigation {
-    top: 12px;
-    right: 12px;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 45;
   }
   .workspace-panel {
-    top: 72px;
-    right: 12px;
-    width: min(310px, calc(100% - 24px));
+    position: absolute;
+    top: 76px;
+    right: 16px;
+    bottom: var(--dock-clearance);
+    width: min(310px, calc(100% - 32px));
+    overflow: auto;
+    padding: 12px;
+    z-index: 35;
+  }
+  .widget-select-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    background: transparent;
+    border: 0;
+    touch-action: none;
+  }
+  .list-select {
+    position: absolute;
+    z-index: 18;
+    top: 0;
+    left: 0;
+  }
+  .canvas-stage {
+    height: 100%;
+    min-height: 0;
+    position: relative;
+    isolation: isolate;
+    --dock-clearance: 88px;
+  }
+  .canvas-stage.is-editing {
+    --dock-clearance: 148px;
+  }
+  .canvas-grid {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    touch-action: auto;
+    background-image: radial-gradient(circle, #94a3b84d 1px, transparent 1px);
+    outline-offset: -2px;
+  }
+  .canvas-background {
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+  }
+  .canvas-content {
+    position: absolute;
+    inset: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+    z-index: 2;
+    isolation: isolate;
+  }
+  .canvas-item {
+    position: absolute;
+    container-type: inline-size;
+    pointer-events: auto;
+    touch-action: auto;
+  }
+  .canvas-item.highlight,
+  .canvas-item.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .canvas-drag-handle,
+  .canvas-resize-handle {
+    position: absolute;
+    z-index: 15;
+    touch-action: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    padding: 4px 10px;
+  }
+  .canvas-drag-handle {
+    transform: scale(var(--canvas-inverse));
+    transform-origin: top left;
+    top: 0;
+    left: 0;
+    cursor: grab;
+  }
+  .canvas-resize-handle {
+    z-index: 19;
+    transform: scale(var(--canvas-inverse));
+    transform-origin: bottom right;
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+  }
+  .canvas-gesture-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    touch-action: none;
+    cursor: grab;
+  }
+  .hand-active {
+    cursor: grab;
   }
   .map {
-    right: 12px;
+    position: absolute;
+    right: 16px;
+    bottom: var(--dock-clearance);
+    z-index: 30;
+  }
+  .resource-counts {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .resource-mode {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .dock {
+    position: absolute;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    z-index: 40;
+    pointer-events: none;
+  }
+  .dock > * {
+    pointer-events: auto;
+  }
+  .canvas-message {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    width: max-content;
+    max-width: min(420px, calc(100vw - 32px));
+    font-size: 12px;
+  }
+  .stacked {
+    overflow: auto;
+    touch-action: auto;
+    background: none;
+  }
+  .stacked .canvas-content {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 80px 12px var(--dock-clearance);
+  }
+  .stacked .canvas-item {
+    position: relative;
+    min-width: 0;
+    flex: none;
+  }
+  @media (max-width: 768px) {
+    .dock {
+      bottom: max(80px, calc(env(safe-area-inset-bottom) + 64px));
+    }
+    .canvas-stage {
+      --dock-clearance: 144px;
+    }
+    .canvas-stage.is-editing {
+      --dock-clearance: 204px;
+    }
+    .canvas-navigation {
+      top: 12px;
+      right: 12px;
+    }
+    .workspace-panel {
+      top: 72px;
+      right: 12px;
+      width: min(310px, calc(100% - 24px));
+    }
+    .map {
+      right: 12px;
+    }
   }
 }
 </style>

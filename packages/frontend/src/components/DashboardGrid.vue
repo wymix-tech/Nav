@@ -356,86 +356,88 @@ function style(id: string) {
   </section>
 </template>
 <style scoped>
-.dashboard-grid {
-  width: 100%;
-  padding-bottom: 76px;
-}
-.css-grid-layout {
-  position: relative;
-  min-height: 200px;
-}
-.css-grid-item {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  container-type: inline-size;
-  border-radius: var(--radius-md);
-}
-.css-grid-item.editing {
-  outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.drag-handle,
-.resize-handle {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  z-index: 12;
-  touch-action: none;
-  background: var(--bg-primary);
-  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  backdrop-filter: blur(20px);
-}
-.drag-handle {
-  top: 6px;
-  left: 6px;
-  cursor: grab;
-}
-.resize-handle {
-  bottom: 6px;
-  right: 6px;
-  cursor: se-resize;
-}
-.drag-handle:hover,
-.resize-handle:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.drag-handle:focus-visible,
-.resize-handle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.grid-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.grid-info > span {
-  flex: 1 1 200px;
-  padding: 4px 8px;
-}
-.stack-actions {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  z-index: 12;
-  display: flex;
-  padding: 2px;
-}
-.stack-actions button {
-  width: 36px;
-  padding: 0;
+@layer nav-components {
+  .dashboard-grid {
+    width: 100%;
+    padding-bottom: 76px;
+  }
+  .css-grid-layout {
+    position: relative;
+    min-height: 200px;
+  }
+  .css-grid-item {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    container-type: inline-size;
+    border-radius: var(--radius-md);
+  }
+  .css-grid-item.editing {
+    outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .drag-handle,
+  .resize-handle {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    z-index: 12;
+    touch-action: none;
+    background: var(--bg-primary);
+    background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    backdrop-filter: blur(20px);
+  }
+  .drag-handle {
+    top: 6px;
+    left: 6px;
+    cursor: grab;
+  }
+  .resize-handle {
+    bottom: 6px;
+    right: 6px;
+    cursor: se-resize;
+  }
+  .drag-handle:hover,
+  .resize-handle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .drag-handle:focus-visible,
+  .resize-handle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .grid-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .grid-info > span {
+    flex: 1 1 200px;
+    padding: 4px 8px;
+  }
+  .stack-actions {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 12;
+    display: flex;
+    padding: 2px;
+  }
+  .stack-actions button {
+    width: 36px;
+    padding: 0;
+  }
 }
 </style>

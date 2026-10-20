@@ -1,0 +1,351 @@
+/* Shared material layer. Component files own geometry in nav-components;
+   these rules own surfaces and control states in both workspaces. */
+:root {
+  --glass-bg: rgba(28, 39, 62, 0.72);
+  --glass-border: rgba(225, 238, 255, 0.22);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
+  --glass-tint: rgba(155, 190, 255, 0.07);
+  --glass-solid: #1b263b;
+  --glass-field: rgba(5, 14, 30, 0.36);
+  --glass-control: rgba(220, 235, 255, 0.08);
+  --glass-hover: rgba(220, 235, 255, 0.16);
+  --glass-selected: rgba(96, 165, 250, 0.22);
+  --glass-shadow:
+    0 16px 48px #0003, 0 3px 8px #0002, inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 #ffffff06;
+  --glass-filter: blur(24px) saturate(1.5);
+  --glass-radius: 24px;
+  --glass-motion: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.light-theme {
+  color-scheme: light;
+  --bg-primary: #eef3fa;
+  --bg-secondary: #e4ebf5;
+  --glass-bg: rgba(249, 252, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.78);
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+  --glass-tint: rgba(115, 163, 230, 0.06);
+  --glass-solid: #edf3fa;
+  --glass-field: rgba(47, 76, 115, 0.06);
+  --glass-control: rgba(70, 102, 150, 0.07);
+  --glass-hover: rgba(70, 102, 150, 0.13);
+  --glass-selected: rgba(34, 112, 225, 0.15);
+  --glass-shadow:
+    0 16px 48px #2038581c, 0 3px 8px #2038580c, inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 #ffffff44;
+  --accent: #1764ce;
+  --accent-hover: #1458b5;
+  --danger: #b42335;
+}
+
+/* No SVG refraction filter: transforms and canvas panning stay on their existing paths. */
+.canvas-chrome,
+.panel-content,
+.panel-dot,
+.library-panel,
+.modal-content,
+.canvas-minimap {
+  color: var(--text-primary);
+  background: linear-gradient(145deg, var(--glass-tint), transparent 60%), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+/* Embedded tool groups share their parent's material rather than stacking blur. */
+.edit-tools.embedded,
+.edit-tools.embedded .edit-actions {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.canvas-chrome,
+.panel-content,
+.library-panel,
+.modal-shell {
+  color-scheme: dark;
+}
+.light-theme :is(.canvas-chrome, .panel-content, .library-panel),
+.modal-shell.light-theme {
+  color-scheme: light;
+}
+
+/* One interaction language for navigation, dialogs, editors, and widget actions. */
+button,
+.canvas-chrome summary,
+.upload-btn {
+  color: var(--text-primary);
+  background: var(--glass-control);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 2px 5px #0000000a;
+  transition:
+    background 180ms var(--glass-motion),
+    box-shadow 180ms var(--glass-motion),
+    border-color 180ms var(--glass-motion);
+  -webkit-tap-highlight-color: transparent;
+}
+button:hover:not(:disabled),
+.canvas-chrome summary:hover,
+.upload-btn:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-highlight);
+}
+button:active:not(:disabled),
+.canvas-chrome summary:active {
+  box-shadow: inset 0 2px 5px #0002;
+}
+button:is([aria-pressed='true'], [aria-expanded='true'], .active),
+.canvas-chrome details[open] > summary,
+.mode-tab.active {
+  color: var(--accent);
+  background: var(--glass-selected);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 2px 10px #0000000d;
+}
+button.primary,
+.panel-btn.primary,
+.prefs-btn.save,
+.install-btn {
+  color: #fff;
+  background: linear-gradient(160deg, #6baeff, #276cde);
+  border: 1px solid #c2deff66;
+  box-shadow:
+    inset 0 1px 0 #ffffff66,
+    0 4px 14px #1260db33;
+}
+button.primary:hover:not(:disabled),
+.panel-btn.primary:hover:not(:disabled),
+.prefs-btn.save:hover:not(:disabled),
+.install-btn:hover:not(:disabled) {
+  background: linear-gradient(160deg, #85bdff, #3479e9);
+  transform: none;
+}
+button.danger,
+.panel-btn.danger,
+.confirm-btn.danger {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+:is(button, summary, input, textarea, select, .upload-btn):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Fields have a denser inset material to keep long-form settings readable. */
+input:not([type='range']):not([type='checkbox']):not([type='color']),
+select,
+textarea,
+.canvas-chrome select {
+  color: var(--text-primary);
+  background: var(--glass-field);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 3px #0000000a;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+select option {
+  color: var(--text-primary);
+  background: var(--glass-solid);
+}
+input[type='range'],
+input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+input[type='range'] {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.workspace-toolbar,
+.canvas-controls,
+.panel-content {
+  border-radius: 999px;
+}
+.panel-dot {
+  position: relative;
+  padding: 0;
+  border-radius: 50%;
+}
+.panel-dot::after {
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.dot-ring {
+  display: none;
+}
+.panel-brand {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.panel-content {
+  gap: 8px;
+}
+.canvas-chrome :is(.layer-row, .image-item) {
+  border-radius: 16px;
+}
+.canvas-chrome .layer-row.chosen {
+  background: var(--glass-selected);
+}
+.canvas-chrome .layer-row .label,
+.canvas-chrome .search-panel li button {
+  box-shadow: none;
+}
+.canvas-chrome :is(.layer-row input, .views-panel input, .search-panel input),
+.canvas-chrome input {
+  background: var(--glass-field);
+}
+.canvas-minimap {
+  border-radius: 18px;
+}
+/* Interaction hit areas are invisible and retain their original geometry. */
+.region-title {
+  border-radius: 12px;
+  background: var(--glass-bg);
+}
+.region-resize,
+button.edge {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.modal-shell {
+  background: #040b1b66;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.modal-content {
+  border-radius: 30px;
+}
+/* The dialog shell owns the glass, so child forms never double the blur. */
+.prefs-panel,
+.config-dialog,
+.confirm-dialog,
+.dialog,
+.about-panel {
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.prefs-panel {
+  width: min(620px, calc(100vw - 34px));
+  max-width: none;
+  max-height: none;
+  padding: 28px;
+  overflow: visible;
+}
+.prefs-header {
+  margin-bottom: 24px;
+}
+.prefs-header h3 {
+  font-size: 24px;
+  letter-spacing: -0.6px;
+}
+.prefs-subtitle {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.prefs-section {
+  padding: 18px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: var(--glass-control);
+  margin-bottom: 12px;
+}
+.prefs-section > :is(select, input:not([type='range'])) {
+  width: 100%;
+}
+.prefs-section > .prefs-label:not(:first-child) {
+  margin-top: 16px;
+}
+.prefs-label {
+  color: var(--text-secondary);
+  letter-spacing: 0;
+  font-size: 13px;
+}
+.mode-tabs {
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--glass-field);
+  gap: 4px;
+}
+.mode-tab {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.prefs-actions {
+  margin-top: 20px;
+  padding-top: 0;
+  border-top: 0;
+}
+.prefs-actions button {
+  min-height: 42px;
+}
+.prefs-panel small {
+  color: var(--text-secondary);
+}
+.library-panel .widget-item {
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-control);
+}
+.library-panel .widget-item:hover {
+  background: var(--glass-hover);
+}
+
+@media (max-width: 600px) {
+  .prefs-panel {
+    padding: 20px 14px;
+  }
+  .prefs-section {
+    padding: 14px;
+  }
+  .panel-content {
+    border-radius: 24px;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  .light-theme {
+    --glass-bg: var(--glass-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  .light-theme {
+    --glass-bg: var(--glass-solid);
+    --glass-filter: none;
+  }
+  .modal-shell {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

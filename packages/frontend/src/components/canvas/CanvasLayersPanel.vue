@@ -216,62 +216,64 @@ function finishRename(r: SelectionRef) {
   </div>
 </template>
 <style scoped>
-.layer-row {
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 8px;
-  margin: 8px 0;
-}
-.chosen {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-}
-.layer-heading {
-  display: flex;
-  gap: 4px;
-}
-.label {
-  flex: 1;
-  text-align: left;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
-  justify-content: flex-start;
-}
-.row-actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-p {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 4px 0;
-}
-button,
-select,
-input {
-  font-size: 12px;
-  min-height: 36px;
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-primary);
-  border-radius: 8px;
-}
-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-}
-select,
-input {
-  max-width: 100%;
-  background: var(--bg-secondary);
-  border-color: var(--glass-border);
-}
-button:disabled {
-  opacity: 0.4;
-}
-li {
-  margin-top: 4px;
+@layer nav-components {
+  .layer-row {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 8px;
+    margin: 8px 0;
+  }
+  .chosen {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+  .layer-heading {
+    display: flex;
+    gap: 4px;
+  }
+  .label {
+    flex: 1;
+    text-align: left;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    justify-content: flex-start;
+  }
+  .row-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 4px 0;
+  }
+  button,
+  select,
+  input {
+    font-size: 12px;
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 8px;
+  }
+  button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+  select,
+  input {
+    max-width: 100%;
+    background: var(--bg-secondary);
+    border-color: var(--glass-border);
+  }
+  button:disabled {
+    opacity: 0.4;
+  }
+  li {
+    margin-top: 4px;
+  }
 }
 </style>

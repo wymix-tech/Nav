@@ -82,39 +82,41 @@ function updateField(key: string, value: any) {
 </template>
 
 <style scoped>
-.config-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+@layer nav-components {
+  .config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
-.label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
+  .label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
 
-.required {
-  color: #ef4444;
-}
+  .required {
+    color: #ef4444;
+  }
 
-.input {
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 14px;
-  outline: none;
-}
+  .input {
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+  }
 
-.input:focus {
-  border-color: var(--accent);
+  .input:focus {
+    border-color: var(--accent);
+  }
 }
 </style>

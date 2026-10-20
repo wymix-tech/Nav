@@ -114,52 +114,54 @@ onUnmounted(() => document.removeEventListener('pointerdown', outside, true))
   </nav>
 </template>
 <style scoped>
-.canvas-controls {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px;
-  position: relative;
-}
-.canvas-controls > button {
-  width: 36px;
-  padding: 0;
-  flex: none;
-}
-.canvas-controls > .zoom-value {
-  width: 54px;
-  font-variant-numeric: tabular-nums;
-}
-.divider {
-  height: 18px;
-  width: 1px;
-  margin: 0 3px;
-  background: var(--glass-border);
-}
-.canvas-options {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  right: 0;
-  width: 260px;
-  max-width: calc(100vw - 32px);
-  padding: 14px;
-  display: grid;
-  gap: 12px;
-  font-size: 12px;
-}
-@media (max-width: 600px) {
+@layer nav-components {
   .canvas-controls {
-    padding: 4px;
-    gap: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 6px;
+    position: relative;
   }
   .canvas-controls > button {
-    width: 32px;
+    width: 36px;
+    padding: 0;
+    flex: none;
   }
   .canvas-controls > .zoom-value {
-    width: 48px;
+    width: 54px;
+    font-variant-numeric: tabular-nums;
   }
   .divider {
-    margin-inline: 2px;
+    height: 18px;
+    width: 1px;
+    margin: 0 3px;
+    background: var(--glass-border);
+  }
+  .canvas-options {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    width: 260px;
+    max-width: calc(100vw - 32px);
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+    font-size: 12px;
+  }
+  @media (max-width: 600px) {
+    .canvas-controls {
+      padding: 4px;
+      gap: 0;
+    }
+    .canvas-controls > button {
+      width: 32px;
+    }
+    .canvas-controls > .zoom-value {
+      width: 48px;
+    }
+    .divider {
+      margin-inline: 2px;
+    }
   }
 }
 </style>

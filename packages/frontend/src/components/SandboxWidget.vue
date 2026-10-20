@@ -106,17 +106,19 @@ onUnmounted(dispose)
   </div>
 </template>
 <style scoped>
-.sandbox-widget {
-  height: 100%;
-  position: relative;
-}
-.sandbox-widget iframe {
-  border: 0;
-  width: 100%;
-  height: 100%;
-}
-.plugin-error {
-  padding: 12px;
-  overflow-wrap: anywhere;
+@layer nav-components {
+  .sandbox-widget {
+    height: 100%;
+    position: relative;
+  }
+  .sandbox-widget iframe {
+    border: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .plugin-error {
+    padding: 12px;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

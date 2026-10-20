@@ -63,30 +63,32 @@ const lines = computed(() =>
   </div>
 </template>
 <style scoped>
-.selection-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 15;
-  overflow: hidden;
-}
-.selection-box,
-.marquee,
-.region-preview {
-  position: absolute;
-  box-sizing: border-box;
-  border: 2px solid var(--accent);
-}
-.marquee {
-  background: #60a5fa22;
-  border-width: 1px;
-}
-.region-preview {
-  background: #60a5fa11;
-  border-style: dashed;
-}
-.guide {
-  position: absolute;
-  background: #e879f9;
+@layer nav-components {
+  .selection-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 15;
+    overflow: hidden;
+  }
+  .selection-box,
+  .marquee,
+  .region-preview {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--accent);
+  }
+  .marquee {
+    background: #60a5fa22;
+    border-width: 1px;
+  }
+  .region-preview {
+    background: #60a5fa11;
+    border-style: dashed;
+  }
+  .guide {
+    position: absolute;
+    background: #e879f9;
+  }
 }
 </style>

@@ -65,45 +65,47 @@ onUnmounted(() => {
   </div>
 </template>
 <style scoped>
-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 8px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  min-height: 36px;
-}
-ul {
-  list-style: none;
-  padding: 0;
-}
-button {
-  color: var(--text-primary);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 8px 10px;
-  min-height: 36px;
-  white-space: normal;
-  justify-content: flex-start;
-  margin: 3px 0;
-  text-align: left;
-}
-button:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-}
-li button {
-  width: 100%;
-}
-.active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  outline: 1px solid var(--accent);
-}
-small,
-p {
-  font-size: 11px;
-  color: var(--text-secondary);
+@layer nav-components {
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    min-height: 36px;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  button {
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-height: 36px;
+    white-space: normal;
+    justify-content: flex-start;
+    margin: 3px 0;
+    text-align: left;
+  }
+  button:hover {
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+  li button {
+    width: 100%;
+  }
+  .active {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    outline: 1px solid var(--accent);
+  }
+  small,
+  p {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
 }
 </style>

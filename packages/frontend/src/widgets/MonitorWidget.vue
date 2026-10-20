@@ -385,352 +385,354 @@ watch(
 </template>
 
 <style scoped>
-.monitor-widget {
-  height: 100%;
-  width: 100%;
-}
-
-/* ======== 面板 ======== */
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
-  padding: 10px 12px;
-  box-sizing: border-box;
-  overflow-y: auto;
-  position: relative;
-}
-
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.hostname {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-}
-.hostname.editable {
-  cursor: pointer;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
-}
-.hostname.editable:hover {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-.hostname-input {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  background: rgba(128, 128, 128, 0.1);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 1px 4px;
-  outline: none;
-  width: 120px;
-}
-.uptime {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-/* ---- 指标行 ---- */
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.metric-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.metric-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.disk-path {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: none;
-  letter-spacing: 0;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.metric-value {
-  font-size: 13px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-}
-
-.metric-sub {
-  display: flex;
-  gap: 8px;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-/* ---- 进度条 ---- */
-.bar {
-  height: 4px;
-  background: rgba(128, 128, 128, 0.15);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition:
-    width 0.6s ease,
-    background 0.3s;
-}
-
-/* ---- 配置 ---- */
-.cfg-toggle {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 5;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-muted);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.panel:hover .cfg-toggle {
-  opacity: 1;
-}
-.cfg-toggle:hover {
-  background: rgba(128, 128, 128, 0.15);
-  color: var(--text-primary);
-}
-
-/* ---- 配置表单 ---- */
-.cfg {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  justify-content: center;
-  padding: 8px;
-  box-sizing: border-box;
-  overflow-y: auto;
-}
-
-.cfg-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.cfg-lbl {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.cfg-inp {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--glass-border);
-  background: rgba(128, 128, 128, 0.06);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-family: var(--font-mono);
-  outline: none;
-  pointer-events: all;
-}
-.cfg-inp:focus {
-  border-color: rgba(96, 165, 250, 0.4);
-}
-.cfg-inp-sm {
-  width: 60px;
-  text-align: center;
-}
-
-.disk-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.disk-tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  background: rgba(128, 128, 128, 0.08);
-  border-radius: 6px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-}
-.disk-rm {
-  width: 14px;
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  background: none;
-  color: var(--text-muted);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 3px;
-}
-.disk-rm:hover {
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.disk-add {
-  display: flex;
-  gap: 6px;
-}
-.disk-add .cfg-inp {
-  flex: 1;
-}
-
-.toggle-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-}
-
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.toggle input[type='checkbox'] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.cfg-btns {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-.cfg-btn {
-  flex: 1;
-  padding: 6px;
-  border-radius: 8px;
-  border: none;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.cfg-btn.no {
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-muted);
-}
-.cfg-btn.ok {
-  background: rgba(96, 165, 250, 0.8);
-  color: #fff;
-}
-
-/* ---- 配置入口 ---- */
-.prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 8px;
-  cursor: pointer;
-  opacity: 0.5;
-}
-.prompt:hover {
-  opacity: 0.9;
-}
-.prompt-icon {
-  font-size: 20px;
-}
-.prompt-txt {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-/* ---- 错误 ---- */
-.err {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 8px;
-}
-.err-msg {
-  color: var(--danger);
-  font-size: 12px;
-  text-align: center;
-}
-.err-retry {
-  font-size: 11px;
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-/* ---- 加载 ---- */
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.spin {
-  width: 22px;
-  height: 22px;
-  border: 2px solid rgba(128, 128, 128, 0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@layer nav-components {
+  .monitor-widget {
+    height: 100%;
+    width: 100%;
   }
-}
 
-/* ---- 脚注 ---- */
-.foot {
-  margin-top: auto;
-  font-size: 9px;
-  color: var(--text-muted);
-  text-align: right;
-  opacity: 0.5;
+  /* ======== 面板 ======== */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hostname {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+  }
+  .hostname.editable {
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  }
+  .hostname.editable:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .hostname-input {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    background: rgba(128, 128, 128, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 1px 4px;
+    outline: none;
+    width: 120px;
+  }
+  .uptime {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ---- 指标行 ---- */
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .metric-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .disk-path {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .metric-value {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+
+  .metric-sub {
+    display: flex;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ---- 进度条 ---- */
+  .bar {
+    height: 4px;
+    background: rgba(128, 128, 128, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition:
+      width 0.6s ease,
+      background 0.3s;
+  }
+
+  /* ---- 配置 ---- */
+  .cfg-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 5;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--text-muted);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .panel:hover .cfg-toggle {
+    opacity: 1;
+  }
+  .cfg-toggle:hover {
+    background: rgba(128, 128, 128, 0.15);
+    color: var(--text-primary);
+  }
+
+  /* ---- 配置表单 ---- */
+  .cfg {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    justify-content: center;
+    padding: 8px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .cfg-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cfg-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .cfg-inp {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(128, 128, 128, 0.06);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    outline: none;
+    pointer-events: all;
+  }
+  .cfg-inp:focus {
+    border-color: rgba(96, 165, 250, 0.4);
+  }
+  .cfg-inp-sm {
+    width: 60px;
+    text-align: center;
+  }
+
+  .disk-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .disk-tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(128, 128, 128, 0.08);
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+  }
+  .disk-rm {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    background: none;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 3px;
+  }
+  .disk-rm:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .disk-add {
+    display: flex;
+    gap: 6px;
+  }
+  .disk-add .cfg-inp {
+    flex: 1;
+  }
+
+  .toggle-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .toggle input[type='checkbox'] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .cfg-btns {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .cfg-btn {
+    flex: 1;
+    padding: 6px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cfg-btn.no {
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--text-muted);
+  }
+  .cfg-btn.ok {
+    background: rgba(96, 165, 250, 0.8);
+    color: #fff;
+  }
+
+  /* ---- 配置入口 ---- */
+  .prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    cursor: pointer;
+    opacity: 0.5;
+  }
+  .prompt:hover {
+    opacity: 0.9;
+  }
+  .prompt-icon {
+    font-size: 20px;
+  }
+  .prompt-txt {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* ---- 错误 ---- */
+  .err {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+  }
+  .err-msg {
+    color: var(--danger);
+    font-size: 12px;
+    text-align: center;
+  }
+  .err-retry {
+    font-size: 11px;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  /* ---- 加载 ---- */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .spin {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(128, 128, 128, 0.15);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ---- 脚注 ---- */
+  .foot {
+    margin-top: auto;
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: right;
+    opacity: 0.5;
+  }
 }
 </style>

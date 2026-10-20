@@ -113,29 +113,31 @@ onUnmounted(() => {
   </div>
 </template>
 <style scoped>
-p {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-ul {
-  padding: 0;
-  list-style: none;
-}
-li {
-  border-top: 1px solid var(--glass-border);
-  padding: 6px 0;
-}
-button,
-input {
-  padding: 5px;
-  margin: 3px;
-  font-size: 12px;
-  border: 1px solid var(--glass-border);
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border-radius: 4px;
-}
-input {
-  max-width: 95%;
+@layer nav-components {
+  p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  ul {
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    border-top: 1px solid var(--glass-border);
+    padding: 6px 0;
+  }
+  button,
+  input {
+    padding: 5px;
+    margin: 3px;
+    font-size: 12px;
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+  input {
+    max-width: 95%;
+  }
 }
 </style>
