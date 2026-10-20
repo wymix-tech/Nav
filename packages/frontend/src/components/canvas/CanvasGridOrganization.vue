@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import {
   resolveCanvasLabel,
   type Dashboard,
@@ -12,6 +12,8 @@ import { useDashboardStore } from '../../stores/dashboardStore'
 import CanvasLayersPanel from './CanvasLayersPanel.vue'
 import CanvasSearchPanel from './CanvasSearchPanel.vue'
 import CanvasEditTools from './CanvasEditTools.vue'
+import CanvasWorkspaceToolbar from './CanvasWorkspaceToolbar.vue'
+import CanvasIcon from './CanvasIcon.vue'
 const props = defineProps<{ dashboard: Dashboard; editable: boolean }>()
 const { selected, additive, choose } = useCanvasSelection(() => props.dashboard),
   names = useCanvasLabels(),
@@ -28,6 +30,18 @@ async function command(c: CanvasCommand) {
   if (!props.editable) return
   const ok = await store.applyCanvasCommand(c)
   notice.value = ok ? '操作已完成' : store.error
+}
+let trigger: HTMLElement | null = null
+function openPanel(next: 'layers' | 'search' | 'views') {
+  if (next === 'views') {
+    return
+  }
+  trigger = document.activeElement as HTMLElement
+  panel.value = panel.value === next ? '' : next
+}
+function closePanel() {
+  panel.value = ''
+  nextTick(() => trigger?.focus())
 }
 let previousScroll: { left: number; top: number } | null = null
 function back() {
@@ -54,12 +68,21 @@ function locate(r: SelectionRef) {
 </script>
 <template>
   <div class="grid-organization">
-    <button @click="panel = panel === 'layers' ? '' : 'layers'">图层</button
-    ><button @click="panel = panel === 'search' ? '' : 'search'">搜索画布</button
-    ><span>我的视角需切换到画布后使用</span>
+    <CanvasWorkspaceToolbar :panel="panel" panel-id="grid-organization-panel" @open="openPanel" />
     <p v-if="notice" role="status">{{ notice }}</p>
-    <aside v-if="panel" :aria-label="panel === 'layers' ? '图层面板' : '搜索面板'">
-      <button @click="panel = ''">关闭面板</button>
+    <aside
+      v-if="panel"
+      id="grid-organization-panel"
+      class="canvas-chrome"
+      @keydown.esc.stop="closePanel"
+      :aria-label="panel === 'layers' ? '图层面板' : '搜索面板'"
+    >
+      <header class="grid-panel-header">
+        <h2>{{ panel === 'layers' ? '图层' : '搜索画布' }}</h2>
+        <button aria-label="关闭面板" title="关闭面板" @click="closePanel">
+          <CanvasIcon name="close" />
+        </button>
+      </header>
       <CanvasEditTools
         v-if="editable"
         :dashboard="dashboard"
@@ -67,6 +90,7 @@ function locate(r: SelectionRef) {
         tool="interact"
         :list="true"
         :geometry-tools="false"
+        embedded
         :snapping="false"
         :additive="additive"
         @additive="additive = !additive"
@@ -89,39 +113,49 @@ function locate(r: SelectionRef) {
         :names="names"
         @locate="locate"
         @back="back"
-        @close="panel = ''"
+        @close="closePanel"
       />
     </aside>
   </div>
 </template>
 <style scoped>
 .grid-organization {
+  position: sticky;
+  top: 8px;
+  z-index: 40;
   font-size: 12px;
-  padding: 4px 8px;
+  margin-bottom: 16px;
 }
-.grid-organization > span {
-  color: var(--text-muted);
-  margin-left: 8px;
+.grid-organization > p {
+  padding: 6px 12px;
+  color: var(--text-secondary);
 }
-button {
-  padding: 4px 8px;
-  margin: 3px;
-  border: 1px solid var(--glass-border);
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border-radius: 5px;
+.grid-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.grid-panel-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.grid-panel-header button {
+  width: 36px;
+  padding: 0;
 }
 aside {
-  position: fixed;
-  right: 12px;
-  top: 72px;
-  bottom: 110px;
-  width: min(320px, 85vw);
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(65dvh, calc(100dvh - 220px));
   overflow: auto;
-  z-index: 100;
-  background: var(--bg-primary);
-  padding: 10px;
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  overscroll-behavior: contain;
+  padding: 12px;
+  z-index: 50;
 }
 </style>

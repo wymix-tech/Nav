@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CanvasIcon from './CanvasIcon.vue'
 import { ref, computed } from 'vue'
 import {
   REGION_COLORS,
@@ -54,7 +55,7 @@ function finishRename(r: SelectionRef) {
               : [...expanded, r.id]
           "
         >
-          {{ expanded.includes(r.id) ? '▾' : '▸' }}
+          <CanvasIcon :name="expanded.includes(r.id) ? 'down' : 'right'" />
         </button>
         <button class="label" @click="emit('select', r, $event.shiftKey)">
           {{ r.kind === 'group' ? '组 · ' : '' }}{{ resolveCanvasLabel(dashboard, r, names) }}
@@ -63,7 +64,7 @@ function finishRename(r: SelectionRef) {
           :aria-label="`定位 ${resolveCanvasLabel(dashboard, r, names)}`"
           @click="emit('locate', r)"
         >
-          ⌖
+          <CanvasIcon name="locate" />
         </button>
       </div>
       <p v-if="r.kind === 'group'">
@@ -217,12 +218,13 @@ function finishRename(r: SelectionRef) {
 <style scoped>
 .layer-row {
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px;
-  margin: 6px 0;
+  margin: 8px 0;
 }
 .chosen {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 .layer-heading {
   display: flex;
@@ -233,6 +235,8 @@ function finishRename(r: SelectionRef) {
   text-align: left;
   min-width: 0;
   overflow-wrap: anywhere;
+  white-space: normal;
+  justify-content: flex-start;
 }
 .row-actions {
   display: flex;
@@ -241,18 +245,28 @@ function finishRename(r: SelectionRef) {
 }
 p {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin: 4px 0;
 }
 button,
 select,
 input {
   font-size: 12px;
-  padding: 4px;
-  border: 1px solid var(--glass-border);
-  background: var(--bg-secondary);
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-primary);
-  border-radius: 4px;
+  border-radius: 8px;
+}
+button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+select,
+input {
+  max-width: 100%;
+  background: var(--bg-secondary);
+  border-color: var(--glass-border);
 }
 button:disabled {
   opacity: 0.4;

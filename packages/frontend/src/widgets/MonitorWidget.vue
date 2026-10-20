@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useFormProtection } from '../runtime/useFormProtection'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { subscribeMonitor } from '../services/monitorService'
 
@@ -6,6 +7,7 @@ const props = defineProps<{
   config: Record<string, any>
   editing: boolean
   editable: boolean
+  resourceActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,12 +35,14 @@ const stats = ref<SystemStats | null>(null)
 const error = ref('')
 const loading = ref(false)
 const showConfig = ref(false)
+useFormProtection(() => props.editable, showConfig)
 
-const diskPaths = ref<string[]>(props.config.diskPaths ?? ['/'])
+const diskPaths = ref<string[]>([...(props.config.diskPaths ?? ['/'])])
 const refreshInterval = ref(5)
 const newDiskPath = ref('')
 const displayName = ref(props.config.displayName ?? '')
 const editingName = ref(false)
+useFormProtection(() => props.editable, editingName)
 const nameInput = ref('')
 
 // 各项显示开关
@@ -110,9 +114,10 @@ function saveName() {
 
 function startPolling() {
   stopPolling()
+  if (!props.editable || props.editing || props.resourceActive === false) return
   loading.value = !stats.value
-  unsubscribe = subscribeMonitor(diskPaths.value, (data, message) => {
-    if (data) stats.value = data
+  unsubscribe = subscribeMonitor(props.config.diskPaths ?? ['/'], (data, message) => {
+    stats.value = data
     error.value = message
     loading.value = false
   })
@@ -122,6 +127,34 @@ function stopPolling() {
   unsubscribe = null
 }
 
+watch(
+  () => props.editable,
+  (allowed) => {
+    if (allowed) startPolling()
+    else {
+      stopPolling()
+      stats.value = null
+      error.value = '登录后可查看监控'
+    }
+  },
+)
+watch(
+  () => props.config,
+  (config) => {
+    if (!showConfig.value) {
+      diskPaths.value = [...(config.diskPaths ?? ['/'])]
+      displayName.value = config.displayName ?? ''
+      showCPU.value = config.showCPU ?? true
+      showMem.value = config.showMem ?? true
+      showGPU.value = config.showGPU ?? true
+      showDisk.value = config.showDisk ?? true
+      showHeader.value = config.showHeader ?? true
+      showLoadavg.value = config.showLoadavg ?? true
+    }
+    startPolling()
+  },
+  { deep: true },
+)
 onMounted(startPolling)
 onBeforeUnmount(stopPolling)
 
@@ -131,6 +164,12 @@ watch(
   (val) => {
     if (val) stopPolling()
     else startPolling()
+  },
+)
+watch(
+  () => props.resourceActive,
+  () => {
+    startPolling()
   },
 )
 </script>

@@ -33,6 +33,7 @@ interface Options {
   interaction: ReturnType<typeof useCanvasInteraction>
   fit: (bounds: Rect | null) => void
   settleNavigation: () => void
+  ensureReady?: (id: string) => Promise<boolean>
   choose: (ref: SelectionRef, extend: boolean) => boolean
 }
 export function useCanvasWorkspace(o: Options) {
@@ -137,6 +138,12 @@ export function useCanvasWorkspace(o: Options) {
         return
       }
       navigationNote = notice.value
+    }
+    if (ids[0] && o.ensureReady) {
+      const ready = await o.ensureReady(ids[0])
+      if (ticket !== navigationSerial) return
+      if (!dashboard().widgets.some((w) => w.id === ids[0])) return
+      if (!ready) navigationNote = '详情尚未就绪，可点击进入组件重试'
     }
     highlight.value = ids
     located.value = r

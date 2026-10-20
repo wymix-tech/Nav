@@ -1,4 +1,15 @@
 import { validateInstalled, type InstalledWidget } from '@nav/shared'
+export function pluginIdentity(widget: InstalledWidget) {
+  return JSON.stringify([
+    widget.widgetId,
+    widget.commit,
+    widget.cdnUrl,
+    widget.manifest.entry,
+    widget.manifest.manifestVersion,
+    [...(widget.manifest.networkOrigins ?? [])].sort(),
+    [...(widget.manifest.permissions ?? [])].sort(),
+  ])
+}
 function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,

@@ -40,6 +40,8 @@ VITE_STORAGE_MODE=local pnpm --filter @nav/frontend build
 
 V2 开发分支增加框选多选、分组、独立区域、布局锁、图层、智能对齐、搜索与本机命名视角。当前写入协议为 schema/document 3，必须先备份并显式迁移；旧客户端写入返回 426。操作、迁移、回滚和实际验收限制见 [无限画布 V2](docs/infinite-canvas-v2.md)；[V1 文档](docs/infinite-canvas-v1.md)记录空间底座与历史证据。
 
+V3 开发分支进一步分离组件 Runtime 与详情视图，增加共享时钟/采样、离屏回收、分级展示与本机会话恢复；旧插件保守保活。操作、资源模式回退和实际验收状态见 [无限画布 V3](docs/infinite-canvas-v3.md)。
+
 ## 保存、同步与离线
 
 独立模式使用 IndexedDB。服务器模式先以本地事务保存快照与待同步操作，再以版本条件和稳定操作 ID 同步到 SQLite。多设备冲突不会自动覆盖，双方草稿可导出并明确处理；跨标签页草稿变化也有版本保护。

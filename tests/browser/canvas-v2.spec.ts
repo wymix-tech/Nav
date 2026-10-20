@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page } from '../helpers/browserTest'
 import {
   createDashboard,
   initialScene,
@@ -67,6 +67,7 @@ test.beforeEach(async ({ page, request }) => {
   }, token)
   await page.goto('/')
   await expect(page.locator('.canvas-item')).toHaveCount(3)
+  await expect(page.locator('.widget-renderer[data-view-ready="true"]')).toHaveCount(3)
 })
 test.afterEach(async ({ page, request }) => {
   expect(errors.get(page) ?? []).toEqual([])
@@ -84,6 +85,7 @@ async function selectTwo(page: Page) {
   await page.locator('[data-widget-id="one"] .widget-select-cover').click()
   await page.locator('[data-widget-id="two"] .widget-select-cover').click({ modifiers: ['Shift'] })
   await expect(page.locator('.canvas-item.selected')).toHaveCount(2)
+  await page.getByLabel('排列与分组', { exact: true }).click()
 }
 test('V2 group, order, lock and ungroup preserve hosts and chat draft, one command creates one revision', async ({
   page,
@@ -262,9 +264,9 @@ test('V2 region gesture creates once, moves and deletes only the annotation, and
   const before = await snapshot(request),
     box = (await page.locator('.canvas-grid').boundingBox())!
   await page.getByRole('button', { name: '区域工具', exact: true }).click()
-  await page.mouse.move(box.x + 25, box.y + 25)
+  await page.mouse.move(box.x + 25, box.y + 100)
   await page.mouse.down()
-  await page.mouse.move(box.x + 205, box.y + 145)
+  await page.mouse.move(box.x + 205, box.y + 220)
   await page.mouse.up()
   await expect.poll(async () => (await snapshot(request)).canvasScene!.regions.length).toBe(1)
   const created = await snapshot(request)

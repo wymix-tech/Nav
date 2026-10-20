@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useFormProtection } from '../runtime/useFormProtection'
+import { ref, toRef, watch } from 'vue'
+import { useWidgetOwner } from '../runtime/widgetOwner'
 
 const props = defineProps<{
   config: Record<string, any>
@@ -11,7 +13,9 @@ const emit = defineEmits<{
   'update:config': [value: Record<string, any>]
 }>()
 
-const query = ref('')
+const owner = useWidgetOwner()
+if (owner.value?.kind !== 'search') throw new Error('搜索 Runtime 尚未就绪')
+const query = toRef(owner.value.state, 'query')
 const engines: Record<string, { url: string; label: string }> = {
   google: { url: 'https://www.google.com/search?q=', label: 'Google' },
   bing: { url: 'https://www.bing.com/search?q=', label: 'Bing' },
@@ -20,7 +24,14 @@ const engines: Record<string, { url: string; label: string }> = {
 }
 
 const currentEngine = ref(props.config.engine ?? 'google')
-const showEngines = ref(false)
+const showEngines = toRef(owner.value.state, 'showEngines')
+useFormProtection(() => props.editable, showEngines)
+watch(
+  () => props.config.engine,
+  (value) => {
+    currentEngine.value = value ?? 'google'
+  },
+)
 
 function search() {
   if (!query.value.trim()) return
