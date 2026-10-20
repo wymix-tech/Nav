@@ -6,7 +6,7 @@ test.use({ serviceWorkers: 'block' })
 test('workspace navigation stays visible and opens usable panels at desktop and narrow sizes', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const backend = process.env.NAV_TEST_API ?? 'http://127.0.0.1:4000'
   const login = await request.post(backend + '/api/auth/login', {
     data: { password: process.env.NAV_TEST_PASSWORD ?? 'browser-test-password' },
@@ -105,6 +105,59 @@ test('workspace navigation stays visible and opens usable panels at desktop and 
     const after = await (await request.get(backend + '/api/dashboards')).json()
     expect(after.revision).toBe(before.revision)
     expect(after.widgets).toEqual(before.widgets)
+    if (mode === 'grid') {
+      await page.setViewportSize({ width: 1366, height: 768 })
+      await page.locator('.floating-panel').hover()
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
+      await page.locator('.floating-panel').hover()
+      await page.locator('.panel-actions button').filter({ hasText: '✕' }).click()
+      await expect(page.getByRole('toolbar', { name: '网格布局工具' })).toBeVisible()
+      for (const [width, height] of [
+        [1366, 768],
+        [1024, 768],
+        [390, 844],
+      ]) {
+        await page.setViewportSize({ width, height })
+        const layoutTools = page.getByRole('toolbar', { name: '网格布局工具' })
+        await layoutTools.scrollIntoViewIfNeeded()
+        await expect(layoutTools).toBeInViewport()
+        const toolsBounds = await layoutTools.boundingBox()
+        expect(toolsBounds!.x).toBeGreaterThanOrEqual(0)
+        expect(toolsBounds!.x + toolsBounds!.width).toBeLessThanOrEqual(width)
+        await page.screenshot({ path: testInfo.outputPath(`grid-toolbar-${width}.png`) })
+        await nav.getByRole('button', { name: '图层', exact: true }).click()
+        const layersPanel = page.getByRole('complementary', { name: '图层面板' })
+        const bounds = await layersPanel.boundingBox()
+        expect(bounds!.x).toBeGreaterThanOrEqual(0)
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+        expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height)
+        await layersPanel.locator('.label').nth(0).click()
+        await layersPanel
+          .locator('.label')
+          .nth(1)
+          .click({ modifiers: ['Shift'] })
+        await layersPanel.getByLabel('排列与分组', { exact: true }).click()
+        const group = layersPanel.getByRole('button', { name: '分组', exact: true })
+        await expect(group).toBeEnabled()
+        await group.scrollIntoViewIfNeeded()
+        await expect(group).toBeInViewport()
+        await page.screenshot({ path: testInfo.outputPath(`grid-edit-${width}.png`) })
+        await layersPanel.getByRole('button', { name: '清除选择', exact: true }).click()
+        await page.keyboard.press('Escape')
+        await expect(layersPanel.locator('.edit-menu')).not.toHaveAttribute('open')
+        await page.keyboard.press('Escape')
+        await expect(layersPanel).toHaveCount(0)
+        await expect(nav.getByRole('button', { name: '图层', exact: true })).toBeFocused()
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        )
+      }
+      const unchanged = await (await request.get(backend + '/api/dashboards')).json()
+      expect(unchanged.revision).toBe(before.revision)
+      expect(unchanged.widgets).toEqual(before.widgets)
+      await page.locator('.floating-panel').hover()
+      await page.getByRole('button', { name: '完成编辑', exact: true }).click()
+    }
     if (mode === 'canvas') {
       await page.locator('.floating-panel').hover()
       await page.getByRole('button', { name: '编辑', exact: true }).click()

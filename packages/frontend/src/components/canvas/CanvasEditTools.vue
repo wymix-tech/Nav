@@ -22,6 +22,7 @@ const props = withDefaults(
     snapping: boolean
     list: boolean
     geometryTools?: boolean
+    embedded?: boolean
   }>(),
   { geometryTools: true },
 )
@@ -50,8 +51,19 @@ function closeMenu() {
     menu.value.querySelector('summary')?.focus()
   }
 }
-onMounted(() => document.addEventListener('pointerdown', dismiss, true))
-onUnmounted(() => document.removeEventListener('pointerdown', dismiss, true))
+function menuKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    escape(event)
+  }
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', dismiss, true)
+  document.addEventListener('keydown', menuKeydown, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', dismiss, true)
+  document.removeEventListener('keydown', menuKeydown, true)
+})
 const blocked = computed(
   () => props.selected.filter((r) => effectiveLocked(props.dashboard, r)).length,
 )
@@ -106,7 +118,12 @@ function join() {
 }
 </script>
 <template>
-  <div class="edit-tools canvas-chrome" role="toolbar" aria-label="画布编辑工具">
+  <div
+    class="edit-tools canvas-chrome"
+    :class="{ embedded }"
+    role="toolbar"
+    aria-label="画布编辑工具"
+  >
     <button
       v-if="geometryTools !== false"
       :aria-pressed="tool === 'interact'"
@@ -287,5 +304,26 @@ function join() {
   .edit-menu > summary {
     width: 32px;
   }
+}
+.embedded.edit-tools {
+  flex-wrap: wrap;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+}
+.embedded .edit-menu[open] {
+  flex-basis: 100%;
+}
+.embedded .edit-actions {
+  position: static;
+  width: 100%;
+  max-height: none;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 </style>

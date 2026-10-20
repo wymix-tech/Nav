@@ -224,7 +224,7 @@ function toggleLibrary() {
       @show-about="showAbout = true"
     />
 
-    <div class="app-notices" :class="{ 'canvas-chrome': spatial }">
+    <div class="app-notices canvas-chrome">
       <div v-if="dashboardStore.error" class="save-status error" role="alert">
         {{ dashboardStore.error }} <button @click="dashboardStore.load">重新加载</button
         ><button @click="dashboardStore.exportData">导出备份</button>
@@ -420,7 +420,18 @@ function toggleLibrary() {
     padding-bottom: 0;
   }
 }
+.app-notices {
+  margin: 16px 24px 0;
+}
+.app-notices:empty {
+  display: none;
+}
+.app-notices .save-status {
+  background: transparent;
+  padding: 6px 10px;
+}
 .canvas-app .app-notices {
+  margin: 0;
   position: absolute;
   top: 16px;
   left: 16px;
@@ -520,6 +531,12 @@ function toggleLibrary() {
 }
 
 @media (max-width: 480px) {
+  .app-notices {
+    margin: 8px 8px 0;
+  }
+  .canvas-app .app-notices {
+    margin: 0;
+  }
   .main {
     padding: 8px;
   }

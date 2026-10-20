@@ -72,7 +72,8 @@ input {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--glass-border);
-  border-radius: 6px;
+  border-radius: 10px;
+  min-height: 36px;
 }
 ul {
   list-style: none;
@@ -80,21 +81,29 @@ ul {
 }
 button {
   color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  padding: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-height: 36px;
+  white-space: normal;
+  justify-content: flex-start;
   margin: 3px 0;
   text-align: left;
+}
+button:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 li button {
   width: 100%;
 }
 .active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   outline: 1px solid var(--accent);
 }
 small,
 p {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 </style>

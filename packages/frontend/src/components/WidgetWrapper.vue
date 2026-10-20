@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CanvasIcon from './canvas/CanvasIcon.vue'
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRuntimeContext } from '../runtime/useRuntimeReconciler'
 import type { DisplayLevel } from '../canvas/visibilityPolicy'
@@ -72,17 +73,19 @@ function handleConfigUpdate(config: Record<string, any>) {
         v-if="widgetSchema"
         class="toolbar-btn config-btn"
         title="配置"
+        aria-label="配置"
         @click="showConfig = true"
       >
-        ⚙
+        <CanvasIcon name="settings" />
       </button>
       <button
         :disabled="canDelete === false"
         :title="canDelete === false ? '布局锁定或属于分组，请先解锁／解组' : '删除'"
         class="toolbar-btn remove-btn"
+        aria-label="删除组件"
         @click="emit('remove')"
       >
-        ✕
+        <CanvasIcon name="close" />
       </button>
     </div>
     <div
@@ -192,8 +195,8 @@ function handleConfigUpdate(config: Record<string, any>) {
 }
 
 .toolbar-btn {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,5 +301,11 @@ function handleConfigUpdate(config: Record<string, any>) {
 
 .config-actions button:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+@media (hover: none) {
+  .toolbar-btn {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

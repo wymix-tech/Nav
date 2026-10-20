@@ -17,6 +17,16 @@ const paths: Record<string, string> = {
   region: 'M3 3h18v18H3zM3 8h18',
   additive: 'M3 3h10v10H3zM17 13v8M13 17h8',
   snap: 'M5 3v9a7 7 0 0 0 14 0V3h-4v9a3 3 0 0 1-6 0V3H5ZM5 7h4M15 7h4',
+  organize: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  baseline: 'M4 4h16v16H4zM4 10h16M10 4v16',
+  reset: 'M3 10a9 9 0 1 1 2 8M3 3v7h7',
+  grip: 'M8 5h.01M16 5h.01M8 12h.01M16 12h.01M8 19h.01M16 19h.01',
+  resize: 'm8 20 12-12M14 20l6-6',
+  up: 'm6 14 6-6 6 6',
+  down: 'm6 10 6 6 6-6',
+  settings: 'M4 7h16M4 17h16M8 4v6M16 14v6',
+  locate: 'M12 2v4M12 18v4M2 12h4M18 12h4M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0ZM12 12h.01',
+  right: 'm10 6 6 6-6 6',
   close: 'm6 6 12 12M6 18 18 6',
 }
 </script>
@@ -27,7 +37,7 @@ const paths: Record<string, string> = {
     height="18"
     fill="none"
     stroke="currentColor"
-    :stroke-width="name === 'more' ? 3 : 1.7"
+    :stroke-width="['more', 'grip'].includes(name) ? 3 : 1.7"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"

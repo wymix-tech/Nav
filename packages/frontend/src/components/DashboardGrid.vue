@@ -17,6 +17,8 @@ import {
   type LayoutMap,
 } from '@nav/shared'
 import WidgetWrapper from './WidgetWrapper.vue'
+import CanvasIcon from './canvas/CanvasIcon.vue'
+import './canvas/canvasChrome.css'
 import { useWidgetStore } from '../stores/widgetStore'
 const widgetStore = useWidgetStore()
 const props = defineProps<{
@@ -286,12 +288,14 @@ function style(id: string) {
 </script>
 <template>
   <section ref="root" class="dashboard-grid" :data-columns="cols">
-    <div v-if="canEdit" class="grid-info">
-      <button @click="organize">自动整理</button
-      ><button @click="emit('set-base', layout, cols)">设为基准</button>
+    <div v-if="canEdit" class="grid-info canvas-chrome" role="toolbar" aria-label="网格布局工具">
+      <button @click="organize"><CanvasIcon name="organize" />自动整理</button
+      ><button @click="emit('set-base', layout, cols)">
+        <CanvasIcon name="baseline" />设为基准
+      </button>
       <span>当前 {{ cols }} 列 · 箭头移动，Shift＋箭头调整大小</span
       ><button v-if="profiles?.[profileKey(cols)]" @click="emit('reset-profile', cols)">
-        重置当前断点
+        <CanvasIcon name="reset" />重置当前断点
       </button>
     </div>
     <p v-if="notice" role="alert">{{ notice }}</p>
@@ -307,6 +311,7 @@ function style(id: string) {
         <button
           v-if="canEdit && cols > 1 && !layoutProtected(dashboard, widget.id)"
           class="drag-handle"
+          title="拖动组件"
           :aria-label="'移动 ' + widget.widgetId"
           @pointerdown="start($event, widget, 'move')"
           @pointermove="move"
@@ -315,14 +320,16 @@ function style(id: string) {
           @lostpointercapture="lostCapture"
           @keydown="keyboard($event, widget)"
         >
-          ⠿
+          <CanvasIcon name="grip" />
         </button>
         <div
           v-if="canEdit && cols === 1 && !layoutProtected(dashboard, widget.id)"
-          class="stack-actions"
+          class="stack-actions canvas-chrome"
         >
           <button aria-label="上移" @click="reorder(widget.id, -1)">↑</button
-          ><button aria-label="下移" @click="reorder(widget.id, 1)">↓</button>
+          ><button aria-label="下移" @click="reorder(widget.id, 1)">
+            <CanvasIcon name="down" />
+          </button>
         </div>
         <WidgetWrapper
           :widget="widget"
@@ -342,7 +349,7 @@ function style(id: string) {
           @pointercancel="cancel"
           @lostpointercapture="lostCapture"
         >
-          ⌟
+          <CanvasIcon name="resize" />
         </button>
       </div>
     </div>
@@ -365,50 +372,70 @@ function style(id: string) {
   border-radius: var(--radius-md);
 }
 .css-grid-item.editing {
-  outline: 1px dashed var(--accent);
+  outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.drag-handle {
-  position: absolute;
-  top: 0;
-  left: 8px;
-  width: 38px;
-  height: 24px;
-  padding: 0;
-  z-index: 12;
-  cursor: grab;
-  touch-action: none;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
+.drag-handle,
 .resize-handle {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  width: 28px;
-  height: 28px;
-  cursor: se-resize;
+  z-index: 12;
   touch-action: none;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
+  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
   color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  backdrop-filter: blur(20px);
+}
+.drag-handle {
+  top: 6px;
+  left: 6px;
+  cursor: grab;
+}
+.resize-handle {
+  bottom: 6px;
+  right: 6px;
+  cursor: se-resize;
+}
+.drag-handle:hover,
+.resize-handle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.drag-handle:focus-visible,
+.resize-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .grid-info {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 6px;
   font-size: 12px;
   color: var(--text-secondary);
 }
+.grid-info > span {
+  flex: 1 1 200px;
+  padding: 4px 8px;
+}
 .stack-actions {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 6px;
+  left: 6px;
   z-index: 12;
   display: flex;
+  padding: 2px;
 }
 .stack-actions button {
-  padding: 2px 10px;
+  width: 36px;
+  padding: 0;
 }
 </style>
