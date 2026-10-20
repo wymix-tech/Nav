@@ -44,7 +44,7 @@ onUnmounted(() => {
 })
 </script>
 <template>
-  <div>
+  <div class="canvas-search-panel">
     <input
       ref="input"
       v-model="query"
@@ -66,6 +66,15 @@ onUnmounted(() => {
 </template>
 <style scoped>
 @layer nav-components {
+  .canvas-search-panel {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+    min-width: 0;
+  }
+  ul:empty {
+    display: none;
+  }
   input {
     width: 100%;
     box-sizing: border-box;

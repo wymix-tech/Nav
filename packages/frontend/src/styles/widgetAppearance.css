@@ -5,6 +5,7 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+.widget-wrapper[data-appearance='glass'],
 .widget-wrapper[data-appearance='solid'] {
   color: var(--text-primary);
   border: 1px solid var(--glass-border);
@@ -14,7 +15,9 @@
     inset 0 1px 0 var(--glass-highlight);
 }
 .widget-wrapper[data-appearance='glass'] {
-  background: linear-gradient(145deg, var(--glass-tint), transparent 65%), var(--glass-bg);
+  background:
+    radial-gradient(120% 80% at 15% -20%, var(--glass-tint), transparent 60%), var(--glass-bg);
+  box-shadow: var(--glass-shadow);
   backdrop-filter: var(--glass-filter);
   -webkit-backdrop-filter: var(--glass-filter);
 }

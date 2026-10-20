@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRuntimeReconciler } from './runtime/useRuntimeReconciler'
+import GlassMaterial from './components/GlassMaterial.vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import CanvasGridOrganization from './components/canvas/CanvasGridOrganization.vue'
@@ -211,6 +212,7 @@ function toggleLibrary() {
 </script>
 
 <template>
+  <GlassMaterial />
   <div class="app" :class="{ 'light-theme': isLightBg, 'canvas-app': spatial }" :style="bgStyle">
     <TopBar
       :editing="editing"

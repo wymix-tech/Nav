@@ -1,19 +1,24 @@
-/* Shared material layer. Component files own geometry in nav-components;
+/* Material references (implementation adapted for Nav's existing layout):
+   https://github.com/LGOS-Studio/LiquidGlass
+   https://github.com/wave2234/liquid-glass-recipes
+   Shared material layer. Component files own geometry in nav-components;
    these rules own surfaces and control states in both workspaces. */
 :root {
-  --glass-bg: rgba(28, 39, 62, 0.72);
-  --glass-border: rgba(225, 238, 255, 0.22);
-  --glass-highlight: rgba(255, 255, 255, 0.18);
-  --glass-tint: rgba(155, 190, 255, 0.07);
+  --glass-bg: rgba(12, 20, 32, 0.16);
+  --glass-border: rgba(235, 245, 255, 0.34);
+  --glass-highlight: rgba(255, 255, 255, 0.62);
+  --glass-tint: rgba(255, 255, 255, 0.09);
   --glass-solid: #1b263b;
-  --glass-field: rgba(5, 14, 30, 0.36);
-  --glass-control: rgba(220, 235, 255, 0.08);
+  --glass-field: rgba(5, 14, 30, 0.2);
+  --glass-control: rgba(235, 245, 255, 0.035);
   --glass-hover: rgba(220, 235, 255, 0.16);
   --glass-selected: rgba(96, 165, 250, 0.22);
   --glass-shadow:
-    0 16px 48px #0003, 0 3px 8px #0002, inset 0 1px 0 var(--glass-highlight),
-    inset 0 -1px 0 #ffffff06;
-  --glass-filter: blur(24px) saturate(1.5);
+    0 8px 28px #00000026, inset 0 1.5px 1px -0.5px var(--glass-highlight),
+    inset 0 -1.5px 1px -0.5px #07132255, inset 1px 0 1px #ffffff22, inset -1px 0 1px #ffffff22;
+  --glass-filter: blur(3px) saturate(1.55);
+  --glass-reading-bg: rgba(22, 31, 47, 0.72);
+  --glass-reading-filter: blur(18px) saturate(1.3);
   --glass-radius: 24px;
   --glass-motion: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -21,11 +26,12 @@
   color-scheme: light;
   --bg-primary: #eef3fa;
   --bg-secondary: #e4ebf5;
-  --glass-bg: rgba(249, 252, 255, 0.78);
+  --glass-bg: rgba(255, 255, 255, 0.13);
   --glass-border: rgba(255, 255, 255, 0.78);
   --glass-highlight: rgba(255, 255, 255, 0.95);
-  --glass-tint: rgba(115, 163, 230, 0.06);
+  --glass-tint: rgba(255, 255, 255, 0.16);
   --glass-solid: #edf3fa;
+  --glass-reading-bg: rgba(249, 252, 255, 0.76);
   --glass-field: rgba(47, 76, 115, 0.06);
   --glass-control: rgba(70, 102, 150, 0.07);
   --glass-hover: rgba(70, 102, 150, 0.13);
@@ -38,7 +44,7 @@
   --danger: #b42335;
 }
 
-/* No SVG refraction filter: transforms and canvas panning stay on their existing paths. */
+/* Thin clear material for floating controls; reading surfaces override it below. */
 .canvas-chrome,
 .panel-content,
 .panel-dot,
@@ -46,12 +52,33 @@
 .modal-content,
 .canvas-minimap {
   color: var(--text-primary);
-  background: linear-gradient(145deg, var(--glass-tint), transparent 60%), var(--glass-bg);
+  background:
+    radial-gradient(120% 80% at 15% -20%, var(--glass-highlight), transparent 60%),
+    linear-gradient(145deg, var(--glass-tint), transparent 55%), var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
   box-shadow: var(--glass-shadow);
   backdrop-filter: var(--glass-filter);
   -webkit-backdrop-filter: var(--glass-filter);
+}
+/* Refraction only on small stationary controls, never text or the moving canvas.
+   main.ts enables this enhancement conservatively for Chromium; WebKit/Firefox
+   keep the prefixed micro-blur material instead of an unsupported SVG backdrop. */
+html[data-glass-refraction] :is(.workspace-toolbar, .canvas-controls, .panel-content) {
+  backdrop-filter: url('#nav-glass-lens') blur(2px) saturate(1.55);
+}
+:is(.workspace-panel, .library-panel, .modal-content) {
+  background: linear-gradient(145deg, var(--glass-tint), transparent 60%), var(--glass-reading-bg);
+  backdrop-filter: var(--glass-reading-filter);
+  -webkit-backdrop-filter: var(--glass-reading-filter);
+}
+/* A slight text shadow preserves labels over detailed wallpaper without painting
+   an opaque plate over the background. */
+:is(.workspace-toolbar, .canvas-controls, .panel-content) {
+  text-shadow: 0 1px 3px #0009;
+}
+.light-theme :is(.workspace-toolbar, .canvas-controls, .panel-content) {
+  text-shadow: 0 1px 2px #fffc;
 }
 /* Embedded tool groups share their parent's material rather than stacking blur. */
 .edit-tools.embedded,
@@ -178,8 +205,7 @@ input[type='range'] {
 }
 
 .workspace-toolbar,
-.canvas-controls,
-.panel-content {
+.canvas-controls {
   border-radius: 999px;
 }
 .panel-dot {
@@ -201,6 +227,18 @@ input[type='range'] {
 }
 .panel-content {
   gap: 8px;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  border-radius: 24px;
+}
+.panel-actions {
+  min-width: 0;
+}
+/* Keep keyboard focus inside the search field, clear of its header and hint. */
+.canvas-search-panel input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  box-shadow: none;
 }
 .canvas-chrome :is(.layer-row, .image-item) {
   border-radius: 16px;
@@ -336,13 +374,22 @@ button.edge {
   :root,
   .light-theme {
     --glass-bg: var(--glass-solid);
+    --glass-reading-bg: var(--glass-solid);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
   :root,
   .light-theme {
     --glass-bg: var(--glass-solid);
+    --glass-reading-bg: var(--glass-solid);
     --glass-filter: none;
+  }
+  html[data-glass-refraction] :is(.workspace-toolbar, .canvas-controls, .panel-content) {
+    backdrop-filter: none;
+  }
+  :is(.workspace-panel, .library-panel, .modal-content) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .modal-shell {
     backdrop-filter: none;

@@ -626,7 +626,7 @@ onUnmounted(() => {
     width: min(310px, calc(100% - 32px));
     overflow: auto;
     padding: 12px;
-    z-index: 35;
+    z-index: 70;
   }
   .widget-select-cover {
     position: absolute;
@@ -646,13 +646,13 @@ onUnmounted(() => {
     height: 100%;
     min-height: 0;
     position: relative;
-    isolation: isolate;
     --dock-clearance: 88px;
   }
   .canvas-stage.is-editing {
     --dock-clearance: 148px;
   }
   .canvas-grid {
+    isolation: isolate;
     position: absolute;
     inset: 0;
     overflow: hidden;
