@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import test, { after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { createDashboard, type Dashboard } from '../packages/shared/src/index.ts'
+import { createDashboard, initialScene, type Dashboard } from '../packages/shared/src/index.ts'
 const events = new EventTarget(),
   documentEvents = new EventTarget()
 Object.defineProperty(globalThis, 'window', { value: events, configurable: true })
@@ -327,6 +327,7 @@ test('recovery previews expose every shared layout setting that resolution can r
       columns: 8,
       baseColumns: 8,
       rowHeight: 140,
+      widgetAppearance: 'glass',
       layoutSettings: { columnMode: 'custom', contentWidthMode: 'fluid', maxContentWidth: 1200 },
       layoutProfiles: { 'cols-8': {} },
     }
@@ -677,5 +678,39 @@ test('an unmigrated V1 server is upgrade-required immediately, before any user e
     assert.equal(putCount, 0)
   } finally {
     await a.dispose()
+  }
+})
+
+test('recovery preview identifies a per-widget appearance without reporting geometry or config changes', async () => {
+  const l = { x: 0, y: 0, w: 4, h: 3 }
+  remote.widgets = [
+    {
+      id: 'appearance-clock',
+      widgetId: 'clock',
+      source: 'builtin',
+      config: {},
+      layouts: { lg: l, md: l, sm: l, xs: l },
+    },
+  ]
+  remote.canvasScene = initialScene(['appearance-clock'])
+  const adapter = new SyncAdapter()
+  try {
+    const d = await adapter.getDashboard()
+    const local = structuredClone(d)
+    local.widgets[0].appearance = 'none'
+    await db.sync.put({
+      key: adapter.key,
+      snapshot: local,
+      conflict: d,
+      revision: d.revision ?? 0,
+      generation: 0,
+      pending: [],
+      lastSyncAt: null,
+    })
+    const preview = await adapter.getRecoveryPreview()
+    assert.equal(preview!.differences.length, 1)
+    assert.ok(preview!.differences[0].startsWith('appearance-clock.appearance:'))
+  } finally {
+    await adapter.dispose()
   }
 })

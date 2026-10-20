@@ -19,3 +19,5 @@ export * from './canvas/search.js'
 export * from './canvas/recovery.js'
 export * from './canvas/rectIndex.js'
 export * from './canvas/spatialProjection.js'
+
+export * from './appearance.js'

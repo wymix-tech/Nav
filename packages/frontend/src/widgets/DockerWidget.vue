@@ -40,9 +40,9 @@ let previousContainer = ''
 const isSetup = computed(() => !!containerName.value)
 
 function getStateColor(state: string): string {
-  if (state === 'running') return '#22c55e'
-  if (state === 'paused') return '#f59e0b'
-  return '#ef4444'
+  if (state === 'running') return 'var(--widget-success, #22c55e)'
+  if (state === 'paused') return 'var(--widget-warning, #f59e0b)'
+  return 'var(--widget-danger, #ef4444)'
 }
 
 function getStateLabel(state: string): string {
@@ -53,9 +53,9 @@ function getStateLabel(state: string): string {
 }
 
 function getColor(pct: number): string {
-  if (pct >= 90) return '#ef4444'
-  if (pct >= 70) return '#f59e0b'
-  return '#22c55e'
+  if (pct >= 90) return 'var(--widget-danger, #ef4444)'
+  if (pct >= 70) return 'var(--widget-warning, #f59e0b)'
+  return 'var(--widget-success, #22c55e)'
 }
 
 function formatImage(image: string): string {

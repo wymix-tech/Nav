@@ -1,3 +1,4 @@
+import type { WidgetAppearance } from '../appearance.js'
 import type { CanvasScene } from '../canvas/scene.js'
 import type { CanvasSettings } from '../canvas/types.js'
 export interface WidgetLayout {
@@ -28,6 +29,7 @@ export interface WidgetInstance {
   id: string
   widgetId: string
   source: 'builtin' | 'installed'
+  appearance?: WidgetAppearance
   config: Record<string, any>
   canvas?: CanvasLayout
   layouts: {
@@ -62,6 +64,7 @@ export interface Dashboard {
   widgets: WidgetInstance[]
   columns: number
   rowHeight: number
+  widgetAppearance?: WidgetAppearance
   background: DashboardBackground
   layoutMode?: LayoutMode
   viewport?: DashboardViewport

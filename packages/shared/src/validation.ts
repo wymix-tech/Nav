@@ -1,3 +1,4 @@
+import { validWidgetAppearance } from './appearance.js'
 import { validateScene } from './canvas/scene.js'
 import { CANVAS } from './canvas/constants.js'
 import { validCamera } from './canvas/geometry.js'
@@ -103,6 +104,10 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
       '视口缩放无效',
     )
   }
+  assert(
+    d.widgetAppearance === undefined || validWidgetAppearance(d.widgetAppearance),
+    '组件外观无效',
+  )
   assert(Array.isArray(d.widgets) && d.widgets.length <= 100, '组件最多 100 个')
   const ids = new Set<string>()
   for (const w of d.widgets) {
@@ -110,6 +115,7 @@ export function validateDashboard(d: unknown): asserts d is Dashboard {
       record(w) && typeof w.id === 'string' && /^[\w-]{1,100}$/.test(w.id) && !ids.has(w.id),
       '组件 ID 无效或重复',
     )
+    assert(w.appearance === undefined || validWidgetAppearance(w.appearance), '单组件外观无效')
     ids.add(w.id)
     assert(
       typeof w.widgetId === 'string' &&

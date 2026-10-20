@@ -5,6 +5,8 @@ import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
 import {
   migrateDashboard,
+  widgetAppearanceOptions,
+  type WidgetAppearance,
   resolveCollisions,
   type LayoutMode,
   type BackgroundImage,
@@ -17,6 +19,9 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const widgetAppearance = ref<WidgetAppearance>(
+  dashboardStore.dashboard?.widgetAppearance ?? 'legacy',
+)
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
 const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'grid')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
@@ -81,6 +86,7 @@ async function save() {
   if (!dashboardStore.dashboard) return
   const next = JSON.parse(JSON.stringify(dashboardStore.dashboard))
   next.title = title.value
+  next.widgetAppearance = widgetAppearance.value
   next.columns = columns.value
   next.layoutSettings = {
     columnMode: columnMode.value,
@@ -143,6 +149,21 @@ function cancel() {
           <option value="grid">网格布局</option>
           <option value="canvas">无限画布</option>
         </select>
+      </div>
+      <div class="prefs-section">
+        <label class="prefs-label" for="widget-appearance">组件外观</label>
+        <select id="widget-appearance" v-model="widgetAppearance">
+          <option
+            v-for="option in widgetAppearanceOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <p class="appearance-hint">
+          适用于内置组件，可在单个组件的外观设置中覆盖；第三方插件保持原样。
+        </p>
       </div>
       <!-- 网格列数 -->
       <div class="prefs-section">

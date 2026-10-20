@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{ name: string }>()
 const paths: Record<string, string> = {
+  appearance: 'M12 3a9 9 0 1 0 0 18V3ZM12 3a9 9 0 0 1 0 18M12 7h4M12 12h5M12 17h4',
   layers: 'm12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',
   search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',
   views: 'M3 5h18v14H3zM8 5v14M3 10h18',

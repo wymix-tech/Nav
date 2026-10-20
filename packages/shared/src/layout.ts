@@ -140,6 +140,7 @@ export function createDashboard(): Dashboard {
   return migrateCanvasDocument({
     id: 'default',
     canvasSettings: { version: 1, defaultCamera: { centerX: 0, centerY: 0, zoom: 1 } },
+    widgetAppearance: 'auto',
     name: '我的导航',
     title: 'Nav - 个人导航页',
     widgets: [],

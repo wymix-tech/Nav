@@ -5,7 +5,13 @@ import { useRuntimeContext } from '../runtime/useRuntimeReconciler'
 import type { DisplayLevel } from '../canvas/visibilityPolicy'
 import CanvasWidgetSummary from './canvas/CanvasWidgetSummary.vue'
 import ModalShell from './ModalShell.vue'
-import type { WidgetInstance } from '@nav/shared'
+import {
+  resolveWidgetAppearance,
+  widgetAppearanceOptions,
+  type WidgetAppearance,
+  type WidgetInstance,
+} from '@nav/shared'
+import { useDashboardStore } from '../stores/dashboardStore'
 import { useWidgetStore } from '../stores/widgetStore'
 import WidgetRenderer from './WidgetRenderer.vue'
 import WidgetConfigForm from './WidgetConfigForm.vue'
@@ -32,10 +38,36 @@ const emit = defineEmits<{
 
 const widgetStore = useWidgetStore()
 const showConfig = ref(false)
+const showAppearance = ref(false)
+const appearanceDraft = ref<WidgetAppearance | ''>('')
+const savingAppearance = ref(false)
+const dashboardStore = useDashboardStore()
+const appearance = computed(() =>
+  resolveWidgetAppearance(props.widget, dashboardStore.dashboard?.widgetAppearance),
+)
+function openAppearance() {
+  appearanceDraft.value = props.widget.appearance ?? ''
+  showAppearance.value = true
+}
+async function saveAppearance() {
+  if (!props.editable || savingAppearance.value) return
+  savingAppearance.value = true
+  try {
+    if (
+      await dashboardStore.updateWidgetAppearance(
+        props.widget.id,
+        appearanceDraft.value || undefined,
+      )
+    )
+      showAppearance.value = false
+  } finally {
+    savingAppearance.value = false
+  }
+}
 const runtime = useRuntimeContext()
 let release: (() => void) | undefined
 watch(
-  showConfig,
+  () => showConfig.value || showAppearance.value,
   (open) => {
     release?.()
     release = open ? runtime.activity.pin(props.widget.id, 'wrapper-config') : undefined
@@ -46,7 +78,10 @@ onUnmounted(() => release?.())
 watch(
   () => props.editable,
   (allowed) => {
-    if (!allowed && !runtime.hasSession()) showConfig.value = false
+    if (!allowed) {
+      showAppearance.value = false
+      if (!runtime.hasSession()) showConfig.value = false
+    }
   },
 )
 
@@ -67,8 +102,23 @@ function handleConfigUpdate(config: Record<string, any>) {
 </script>
 
 <template>
-  <div class="widget-wrapper" :class="{ editing }">
+  <div
+    class="widget-wrapper"
+    :class="{ editing }"
+    :data-appearance="appearance"
+    :data-widget-type="widget.widgetId"
+    :data-summary="!active || !mounted"
+  >
     <div v-if="editing && editable" class="widget-toolbar">
+      <button
+        v-if="widget.source === 'builtin'"
+        class="toolbar-btn appearance-btn"
+        aria-label="组件外观"
+        title="组件外观"
+        @click="openAppearance"
+      >
+        <CanvasIcon name="appearance" />
+      </button>
       <button
         v-if="widgetSchema"
         class="toolbar-btn config-btn"
@@ -113,6 +163,36 @@ function handleConfigUpdate(config: Record<string, any>) {
     >
       <CanvasWidgetSummary :widget="widget" :label="label" :level="level" :editable="editable" />
     </button>
+    <ModalShell v-if="showAppearance" label="组件外观" @close="showAppearance = false">
+      <div class="appearance-dialog">
+        <h3>组件外观</h3>
+        <label :for="`appearance-${widget.id}`">外观模式</label>
+        <select
+          :id="`appearance-${widget.id}`"
+          v-model="appearanceDraft"
+          :disabled="savingAppearance"
+        >
+          <option value="">跟随全局设置</option>
+          <option
+            v-for="option in widgetAppearanceOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <p class="appearance-hint">
+          自动模式为时钟、天气、搜索和书签使用玻璃，为聊天和监控数据使用实色背景。
+        </p>
+        <p v-if="dashboardStore.error" role="alert">{{ dashboardStore.error }}</p>
+        <div class="config-actions">
+          <button :disabled="savingAppearance" @click="showAppearance = false">取消</button>
+          <button class="primary" :disabled="savingAppearance" @click="saveAppearance">
+            {{ savingAppearance ? '保存中…' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
     <!-- 配置弹窗 -->
     <ModalShell v-if="showConfig" label="组件配置" @close="showConfig = false">
       <div class="config-dialog">

@@ -56,16 +56,16 @@ const showLoadavg = ref(props.config.showLoadavg ?? true)
 let unsubscribe: (() => void) | null = null
 
 function getColor(pct: number): string {
-  if (pct >= 90) return '#ef4444'
-  if (pct >= 70) return '#f59e0b'
-  return '#22c55e'
+  if (pct >= 90) return 'var(--widget-danger, #ef4444)'
+  if (pct >= 70) return 'var(--widget-warning, #f59e0b)'
+  return 'var(--widget-success, #22c55e)'
 }
 
 function getTempColor(temp: number | null): string {
   if (temp === null) return 'var(--text-muted)'
-  if (temp >= 80) return '#ef4444'
-  if (temp >= 60) return '#f59e0b'
-  return '#22c55e'
+  if (temp >= 80) return 'var(--widget-danger, #ef4444)'
+  if (temp >= 60) return 'var(--widget-warning, #f59e0b)'
+  return 'var(--widget-success, #22c55e)'
 }
 
 function fetchStats() {
