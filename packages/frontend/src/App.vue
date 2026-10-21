@@ -451,7 +451,7 @@ function toggleLibrary() {
 }
 .canvas-app :deep(.floating-panel .panel-content) {
   position: absolute;
-  bottom: calc(100% + 68px);
+  bottom: calc(100% + 20px);
   left: 0;
 }
 .canvas-app :deep(.floating-panel .panel-content::after) {
@@ -460,7 +460,7 @@ function toggleLibrary() {
   top: 100%;
   left: 0;
   width: 100%;
-  height: 68px;
+  height: 20px;
 }
 @media (max-width: 1099px) {
   .canvas-app .canvas-main.library-open :deep(.dock) {
@@ -491,10 +491,10 @@ function toggleLibrary() {
   .canvas-app :deep(.floating-panel .panel-content) {
     left: auto;
     right: 0;
-    bottom: calc(100% + 132px);
+    bottom: calc(100% + 20px);
   }
   .canvas-app :deep(.floating-panel .panel-content::after) {
-    height: 132px;
+    height: 20px;
   }
 }
 .main {
