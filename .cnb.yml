@@ -45,6 +45,8 @@ main:
         # 页面按钮的 env 只在 web_trigger 触发时注入；这里兜底，避免经由其他渠道
         # 触发时 $PUSH_LATEST 为空、判断恒为假。
         PUSH_LATEST: 'true'
+        # 推送 Docker 时用作「是否已有可发布的新版本」的开关，auto-tag 之后才确定取值。
+        HAS_RELEASE: 'false'
       stages:
         - name: auto-tag
           image: cnbcool/git-auto-tag:latest
@@ -62,23 +64,50 @@ main:
             repoUrlHttps: $CNB_REPO_URL_HTTPS
           exports:
             tag: NEW_TAG
-        - name: show tag
-          script:
-            - echo $NEW_TAG
-            - cat tag_info.json
+        # 插件在没有新提交可发布时只打印提示并返回 0，此时既没有 NEW_TAG 也没有
+        # tag_info.json。后续 stage 一律以 HAS_RELEASE 为开关，无新版本时直接跳过，
+        # 不再去读不存在的文件、也不会拿空值打 tag 或推镜像。
+        - name: detect release
+          script: |
+            if [ -n "$NEW_TAG" ]; then
+              NAME="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+              SUBJECT="$(git for-each-ref "refs/tags/$NAME" --format='%(contents:subject)' 2>/dev/null || true)"
+              # 变量值含 // 等特殊字符，先 base64 再按行输出，交给 exports 反解；
+              # 直接 echo 会在日志里被误判成链接（旧版本实测拿不到值）。
+              printf '##[set-output tag_b64=%s]\n' "base64,$(printf '%s' "$NEW_TAG" | base64 -w 0)"
+              printf '##[set-output tag_name_b64=%s]\n' "base64,$(printf '%s' "$NAME" | base64 -w 0)"
+              printf '##[set-output tag_subject_b64=%s]\n' "base64,$(printf '%s' "$SUBJECT" | base64 -w 0)"
+              echo "##[set-output has_release=true]"
+            else
+              echo "##[set-output has_release=false]"
+              echo "auto-tag 未产出新标签：本次没有可发布的提交，跳过 release 与镜像构建。"
+            fi
+          exports:
+            tag_b64: NEW_TAG
+            tag_name_b64: NEW_TAG_NAME
+            tag_subject_b64: NEW_TAG_SUBJECT
+            has_release: HAS_RELEASE
         - name: changelog
+          if: |
+            [ "$HAS_RELEASE" = "true" ]
           image: cnbcool/changelog
           settings:
             tag: $NEW_TAG
             latestChangeLogTarget: LATEST_CHANGELOG.md
         - name: release
+          if: |
+            [ "$HAS_RELEASE" = "true" ]
           type: git:release
           options:
+            # git-auto-tag 已经用 $NEW_TAG 建好了 tag，这里只补 Release 记录，
+            # title 用 tag 的注释（Release $NEW_TAG），避免与已有 tag 重名冲突。
             tag: $NEW_TAG
-            title: $NEW_TAG
+            title: $NEW_TAG_SUBJECT
             descriptionFromFile: LATEST_CHANGELOG.md
             latest: true
         - name: Docker build
+          if: |
+            [ "$HAS_RELEASE" = "true" ]
           script: |
             IMAGE=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}
             docker build --build-arg APP_VERSION=$NEW_TAG -t ${IMAGE}:$NEW_TAG .
@@ -86,6 +115,8 @@ main:
               docker tag ${IMAGE}:$NEW_TAG ${IMAGE}:latest
             fi
         - name: Docker push
+          if: |
+            [ "$HAS_RELEASE" = "true" ]
           script: |
             IMAGE=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}
             docker push ${IMAGE}:$NEW_TAG
