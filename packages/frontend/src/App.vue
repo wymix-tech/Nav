@@ -364,7 +364,7 @@ function toggleLibrary() {
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
       :visible="showLibrary"
       :spatial="spatial"
-      :top="spatial ? Math.max(libraryTop, 84) : libraryTop"
+      :top="Math.max(libraryTop, 84)"
       @request-add-widget="requestAddWidget"
       @show-install="showInstall = true"
       @toggle-library="toggleLibrary"
