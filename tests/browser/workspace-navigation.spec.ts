@@ -110,8 +110,19 @@ test('workspace navigation stays visible and opens usable panels at desktop and 
       await page.locator('.floating-panel').hover()
       await page.getByRole('button', { name: '编辑', exact: true }).click()
       await page.locator('.floating-panel').hover()
-      await page.locator('.panel-actions button').filter({ hasText: '✕' }).click()
       await expect(page.getByRole('toolbar', { name: '网格布局工具' })).toBeVisible()
+      const gridLibrary = page.locator('.library-wrapper')
+      const status = page.locator('.app-notices')
+      const libraryBounds = await gridLibrary.boundingBox()
+      const statusBounds = await status.boundingBox()
+      expect(libraryBounds).not.toBeNull()
+      expect(statusBounds).not.toBeNull()
+      expect(libraryBounds!.y).toBeGreaterThanOrEqual(statusBounds!.y + statusBounds!.height + 8)
+      const layoutToolbar = await page.getByRole('toolbar', { name: '网格布局工具' }).boundingBox()
+      expect(layoutToolbar).not.toBeNull()
+      expect(libraryBounds!.y).toBeGreaterThanOrEqual(layoutToolbar!.y + layoutToolbar!.height + 8)
+      await page.locator('.panel-actions button').filter({ hasText: '✕' }).click()
+      await expect(gridLibrary).not.toHaveClass(/visible/)
       for (const [width, height] of [
         [1366, 768],
         [1024, 768],

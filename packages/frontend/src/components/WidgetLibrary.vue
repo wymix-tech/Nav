@@ -181,7 +181,7 @@ async function uninstall(id: string) {
   .library-wrapper {
     position: fixed;
     left: 12px;
-    top: 24px;
+    top: var(--canvas-library-top, 24px);
     bottom: 88px;
     z-index: 90;
     transform: translateY(20px);
