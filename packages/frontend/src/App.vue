@@ -34,9 +34,17 @@ let mainObserver: ResizeObserver | undefined
 const canvasStage = ref<InstanceType<typeof CanvasGrid> | null>(null)
 const spatial = computed(() => dashboardStore.dashboard?.layoutMode === 'canvas')
 const editing = ref(false)
-watch(editing, (active) =>
-  window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active })),
-)
+function preventGridPageScroll(event: WheelEvent) {
+  if (!spatial.value && editing.value) event.preventDefault()
+}
+watch(editing, (active) => {
+  window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active }))
+  if (active && !spatial.value) {
+    window.addEventListener('wheel', preventGridPageScroll, { passive: false })
+  } else {
+    window.removeEventListener('wheel', preventGridPageScroll)
+  }
+})
 const updateApp = ref<null | (() => void)>(null)
 function updateAvailable(e: Event) {
   updateApp.value = (e as CustomEvent).detail
