@@ -23,7 +23,7 @@ const widgetAppearance = ref<WidgetAppearance>(
   dashboardStore.dashboard?.widgetAppearance ?? 'legacy',
 )
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
-const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'grid')
+const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'canvas')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color',

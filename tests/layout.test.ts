@@ -58,6 +58,13 @@ test('legacy layout migration is idempotent and retains custom heights', () => {
   assert.deepEqual(migrateDashboard(migrated), migrated)
   assert.equal(migrated.baseColumns, 12)
 })
+test('new dashboards and documents without a saved mode default to infinite canvas', () => {
+  const dashboard = createDashboard()
+  assert.equal(dashboard.layoutMode, 'canvas')
+  delete dashboard.layoutMode
+  assert.equal(migrateDashboard(dashboard).layoutMode, 'canvas')
+  assert.equal(migrateDashboard({ ...dashboard, layoutMode: 'grid' }).layoutMode, 'grid')
+})
 test('first-fit appends beyond the former fifty-row search and never returns an occupied cell', () => {
   const map: LayoutMap = { a: { x: 0, y: 0, w: 12, h: 100 } }
   assert.equal(findPlacement(map, 4, 3, 12).y, 100)

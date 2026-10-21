@@ -51,7 +51,7 @@ db.exec(`
 for (const [name, sql] of [
   ['title', "TEXT DEFAULT 'Nav - 个人导航页'"],
   ['background', "TEXT DEFAULT '{}'"],
-  ['layout_mode', "TEXT DEFAULT 'grid'"],
+  ['layout_mode', "TEXT DEFAULT 'canvas'"],
   ['viewport', 'TEXT'],
   ['viewport_width', 'INTEGER DEFAULT 1920'],
   ['viewport_height', 'INTEGER DEFAULT 1080'],

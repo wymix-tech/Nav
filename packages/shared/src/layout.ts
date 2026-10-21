@@ -114,7 +114,7 @@ export function migrateDashboard(input: Dashboard): Dashboard {
     )
     for (const w of d.widgets) w.layouts = { ...w.layouts, lg: normalized[w.id] }
   }
-  d.layoutMode ??= 'grid'
+  d.layoutMode ??= 'canvas'
   d.viewport ??= { panX: 0, panY: 0, zoom: 1, homeX: 0, homeY: 0 }
   d.viewportWidth ??= 1920
   d.viewportHeight ??= 1080
@@ -139,6 +139,7 @@ export function migrateDashboard(input: Dashboard): Dashboard {
 export function createDashboard(): Dashboard {
   return migrateCanvasDocument({
     id: 'default',
+    layoutMode: 'canvas',
     canvasSettings: { version: 1, defaultCamera: { centerX: 0, centerY: 0, zoom: 1 } },
     widgetAppearance: 'auto',
     name: '我的导航',
