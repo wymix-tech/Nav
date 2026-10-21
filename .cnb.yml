@@ -41,14 +41,23 @@ main:
   web_trigger_release:
     - services:
       - docker
+      env:
+        # 兜底：web_trigger.yml 的 env 应已注入，这里再给默认值，避免任一渠道缺失时
+        # $TAG_FORMAT 被替换成空串导致 auto-tag 报 ETAGNOVERSION。
+        TAG_FORMAT: 'v${version}'
+        PUSH_LATEST: 'true'
       stages:
         - name: auto-tag
           image: cnbcool/git-auto-tag:latest
           settings:
             # tagFormat 必须包含 ${version} 占位符，否则插件报 ETAGNOVERSION 直接失败。
-            # TAG_FORMAT / PUSH_LATEST 由 .cnb/web_trigger.yml 的 env 预置；
-            # 用 "-" 兜底，避免 env 未定义时整串被替换成空值。
-            tagFormat: '${TAG_FORMAT:-v${version}}'
+            # CNB 只支持 $VAR / ${VAR} 形式的变量替换，不支持 ${VAR:-default} 这类
+            # shell 兜底语法：settings 会把 ${TAG_FORMAT:-v${version}} 整体当作一个变量名，
+            # 匹配不到就替换成空串，最终 tagFormat 只剩残缺的 "v"（或 ":-v"），
+            # 插件再把它交给 lodash.template 渲染，直接 SyntaxError: Unexpected token ':'。
+            # 与其他流水线一致：用 \${version} 转义，避免 CNB 把 ${version} 当变量替换成空串。
+            # TAG_FORMAT / PUSH_LATEST 由 .cnb/web_trigger.yml 的 env 预置，这里直接引用。
+            tagFormat: $TAG_FORMAT
             toFile: tag_info.json
             dryRun: false
             blockWhenFail: false
