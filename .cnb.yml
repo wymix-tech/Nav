@@ -42,22 +42,19 @@ main:
     - services:
       - docker
       env:
-        # 兜底：web_trigger.yml 的 env 应已注入，这里再给默认值，避免任一渠道缺失时
-        # $TAG_FORMAT 被替换成空串导致 auto-tag 报 ETAGNOVERSION。
-        TAG_FORMAT: 'v${version}'
+        # 页面按钮的 env 只在 web_trigger 触发时注入；这里兜底，避免经由其他渠道
+        # 触发时 $PUSH_LATEST 为空、判断恒为假。
         PUSH_LATEST: 'true'
       stages:
         - name: auto-tag
           image: cnbcool/git-auto-tag:latest
           settings:
-            # tagFormat 必须包含 ${version} 占位符，否则插件报 ETAGNOVERSION 直接失败。
-            # CNB 只支持 $VAR / ${VAR} 形式的变量替换，不支持 ${VAR:-default} 这类
-            # shell 兜底语法：settings 会把 ${TAG_FORMAT:-v${version}} 整体当作一个变量名，
-            # 匹配不到就替换成空串，最终 tagFormat 只剩残缺的 "v"（或 ":-v"），
-            # 插件再把它交给 lodash.template 渲染，直接 SyntaxError: Unexpected token ':'。
-            # 与其他流水线一致：用 \${version} 转义，避免 CNB 把 ${version} 当变量替换成空串。
-            # TAG_FORMAT / PUSH_LATEST 由 .cnb/web_trigger.yml 的 env 预置，这里直接引用。
-            tagFormat: $TAG_FORMAT
+            # 不能用 $TAG_FORMAT 间接传递：settings 只做一次变量替换，替换结果里的
+            # ${version} 不会再被解析，原样交给插件后 lodash.template 渲染出字面量
+            # "v${version}"，auto-tag 报 ETAGNOVERSION（tagFormat 里找不到 version 变量）。
+            # 这里直接写字面量 tagFormat，并与其他流水线一致用 \${version} 转义，
+            # 避免 CNB 把 ${version} 当变量替换成空串。
+            tagFormat: v\${version}
             toFile: tag_info.json
             dryRun: false
             blockWhenFail: false
