@@ -37,7 +37,7 @@ main:
           script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
 
   # 页面自定义按钮「发布 Release」触发（按钮见 .cnb/web_trigger.yml）
-  # 与 pull_request.merged 同流程，版本号格式等参数由按钮输入覆盖
+  # 与 pull_request.merged 同流程，版本号格式等参数由 .cnb/web_trigger.yml 的 env 预置
   web_trigger_release:
     - services:
       - docker
@@ -45,7 +45,10 @@ main:
         - name: auto-tag
           image: cnbcool/git-auto-tag:latest
           settings:
-            tagFormat: ${TAG_FORMAT}
+            # tagFormat 必须包含 ${version} 占位符，否则插件报 ETAGNOVERSION 直接失败。
+            # TAG_FORMAT / PUSH_LATEST 由 .cnb/web_trigger.yml 的 env 预置；
+            # 用 "-" 兜底，避免 env 未定义时整串被替换成空值。
+            tagFormat: '${TAG_FORMAT:-v${version}}'
             toFile: tag_info.json
             dryRun: false
             blockWhenFail: false
