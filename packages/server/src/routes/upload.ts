@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { authMiddleware } from '../middleware/auth.js'
-import { readImage, saveImage } from '../uploadStorage.js'
+import { readImage, saveImage, UploadError } from '../uploadStorage.js'
 const upload = new Hono()
 upload.post('/', authMiddleware, bodyLimit({ maxSize: 6 * 1024 * 1024 }), async (c) => {
   const body = await c.req.parseBody()
@@ -15,15 +15,18 @@ upload.post('/', authMiddleware, bodyLimit({ maxSize: 6 * 1024 * 1024 }), async 
       url: await saveImage(new Uint8Array(await file.arrayBuffer())),
       notice: '图片将转为 WebP，动画仅保留第一帧',
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof UploadError)
+      return c.json({ error: { code: error.code, message: error.message } }, error.status)
+    console.error('Image upload storage failed', error instanceof Error ? error.name : 'Unknown')
     return c.json(
       {
         error: {
-          code: 'INVALID_IMAGE',
-          message: '图片无效、尺寸超限、类型不受支持或上传配额已满；SVG 不受支持',
+          code: 'UPLOAD_STORAGE_ERROR',
+          message: '服务器无法保存图片，请联系管理员检查上传目录权限和磁盘空间',
         },
       },
-      400,
+      500,
     )
   }
 })
