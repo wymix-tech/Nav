@@ -86,16 +86,18 @@ const component = computed(() =>
 </template>
 
 <style scoped>
-.widget-renderer {
-  height: 100%;
-  min-height: 0;
-}
-.widget-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary);
-  font-size: 14px;
+@layer nav-components {
+  .widget-renderer {
+    height: 100%;
+    min-height: 0;
+  }
+  .widget-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
 }
 </style>

@@ -5,6 +5,8 @@ import { useDashboardStore } from '../stores/dashboardStore'
 import { useAuthStore } from '../stores/authStore'
 import {
   migrateDashboard,
+  widgetAppearanceOptions,
+  type WidgetAppearance,
   resolveCollisions,
   type LayoutMode,
   type BackgroundImage,
@@ -17,8 +19,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const widgetAppearance = ref<WidgetAppearance>(
+  dashboardStore.dashboard?.widgetAppearance ?? 'legacy',
+)
 const title = ref(dashboardStore.dashboard?.title ?? 'Nav - 个人导航页')
-const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'grid')
+const layoutMode = ref<LayoutMode>(dashboardStore.dashboard?.layoutMode ?? 'canvas')
 const columns = ref(dashboardStore.dashboard?.columns ?? 12)
 const bgMode = ref<'color' | 'image' | 'slideshow'>(
   dashboardStore.dashboard?.background?.mode ?? 'color',
@@ -81,6 +86,7 @@ async function save() {
   if (!dashboardStore.dashboard) return
   const next = JSON.parse(JSON.stringify(dashboardStore.dashboard))
   next.title = title.value
+  next.widgetAppearance = widgetAppearance.value
   next.columns = columns.value
   next.layoutSettings = {
     columnMode: columnMode.value,
@@ -118,14 +124,23 @@ function cancel() {
   <ModalShell label="偏好设置" @close="cancel">
     <div class="prefs-panel">
       <div class="prefs-header">
-        <h3>偏好设置</h3>
-        <button class="close-btn" @click="cancel">✕</button>
+        <div>
+          <h3>偏好设置</h3>
+          <p class="prefs-subtitle">让工作空间更合你的习惯</p>
+        </div>
+        <button class="close-btn" aria-label="关闭偏好设置" @click="cancel">✕</button>
       </div>
 
       <!-- 页面标题 -->
       <div class="prefs-section">
-        <label class="prefs-label">页面标题</label>
-        <input v-model="title" type="text" class="prefs-input" placeholder="Nav - 个人导航页" />
+        <label class="prefs-label" for="prefs-title">页面标题</label>
+        <input
+          id="prefs-title"
+          v-model="title"
+          type="text"
+          class="prefs-input"
+          placeholder="Nav - 个人导航页"
+        />
       </div>
 
       <div class="prefs-section">
@@ -135,15 +150,30 @@ function cancel() {
           <option value="canvas">无限画布</option>
         </select>
       </div>
+      <div class="prefs-section">
+        <label class="prefs-label" for="widget-appearance">组件外观</label>
+        <select id="widget-appearance" v-model="widgetAppearance">
+          <option
+            v-for="option in widgetAppearanceOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <p class="appearance-hint">
+          适用于内置组件，可在单个组件的外观设置中覆盖；第三方插件保持原样。
+        </p>
+      </div>
       <!-- 网格列数 -->
       <div class="prefs-section">
-        <label class="prefs-label">列数策略</label
-        ><select v-model="columnMode">
+        <label class="prefs-label" for="prefs-column-mode">列数策略</label
+        ><select id="prefs-column-mode" v-model="columnMode">
           <option value="auto">自动适配</option>
           <option value="custom">自定义列数上限</option>
         </select>
-        <label class="prefs-label">内容宽度</label
-        ><select v-model="contentWidthMode">
+        <label class="prefs-label" for="prefs-width-mode">内容宽度</label
+        ><select id="prefs-width-mode" v-model="contentWidthMode">
           <option value="centered">居中</option>
           <option value="fluid">铺满</option>
         </select>
@@ -172,14 +202,23 @@ function cancel() {
       <div class="prefs-section">
         <label class="prefs-label">页面背景</label>
         <div class="mode-tabs">
-          <button :class="['mode-tab', { active: bgMode === 'color' }]" @click="bgMode = 'color'">
+          <button
+            :class="['mode-tab', { active: bgMode === 'color' }]"
+            :aria-pressed="bgMode === 'color'"
+            @click="bgMode = 'color'"
+          >
             纯色
           </button>
-          <button :class="['mode-tab', { active: bgMode === 'image' }]" @click="bgMode = 'image'">
+          <button
+            :class="['mode-tab', { active: bgMode === 'image' }]"
+            :aria-pressed="bgMode === 'image'"
+            @click="bgMode = 'image'"
+          >
             图片
           </button>
           <button
             :class="['mode-tab', { active: bgMode === 'slideshow' }]"
+            :aria-pressed="bgMode === 'slideshow'"
             @click="bgMode = 'slideshow'"
           >
             轮播
@@ -265,354 +304,356 @@ function cancel() {
 </template>
 
 <style scoped>
-.prefs-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
+@layer nav-components {
+  .prefs-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
 
-.prefs-panel {
-  width: 90%;
-  max-width: 420px;
-  max-height: 85vh;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-lg);
-  overflow-y: auto;
-}
+  .prefs-panel {
+    width: 90%;
+    max-width: 420px;
+    max-height: 85vh;
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+  }
 
-.prefs-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
+  .prefs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
 
-.prefs-header h3 {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-}
+  .prefs-header h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+  }
 
-.close-btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-}
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+  }
 
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+  }
 
-.prefs-section {
-  margin-bottom: 20px;
-}
+  .prefs-section {
+    margin-bottom: 20px;
+  }
 
-.prefs-label {
-  display: block;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  .prefs-label {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-.prefs-input {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 14px;
-  outline: none;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
+  .prefs-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
 
-.prefs-input:focus {
-  border-color: rgba(96, 165, 250, 0.3);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
-}
+  .prefs-input:focus {
+    border-color: rgba(96, 165, 250, 0.3);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
 
-.mode-tabs {
-  display: flex;
-  gap: 6px;
-}
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+  }
 
-.mode-tab {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  transition: all 0.2s;
-}
+  .mode-tab {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    transition: all 0.2s;
+  }
 
-.mode-tab:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
+  .mode-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 
-.mode-tab.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
-}
+  .mode-tab.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
+  }
 
-.color-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
+  .color-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
 
-.color-picker {
-  width: 44px;
-  height: 44px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  cursor: pointer;
-  background: none;
-  padding: 0;
-}
+  .color-picker {
+    width: 44px;
+    height: 44px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+  }
 
-.color-picker::-webkit-color-swatch-wrapper {
-  padding: 2px;
-}
-.color-picker::-webkit-color-swatch {
-  border-radius: 6px;
-  border: none;
-}
+  .color-picker::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+  .color-picker::-webkit-color-swatch {
+    border-radius: 6px;
+    border: none;
+  }
 
-.color-text {
-  flex: 1;
-}
+  .color-text {
+    flex: 1;
+  }
 
-.image-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+  .image-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
 
-.upload-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(96, 165, 250, 0.3);
-  color: var(--accent);
-}
+  .upload-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(96, 165, 250, 0.3);
+    color: var(--accent);
+  }
 
-.upload-btn.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
+  .upload-btn.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
 
-.url-row {
-  display: flex;
-  gap: 8px;
-}
+  .url-row {
+    display: flex;
+    gap: 8px;
+  }
 
-.url-row .prefs-input {
-  flex: 1;
-}
+  .url-row .prefs-input {
+    flex: 1;
+  }
 
-.add-url-btn {
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  white-space: nowrap;
-}
+  .add-url-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    white-space: nowrap;
+  }
 
-.add-url-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+  .add-url-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 
-.image-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+  .image-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
-.image-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 10px;
-}
+  .image-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+  }
 
-.image-thumb {
-  width: 48px;
-  height: 32px;
-  border-radius: 6px;
-  background-size: cover;
-  background-position: center;
-  flex-shrink: 0;
-}
+  .image-thumb {
+    width: 48px;
+    height: 32px;
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+  }
 
-.image-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .image-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.remove-btn {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-}
+  .remove-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+  }
 
-.remove-btn:hover {
-  color: var(--danger);
-  background: rgba(248, 113, 113, 0.12);
-}
+  .remove-btn:hover {
+    color: var(--danger);
+    background: rgba(248, 113, 113, 0.12);
+  }
 
-.interval-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+  .interval-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-.interval-slider {
-  flex: 1;
-  -webkit-appearance: none;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  outline: none;
-}
+  .interval-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+  }
 
-.interval-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(96, 165, 250, 0.3);
-}
+  .interval-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(96, 165, 250, 0.3);
+  }
 
-.interval-value {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-secondary);
-  min-width: 50px;
-  text-align: right;
-}
+  .interval-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-width: 50px;
+    text-align: right;
+  }
 
-.columns-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+  .columns-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-.columns-preview {
-  display: flex;
-  gap: 3px;
-  margin-top: 10px;
-  height: 20px;
-}
+  .columns-preview {
+    display: flex;
+    gap: 3px;
+    margin-top: 10px;
+    height: 20px;
+  }
 
-.col-bar {
-  flex: 1;
-  background: rgba(96, 165, 250, 0.15);
-  border-radius: 3px;
-  transition: background 0.2s;
-}
+  .col-bar {
+    flex: 1;
+    background: rgba(96, 165, 250, 0.15);
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
 
-.col-bar:hover {
-  background: rgba(96, 165, 250, 0.3);
-}
+  .col-bar:hover {
+    background: rgba(96, 165, 250, 0.3);
+  }
 
-.prefs-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
+  .prefs-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
 
-.prefs-btn {
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 12px;
-  transition: all 0.2s;
-}
+  .prefs-btn {
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
 
-.prefs-btn.cancel {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
+  .prefs-btn.cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
 
-.prefs-btn.cancel:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+  .prefs-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 
-.prefs-btn.save {
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  color: white;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
-}
+  .prefs-btn.save {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: white;
+    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
+  }
 
-.prefs-btn.save:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.35);
+  .prefs-btn.save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.35);
+  }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRuntimeReconciler } from './runtime/useRuntimeReconciler'
+import GlassMaterial from './components/GlassMaterial.vue'
 import TopBar from './components/TopBar.vue'
 import DashboardGrid from './components/DashboardGrid.vue'
 import CanvasGridOrganization from './components/canvas/CanvasGridOrganization.vue'
@@ -33,9 +34,17 @@ let mainObserver: ResizeObserver | undefined
 const canvasStage = ref<InstanceType<typeof CanvasGrid> | null>(null)
 const spatial = computed(() => dashboardStore.dashboard?.layoutMode === 'canvas')
 const editing = ref(false)
-watch(editing, (active) =>
-  window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active })),
-)
+function preventGridPageScroll(event: WheelEvent) {
+  if (!spatial.value && editing.value) event.preventDefault()
+}
+watch(editing, (active) => {
+  window.dispatchEvent(new CustomEvent('nav-editing-changed', { detail: active }))
+  if (active && !spatial.value) {
+    window.addEventListener('wheel', preventGridPageScroll, { passive: false })
+  } else {
+    window.removeEventListener('wheel', preventGridPageScroll)
+  }
+})
 const updateApp = ref<null | (() => void)>(null)
 function updateAvailable(e: Event) {
   updateApp.value = (e as CustomEvent).detail
@@ -211,6 +220,7 @@ function toggleLibrary() {
 </script>
 
 <template>
+  <GlassMaterial />
   <div class="app" :class="{ 'light-theme': isLightBg, 'canvas-app': spatial }" :style="bgStyle">
     <TopBar
       :editing="editing"
@@ -362,7 +372,7 @@ function toggleLibrary() {
       v-if="editing && (!backendAvailable || authStore.isAuthenticated)"
       :visible="showLibrary"
       :spatial="spatial"
-      :top="spatial ? Math.max(libraryTop, 84) : libraryTop"
+      :top="Math.max(libraryTop, 84)"
       @request-add-widget="requestAddWidget"
       @show-install="showInstall = true"
       @toggle-library="toggleLibrary"
@@ -449,7 +459,7 @@ function toggleLibrary() {
 }
 .canvas-app :deep(.floating-panel .panel-content) {
   position: absolute;
-  bottom: calc(100% + 68px);
+  bottom: calc(100% + 20px);
   left: 0;
 }
 .canvas-app :deep(.floating-panel .panel-content::after) {
@@ -458,7 +468,7 @@ function toggleLibrary() {
   top: 100%;
   left: 0;
   width: 100%;
-  height: 68px;
+  height: 20px;
 }
 @media (max-width: 1099px) {
   .canvas-app .canvas-main.library-open :deep(.dock) {
@@ -489,10 +499,10 @@ function toggleLibrary() {
   .canvas-app :deep(.floating-panel .panel-content) {
     left: auto;
     right: 0;
-    bottom: calc(100% + 132px);
+    bottom: calc(100% + 20px);
   }
   .canvas-app :deep(.floating-panel .panel-content::after) {
-    height: 132px;
+    height: 20px;
   }
 }
 .main {

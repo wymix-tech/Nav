@@ -1,67 +1,69 @@
-.canvas-chrome {
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px #0003,
-    inset 0 1px 0 #ffffff04;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-.canvas-chrome button,
-.canvas-chrome summary {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 7px 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background 150ms,
-    color 150ms;
-}
-.canvas-chrome button:hover:not(:disabled),
-.canvas-chrome summary:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-}
-.canvas-chrome button[aria-pressed='true'],
-.canvas-chrome button[aria-expanded='true'],
-.canvas-chrome details[open] > summary {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-}
-.canvas-chrome button:focus-visible,
-.canvas-chrome summary:focus-visible,
-.canvas-chrome select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.canvas-chrome button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.canvas-chrome select {
-  padding: 6px 8px;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  font: inherit;
-}
-.canvas-chrome summary {
-  list-style: none;
-}
-.canvas-chrome summary::-webkit-details-marker {
-  display: none;
+@layer nav-components {
+  .canvas-chrome {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow:
+      0 8px 32px #0003,
+      inset 0 1px 0 #ffffff04;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .canvas-chrome button,
+  .canvas-chrome summary {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background 150ms,
+      color 150ms;
+  }
+  .canvas-chrome button:hover:not(:disabled),
+  .canvas-chrome summary:hover {
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+  .canvas-chrome button[aria-pressed='true'],
+  .canvas-chrome button[aria-expanded='true'],
+  .canvas-chrome details[open] > summary {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  .canvas-chrome button:focus-visible,
+  .canvas-chrome summary:focus-visible,
+  .canvas-chrome select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .canvas-chrome button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .canvas-chrome select {
+    padding: 6px 8px;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    font: inherit;
+  }
+  .canvas-chrome summary {
+    list-style: none;
+  }
+  .canvas-chrome summary::-webkit-details-marker {
+    display: none;
+  }
 }

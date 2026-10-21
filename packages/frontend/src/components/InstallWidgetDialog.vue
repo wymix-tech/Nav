@@ -140,80 +140,82 @@ async function handleInstall() {
 </template>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
+@layer nav-components {
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
 
-.dialog {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  width: 480px;
-}
+  .dialog {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 480px;
+  }
 
-.dialog h2 {
-  margin-bottom: 16px;
-  font-size: 18px;
-}
+  .dialog h2 {
+    margin-bottom: 16px;
+    font-size: 18px;
+  }
 
-.input {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 14px;
-  outline: none;
-}
+  .input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+  }
 
-.input:focus {
-  border-color: var(--accent);
-}
+  .input:focus {
+    border-color: var(--accent);
+  }
 
-.error {
-  color: #ef4444;
-  font-size: 13px;
-  margin-top: 8px;
-}
+  .error {
+    color: #ef4444;
+    font-size: 13px;
+    margin-top: 8px;
+  }
 
-.preview {
-  margin-bottom: 16px;
-}
+  .preview {
+    margin-bottom: 16px;
+  }
 
-.preview-row {
-  padding: 6px 0;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border);
-}
+  .preview-row {
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
 
-.preview-row:last-child {
-  border-bottom: none;
-}
+  .preview-row:last-child {
+    border-bottom: none;
+  }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+  }
 
-.actions button {
-  padding: 8px 20px;
-  font-size: 14px;
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
+  .actions button {
+    padding: 8px 20px;
+    font-size: 14px;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
 
-.actions button.primary {
-  border: none;
+  .actions button.primary {
+    border: none;
+  }
 }
 </style>

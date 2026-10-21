@@ -113,70 +113,72 @@ function style(r: CanvasRegion) {
   </div>
 </template>
 <style scoped>
-.region-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-.region {
-  position: absolute;
-  border: 1px solid;
-  box-sizing: border-box;
-  pointer-events: none;
-}
-.region-title,
-.region-resize {
-  position: absolute;
-  pointer-events: auto;
-  touch-action: none;
-  background: var(--bg-secondary);
-  color: inherit;
-  border: 1px solid currentColor;
-  padding: 3px 7px;
-  font-size: 12px;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  z-index: 2;
-}
-.region-title {
-  top: 0;
-  left: 0;
-}
-.region-resize {
-  bottom: 0;
-  right: 0;
-}
-.edge {
-  position: absolute;
-  pointer-events: auto;
-  touch-action: none;
-}
-.top,
-.bottom {
-  left: 0;
-  right: 0;
-  height: 6px;
-}
-.top {
-  top: -3px;
-}
-.bottom {
-  bottom: -3px;
-}
-.left,
-.right {
-  top: 0;
-  bottom: 0;
-  width: 6px;
-}
-.left {
-  left: -3px;
-}
-.right {
-  right: -3px;
+@layer nav-components {
+  .region-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .region {
+    position: absolute;
+    border: 1px solid;
+    box-sizing: border-box;
+    pointer-events: none;
+  }
+  .region-title,
+  .region-resize {
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    background: var(--bg-secondary);
+    color: inherit;
+    border: 1px solid currentColor;
+    padding: 3px 7px;
+    font-size: 12px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .region-title {
+    top: 0;
+    left: 0;
+  }
+  .region-resize {
+    bottom: 0;
+    right: 0;
+  }
+  .edge {
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .top,
+  .bottom {
+    left: 0;
+    right: 0;
+    height: 6px;
+  }
+  .top {
+    top: -3px;
+  }
+  .bottom {
+    bottom: -3px;
+  }
+  .left,
+  .right {
+    top: 0;
+    bottom: 0;
+    width: 6px;
+  }
+  .left {
+    left: -3px;
+  }
+  .right {
+    right: -3px;
+  }
 }
 </style>

@@ -66,22 +66,24 @@ onUnmounted(() => abort.abort())
   </ModalShell>
 </template>
 <style scoped>
-.about-panel {
-  width: min(600px, calc(100vw - 32px));
-  padding: 24px;
-  display: grid;
-  gap: 16px;
-}
-pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 40dvh;
-  overflow: auto;
-}
-a {
-  color: var(--accent);
-}
-button {
-  padding: 8px;
+@layer nav-components {
+  .about-panel {
+    width: min(600px, calc(100vw - 32px));
+    padding: 24px;
+    display: grid;
+    gap: 16px;
+  }
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 40dvh;
+    overflow: auto;
+  }
+  a {
+    color: var(--accent);
+  }
+  button {
+    padding: 8px;
+  }
 }
 </style>

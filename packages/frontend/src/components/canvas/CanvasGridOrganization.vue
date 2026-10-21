@@ -119,43 +119,45 @@ function locate(r: SelectionRef) {
   </div>
 </template>
 <style scoped>
-.grid-organization {
-  position: sticky;
-  top: 8px;
-  z-index: 40;
-  font-size: 12px;
-  margin-bottom: 16px;
-}
-.grid-organization > p {
-  padding: 6px 12px;
-  color: var(--text-secondary);
-}
-.grid-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--glass-border);
-}
-.grid-panel-header h2 {
-  font-size: 14px;
-  font-weight: 600;
-}
-.grid-panel-header button {
-  width: 36px;
-  padding: 0;
-}
-aside {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(340px, calc(100vw - 32px));
-  max-height: min(65dvh, calc(100dvh - 220px));
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: 12px;
-  z-index: 50;
+@layer nav-components {
+  .grid-organization {
+    position: sticky;
+    top: 8px;
+    z-index: 40;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+  .grid-organization > p {
+    padding: 6px 12px;
+    color: var(--text-secondary);
+  }
+  .grid-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .grid-panel-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .grid-panel-header button {
+    width: 36px;
+    padding: 0;
+  }
+  aside {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(340px, calc(100vw - 32px));
+    max-height: min(65dvh, calc(100dvh - 220px));
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 12px;
+    z-index: 50;
+  }
 }
 </style>

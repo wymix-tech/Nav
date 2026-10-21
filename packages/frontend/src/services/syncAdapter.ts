@@ -446,6 +446,7 @@ export class SyncAdapter implements StorageAdapter {
       'rowHeight',
       'layoutMode',
       'layoutSettings',
+      'widgetAppearance',
       'layoutProfiles',
       'background',
       'canvasSettings',
@@ -461,7 +462,14 @@ export class SyncAdapter implements StorageAdapter {
         b = remote.widgets.find((w) => w.id === id)
       if (!a || !b) differences.push(`${id}: ${a ? '仅本地存在' : '仅远端存在'}`)
       else
-        for (const field of ['widgetId', 'source', 'config', 'canvas', 'layouts'] as const)
+        for (const field of [
+          'widgetId',
+          'source',
+          'appearance',
+          'config',
+          'canvas',
+          'layouts',
+        ] as const)
           if (canonical(a[field]) !== canonical(b[field]))
             differences.push(
               `${id}.${field}: 本地 ${JSON.stringify(a[field])}；远端 ${JSON.stringify(b[field])}`,

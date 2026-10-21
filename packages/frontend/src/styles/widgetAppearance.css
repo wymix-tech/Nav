@@ -1,0 +1,204 @@
+/* Component content uses a quieter material than the floating workspace controls. */
+.widget-wrapper[data-appearance='glass'],
+.widget-wrapper[data-appearance='solid'],
+.widget-wrapper[data-appearance='none'] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.widget-wrapper[data-appearance='glass'],
+.widget-wrapper[data-appearance='solid'] {
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow:
+    0 8px 24px #00000014,
+    inset 0 1px 0 var(--glass-highlight);
+}
+.widget-wrapper[data-appearance='glass'] {
+  background:
+    radial-gradient(120% 80% at 15% -20%, var(--glass-tint), transparent 60%), var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+.widget-wrapper[data-appearance='solid'],
+.widget-wrapper[data-appearance='none'] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.widget-wrapper[data-appearance='solid'] {
+  background: var(--glass-solid);
+}
+.widget-wrapper[data-appearance='none'] {
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])[data-summary='true'] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.widget-wrapper[data-appearance='glass'][data-summary='true'] {
+  background: var(--glass-solid);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .widget-summary {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-primary);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .widget-content {
+  border-radius: inherit;
+}
+/* Weather's gradients and blur belong to the legacy theme. Keep the weather
+   illustration, and share the host material when an appearance is selected. */
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .wc {
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: inherit;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  :is(.details, .forecast) {
+  background: var(--glass-control);
+  border-color: var(--glass-border);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .clock-widget .time-main {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text-primary);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .search-bar {
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-field);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .search-bar .search-input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .bookmark-item {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 14px;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .bookmark-item:hover {
+  background: var(--glass-hover);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  :is(.monitor-widget, .docker-widget)
+  .panel {
+  background: transparent;
+  border-radius: inherit;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .chat-widget .toolbar,
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .chat-widget .input-area {
+  background: var(--glass-control);
+  border-color: var(--glass-border);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .chat-widget .messages {
+  background: var(--glass-solid);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .chat-widget
+  .msg.assistant
+  .msg-content {
+  background: var(--glass-field);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .chat-widget pre {
+  background: var(--glass-field);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+.appearance-dialog {
+  width: min(420px, calc(100vw - 34px));
+  padding: 24px;
+  display: grid;
+  gap: 14px;
+}
+.appearance-dialog .config-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.appearance-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  :is(.dk, .cfg-lbl, .prompt-txt) {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .prompt {
+  opacity: 1;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .deco-icon {
+  opacity: 0.35;
+}
+.light-theme
+  .widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  .uv-1 {
+  color: #16713c;
+}
+.light-theme
+  .widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  .uv-2 {
+  color: #875800;
+}
+.light-theme
+  .widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  .uv-3 {
+  color: #ab390d;
+}
+
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .bookmark-widget {
+  padding: 16px;
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .search-widget {
+  padding-inline: 12px;
+}
+
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .clock-widget .time-seconds {
+  color: var(--accent);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .details {
+  border-radius: 14px;
+  padding: 8px;
+}
+/* Status hues retain their meaning and gain contrast on light surfaces. */
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) {
+  --widget-success: #22c55e;
+  --widget-warning: #f59e0b;
+  --widget-danger: #f87171;
+}
+.light-theme .widget-wrapper[data-appearance]:not([data-appearance='legacy']) {
+  --widget-success: #16713c;
+  --widget-warning: #875800;
+  --widget-danger: #b42335;
+}
+
+.widget-wrapper[data-appearance]:not([data-appearance='legacy'])
+  .weather-widget
+  :is(.loading, .err-retry) {
+  color: var(--text-secondary);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .err-msg {
+  color: var(--danger);
+}
+.widget-wrapper[data-appearance]:not([data-appearance='legacy']) .weather-widget .spin {
+  border-color: var(--glass-border);
+  border-top-color: var(--accent);
+}

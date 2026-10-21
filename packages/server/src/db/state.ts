@@ -48,7 +48,7 @@ export function readSnapshot(id = 'default'): Dashboard {
       )
     // A previously merged client may have written state_json without the legacy fields.
     // Recover what still exists in the compatibility columns before using grid fallbacks.
-    if (original.layoutMode === undefined && row.layout_mode === 'canvas') {
+    if (original.layoutMode === undefined) {
       const widgetRows = db
         .prepare('SELECT * FROM widget_instances WHERE dashboard_id=? ORDER BY created_at,id')
         .all(id) as any[]
@@ -59,7 +59,7 @@ export function readSnapshot(id = 'default'): Dashboard {
           databaseRows: { dashboard: row, widgets: widgetRows },
         }),
       )
-      original.layoutMode = 'canvas'
+      original.layoutMode = row.layout_mode ?? 'canvas'
       original.viewport ??= row.viewport ? JSON.parse(row.viewport) : undefined
       original.viewportWidth ??= row.viewport_width ?? 1920
       original.viewportHeight ??= row.viewport_height ?? 1080
@@ -89,7 +89,7 @@ export function readSnapshot(id = 'default'): Dashboard {
     title: row.title ?? defaults.title,
     columns: row.columns,
     rowHeight: row.row_height,
-    layoutMode: row.layout_mode ?? 'grid',
+    layoutMode: row.layout_mode ?? 'canvas',
     viewport: row.viewport ? JSON.parse(row.viewport) : undefined,
     viewportWidth: row.viewport_width ?? 1920,
     viewportHeight: row.viewport_height ?? 1080,
@@ -174,7 +174,7 @@ export function commitSnapshot(
       JSON.stringify(updated.background),
       JSON.stringify(updated),
       updated.revision,
-      updated.layoutMode ?? 'grid',
+      updated.layoutMode ?? 'canvas',
       JSON.stringify(updated.viewport ?? null),
       updated.viewportWidth ?? 1920,
       updated.viewportHeight ?? 1080,

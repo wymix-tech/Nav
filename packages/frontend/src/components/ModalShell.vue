@@ -58,22 +58,24 @@ onUnmounted(() => {
   ></Teleport>
 </template>
 <style scoped>
-.modal-shell {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: #0009;
-  backdrop-filter: blur(4px);
-}
-.modal-content {
-  max-width: 100%;
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
-  outline: none;
-  border-radius: var(--radius-lg);
+@layer nav-components {
+  .modal-shell {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #0009;
+    backdrop-filter: blur(4px);
+  }
+  .modal-content {
+    max-width: 100%;
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    outline: none;
+    border-radius: var(--radius-lg);
+  }
 }
 </style>

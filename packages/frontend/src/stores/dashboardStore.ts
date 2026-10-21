@@ -13,6 +13,7 @@ import {
   type CanvasCamera,
   validCamera,
   type WidgetInstance,
+  type WidgetAppearance,
   type LayoutMap,
   type SyncState,
   type RecoveryPreview,
@@ -150,6 +151,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function clearAllWidgets() {
     return applyCanvasCommand({ type: 'clear' })
   }
+  function updateWidgetAppearance(id: string, appearance?: WidgetAppearance) {
+    return mutate((d) => {
+      const widget = d.widgets.find((w) => w.id === id)
+      if (!widget || widget.source !== 'builtin') return
+      if (appearance === undefined) delete widget.appearance
+      else widget.appearance = appearance
+    })
+  }
   function updateWidgetConfig(id: string, config: Record<string, any>) {
     return mutate((d) => {
       const w = d.widgets.find((w) => w.id === id)
@@ -285,6 +294,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     addWidget,
     removeWidget,
     clearAllWidgets,
+    updateWidgetAppearance,
     updateWidgetConfig,
     updateWidgetLayouts,
     updateLayouts,

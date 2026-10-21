@@ -258,72 +258,74 @@ function join() {
   </div>
 </template>
 <style scoped>
-.edit-tools {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  font-size: 11px;
-  padding: 6px;
-  position: relative;
-  max-width: 100%;
-}
-.edit-tools > button {
-  width: 36px;
-  flex: none;
-  padding: 0;
-}
-.edit-tools > span {
-  padding-inline: 8px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-.edit-menu > summary {
-  width: 36px;
-  padding: 0;
-}
-.edit-actions {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 12px;
-  width: min(380px, calc(100vw - 32px));
-  max-height: min(320px, 45dvh);
-  overflow: auto;
-}
-.edit-actions > span {
-  width: 100%;
-}
-@media (max-width: 600px) {
+@layer nav-components {
   .edit-tools {
-    padding: 4px;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    font-size: 11px;
+    padding: 6px;
+    position: relative;
+    max-width: 100%;
   }
-  .edit-tools > button,
+  .edit-tools > button {
+    width: 36px;
+    flex: none;
+    padding: 0;
+  }
+  .edit-tools > span {
+    padding-inline: 8px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
   .edit-menu > summary {
-    width: 32px;
+    width: 36px;
+    padding: 0;
   }
-}
-.embedded.edit-tools {
-  flex-wrap: wrap;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  padding: 0;
-}
-.embedded .edit-menu[open] {
-  flex-basis: 100%;
-}
-.embedded .edit-actions {
-  position: static;
-  width: 100%;
-  max-height: none;
-  padding: 8px 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
+  .edit-actions {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 12px;
+    width: min(380px, calc(100vw - 32px));
+    max-height: min(320px, 45dvh);
+    overflow: auto;
+  }
+  .edit-actions > span {
+    width: 100%;
+  }
+  @media (max-width: 600px) {
+    .edit-tools {
+      padding: 4px;
+    }
+    .edit-tools > button,
+    .edit-menu > summary {
+      width: 32px;
+    }
+  }
+  .embedded.edit-tools {
+    flex-wrap: wrap;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    padding: 0;
+  }
+  .embedded .edit-menu[open] {
+    flex-basis: 100%;
+  }
+  .embedded .edit-actions {
+    position: static;
+    width: 100%;
+    max-height: none;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
 }
 </style>

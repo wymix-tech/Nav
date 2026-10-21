@@ -50,14 +50,16 @@ function click(e: MouseEvent) {
   </svg>
 </template>
 <style scoped>
-.canvas-minimap {
-  display: block;
-  width: 180px;
-  height: 110px;
-  max-width: 100%;
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  cursor: crosshair;
+@layer nav-components {
+  .canvas-minimap {
+    display: block;
+    width: 180px;
+    height: 110px;
+    max-width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    cursor: crosshair;
+  }
 }
 </style>
