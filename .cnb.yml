@@ -36,6 +36,54 @@ main:
         - name: Docker push
           script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
 
+  # 页面自定义按钮「发布 Release」触发（按钮见 .cnb/web_trigger.yml）
+  # 与 pull_request.merged 同流程，版本号格式等参数由按钮输入覆盖
+  web_trigger_release:
+    - services:
+      - docker
+      stages:
+        - name: auto-tag
+          image: cnbcool/git-auto-tag:latest
+          settings:
+            tagFormat: ${TAG_FORMAT}
+            toFile: tag_info.json
+            dryRun: false
+            blockWhenFail: false
+            branch: $CNB_BRANCH
+            repoUrlHttps: $CNB_REPO_URL_HTTPS
+          exports:
+            tag: NEW_TAG
+        - name: show tag
+          script:
+            - echo $NEW_TAG
+            - cat tag_info.json
+        - name: changelog
+          image: cnbcool/changelog
+          settings:
+            tag: $NEW_TAG
+            latestChangeLogTarget: LATEST_CHANGELOG.md
+        - name: release
+          type: git:release
+          options:
+            tag: $NEW_TAG
+            title: $NEW_TAG
+            descriptionFromFile: LATEST_CHANGELOG.md
+            latest: true
+        - name: Docker build
+          script: |
+            IMAGE=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}
+            docker build --build-arg APP_VERSION=$NEW_TAG -t ${IMAGE}:$NEW_TAG .
+            if [ "${PUSH_LATEST}" = "true" ]; then
+              docker tag ${IMAGE}:$NEW_TAG ${IMAGE}:latest
+            fi
+        - name: Docker push
+          script: |
+            IMAGE=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}
+            docker push ${IMAGE}:$NEW_TAG
+            if [ "${PUSH_LATEST}" = "true" ]; then
+              docker push ${IMAGE}:latest
+            fi
+
 $: 
   push:
     - stages:
