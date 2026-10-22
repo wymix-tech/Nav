@@ -4,6 +4,15 @@ import { resolve, relative, isAbsolute, extname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import sharp from 'sharp'
 export const uploadDir = resolve(process.env.NAV_UPLOAD_DIR ?? '../uploads')
+export class UploadError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public status: 400 | 413 | 507 = 400,
+  ) {
+    super(message)
+  }
+}
 const safeName = /^(?:[a-f0-9-]{36}|\d+_[a-f0-9]{12})\.(?:jpe?g|png|gif|webp)$/i
 const mime: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -59,18 +68,39 @@ export async function readImage(name: string): Promise<{ data: Uint8Array; type:
   }
 }
 export async function saveImage(bytes: Uint8Array): Promise<string> {
-  if (!rasterSignature(bytes)) throw new Error('仅支持栅格图片')
   if (!bytes.byteLength || bytes.byteLength > 5 * 1024 * 1024)
-    throw new Error('图片文件不能超过 5 MiB')
-  const image = sharp(bytes, { limitInputPixels: 20_000_000, animated: false })
-  const meta = await image.metadata()
-  if (!['jpeg', 'png', 'webp', 'gif'].includes(meta.format ?? '')) throw new Error('仅支持栅格图片')
-  const data = await image.rotate().webp({ quality: 88 }).toBuffer()
-  if (data.length > 5 * 1024 * 1024) throw new Error('转换后的图片过大')
+    throw new UploadError('TOO_LARGE', '图片文件不能超过 5 MiB', 413)
+  if (!rasterSignature(bytes))
+    throw new UploadError('UNSUPPORTED_IMAGE', '仅支持 JPG、PNG、GIF、WebP 图片；SVG 不受支持')
+  let data: Buffer
+  try {
+    const image = sharp(bytes, { limitInputPixels: 20_000_000, animated: false })
+    const meta = await image.metadata()
+    if (!['jpeg', 'png', 'webp', 'gif'].includes(meta.format ?? ''))
+      throw new UploadError('UNSUPPORTED_IMAGE', '仅支持 JPG、PNG、GIF、WebP 图片；SVG 不受支持')
+    data = await image.rotate().webp({ quality: 88 }).toBuffer()
+  } catch (error) {
+    if (error instanceof UploadError) throw error
+    if (error instanceof Error && /pixel limit/i.test(error.message))
+      throw new UploadError(
+        'DIMENSIONS_TOO_LARGE',
+        '图片像素总数不能超过 2000 万，请缩小分辨率后重试',
+      )
+    throw new UploadError(
+      'INVALID_IMAGE',
+      '图片无法解码，文件可能已损坏，请重新导出为 JPG 或 PNG 后重试',
+    )
+  }
+  if (data.length > 5 * 1024 * 1024)
+    throw new UploadError('TOO_LARGE', '转换后的图片超过 5 MiB，请缩小分辨率后重试', 413)
   await mkdir(uploadDir, { recursive: true })
   const files = await readdir(uploadDir)
   if (files.length >= Number(process.env.NAV_UPLOAD_MAX_FILES ?? 1000))
-    throw new Error('上传配额已满')
+    throw new UploadError(
+      'UPLOAD_QUOTA_EXCEEDED',
+      '图片上传配额已满，请联系管理员清理上传目录',
+      507,
+    )
   const name = `${randomUUID()}.webp`
   await writeFile(resolve(uploadDir, name), data, { flag: 'wx', mode: 0o600 })
   return `/uploads/${name}`

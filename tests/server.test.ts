@@ -1,6 +1,6 @@
 import test, { after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, symlink, rm, mkdir } from 'node:fs/promises'
+import { mkdtemp, writeFile, symlink, rm, mkdir, rename } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -74,6 +74,80 @@ test('content sniffing rejects SVG disguised as PNG and re-encodes a real raster
   assert.equal(r.status, 200)
   assert.equal(r.headers.get('Content-Type'), 'image/webp')
   assert.equal(r.headers.get('X-Content-Type-Options'), 'nosniff')
+})
+test('a 539 KiB JPG uploads and returns a readable WebP regardless of MIME hints', async () => {
+  const jpeg = await sharp({ create: { width: 256, height: 256, channels: 3, background: '#ace' } })
+    .jpeg()
+    .toBuffer()
+  const bytes = Buffer.concat([jpeg, Buffer.alloc(539 * 1024 - jpeg.length)])
+  for (const type of ['image/jpeg', 'image/jpg', 'application/octet-stream', '']) {
+    const form = new FormData()
+    form.set('file', new File([bytes], '图标.JPG', { type }))
+    const response = await app.request('/api/upload', { method: 'POST', headers: auth, body: form })
+    assert.equal(response.status, 200, await response.clone().text())
+    const image = await app.request((await response.json()).url)
+    assert.equal(image.status, 200)
+    assert.equal(image.headers.get('Content-Type'), 'image/webp')
+    const metadata = await sharp(Buffer.from(await image.arrayBuffer())).metadata()
+    assert.equal(metadata.width, 256)
+    assert.equal(metadata.height, 256)
+  }
+})
+test('upload errors distinguish file size, pixel count, damaged data and quota', async () => {
+  const post = (bytes: Uint8Array) => {
+    const form = new FormData()
+    form.set('file', new File([Buffer.from(bytes)], 'icon.jpg', { type: 'image/jpeg' }))
+    return app.request('/api/upload', { method: 'POST', headers: auth, body: form })
+  }
+  const oversized = await post(new Uint8Array(5 * 1024 * 1024 + 1))
+  assert.equal(oversized.status, 413)
+  assert.equal((await oversized.json()).error.code, 'TOO_LARGE')
+  const highResolution = await sharp({
+    create: { width: 5000, height: 4001, channels: 3, background: '#fff' },
+  })
+    .jpeg()
+    .toBuffer()
+  assert.ok(highResolution.length < 539 * 1024)
+  const pixels = await post(highResolution)
+  assert.equal(pixels.status, 400)
+  assert.equal((await pixels.json()).error.code, 'DIMENSIONS_TOO_LARGE')
+  const damaged = await post(new Uint8Array([255, 216, 255, 0]))
+  assert.equal(damaged.status, 400)
+  assert.equal((await damaged.json()).error.code, 'INVALID_IMAGE')
+  const previous = process.env.NAV_UPLOAD_MAX_FILES
+  process.env.NAV_UPLOAD_MAX_FILES = '0'
+  try {
+    const jpeg = await sharp({ create: { width: 4, height: 4, channels: 3, background: '#fff' } })
+      .jpeg()
+      .toBuffer()
+    const quota = await post(jpeg)
+    assert.equal(quota.status, 507)
+    assert.equal((await quota.json()).error.code, 'UPLOAD_QUOTA_EXCEEDED')
+  } finally {
+    if (previous === undefined) delete process.env.NAV_UPLOAD_MAX_FILES
+    else process.env.NAV_UPLOAD_MAX_FILES = previous
+  }
+})
+test('an unwritable upload directory reports a storage failure instead of an invalid image', async () => {
+  const path = process.env.NAV_UPLOAD_DIR!
+  await rename(path, path + '-backup')
+  try {
+    await writeFile(path, 'blocks-directory-creation')
+    const form = new FormData()
+    const jpeg = await sharp({ create: { width: 4, height: 4, channels: 3, background: '#fff' } })
+      .jpeg()
+      .toBuffer()
+    form.set('file', new File([jpeg], 'icon.jpg', { type: 'image/jpeg' }))
+    const response = await app.request('/api/upload', { method: 'POST', headers: auth, body: form })
+    assert.equal(response.status, 500)
+    const error = (await response.json()).error
+    assert.equal(error.code, 'UPLOAD_STORAGE_ERROR')
+    assert.match(error.message, /上传目录权限和磁盘空间/)
+    assert.ok(!error.message.includes(path))
+  } finally {
+    await rm(path, { force: true })
+    await rename(path + '-backup', path)
+  }
 })
 test('snapshot commits are conditional, atomic and idempotent after lost responses', async () => {
   const initial = await (await app.request('/api/dashboards')).json()

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import ModalShell from './ModalShell.vue'
 import { useDashboardStore } from '../stores/dashboardStore'
-import { useAuthStore } from '../stores/authStore'
+import { uploadImage } from '../services/imageUpload'
 import {
   migrateDashboard,
   widgetAppearanceOptions,
@@ -13,7 +13,6 @@ import {
 } from '@nav/shared'
 
 const dashboardStore = useDashboardStore()
-const authStore = useAuthStore()
 
 const emit = defineEmits<{
   close: []
@@ -48,24 +47,17 @@ async function handleImageUpload(event: Event) {
   if (!file) return
   input.value = ''
 
+  uploadError.value = ''
   uploading.value = true
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: authStore.getAuthHeaders(),
-      body: formData,
-    })
-    if (!res.ok) throw new Error('上传失败')
-    const data = await res.json()
+    const data = await uploadImage(file)
     bgImages.value.push({
       type: 'upload',
       src: data.url,
       name: file.name,
     })
   } catch (e) {
-    uploadError.value = '图片上传失败：仅支持 5 MiB 以内的栅格图片，动画将转为静态，SVG 不受支持'
+    uploadError.value = `图片上传失败：${e instanceof Error ? e.message : '请稍后重试'}`
   } finally {
     uploading.value = false
   }
@@ -243,7 +235,7 @@ function cancel() {
             <label class="upload-btn" :class="{ disabled: uploading }">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
                 @change="handleImageUpload"
                 hidden
                 :disabled="uploading"
@@ -261,6 +253,10 @@ function cancel() {
               <button class="add-url-btn" @click="addImageUrl">添加</button>
             </div>
           </div>
+          <small
+            >支持 JPG、PNG、GIF、WebP，文件不超过 5 MiB、像素总数不超过 2000
+            万。动画仅保留第一帧；SVG 不受支持。</small
+          >
         </div>
 
         <!-- 图片列表 -->
@@ -294,7 +290,7 @@ function cancel() {
 
       <p v-if="uploadError" role="alert">{{ uploadError }}</p>
       <p v-if="dashboardStore.error" role="alert">{{ dashboardStore.error }}</p>
-      <small>上传动画仅保留第一帧；SVG 不受支持。</small><!-- 操作按钮 -->
+      <!-- 操作按钮 -->
       <div class="prefs-actions">
         <button class="prefs-btn cancel" @click="cancel">取消</button>
         <button class="prefs-btn save" @click="save">保存</button>
